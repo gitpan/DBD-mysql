@@ -7,7 +7,7 @@ package Msql::Statement;
 use strict;
 use vars qw($VERSION $AUTOLOAD);
 
-$VERSION = '1.2210';
+$VERSION = '1.2211';
 
 sub fetchrow ($) {
     my $self = shift;

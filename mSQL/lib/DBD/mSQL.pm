@@ -16,7 +16,7 @@ use DynaLoader();
 use Carp ();
 @ISA = qw(DynaLoader);
 
-$VERSION = '2.0410';
+$VERSION = '2.0411';
 
 bootstrap DBD::mSQL $VERSION;
 
@@ -121,7 +121,8 @@ sub connect {
     DBD::mSQL->_OdbcParse($dsn, $privateAttrHash,
 				    ['database', 'host', 'port']);
 
-    if (!defined($this = DBI::_new_dbh($drh, {}, $privateAttrHash))) {
+    if (!defined($this = DBI::_new_dbh($drh, {'Name' => $dsn},
+				       $privateAttrHash))) {
 	return undef;
     }
 

@@ -121,7 +121,8 @@ sub connect {
     DBD::~~dbd_driver~~->_OdbcParse($dsn, $privateAttrHash,
 				    ['database', 'host', 'port']);
 
-    if (!defined($this = DBI::_new_dbh($drh, {}, $privateAttrHash))) {
+    if (!defined($this = DBI::_new_dbh($drh, {'Name' => $dsn},
+				       $privateAttrHash))) {
 	return undef;
     }
 

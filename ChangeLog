@@ -1,3 +1,7 @@
+2000-04-03  Jochen Wiedmann  <joe@ispsoft.de> (1.2211)
+
+	* Fixed $dbh->{Name} (David Jacobs <djacobs@mitre.org>)
+
 1999-11-30  Jochen Wiedmann  <joe@ispsoft.de> (1.2210)
 
 	* Makefile.PL (SelectDrivers): Hopefully ensured that a README is

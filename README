@@ -55,9 +55,10 @@ DESCRIPTION
 
     In what follows we first discuss the use of DBD::mysql and DBD::mSQL,
     because this is what you will need the most. For installation, see the
-    sections on the INSTALLATION manpage, the section on "WIN32
-    INSTALLATION", the section on "KNOWN PROBLEMS" and the section on "KNOWN
-    BUGS" below. See the EXAMPLE manpage for a simple example below.
+    sections on the INSTALLATION manpage, the WIN32 INSTALLATION entry
+    elsewhere in this document, the KNOWN PROBLEMS entry elsewhere in this
+    document and the KNOWN BUGS entry elsewhere in this document below. See
+    the EXAMPLE manpage for a simple example below.
 
     From perl you activate the interface with the statement
 
@@ -91,8 +92,8 @@ DESCRIPTION
                $number, $name);
 
     in which case the quote method is executed automatically. See also the
-    bind_param method in the DBI(3) manpage. See the section on "DATABASE
-    HANDLES" below for more details on database handles.
+    bind_param method in the DBI(3) manpage. See the DATABASE HANDLES entry
+    elsewhere in this document below for more details on database handles.
 
     If you want to retrieve results, you need to create a so-called
     statement handle with:
@@ -106,8 +107,8 @@ DESCRIPTION
       my $row = $sth->fetchow_hashref();
 
     If your table has columns ID and NAME, then $row will be hash ref with
-    keys ID and NAME. See the section on "STATEMENT HANDLES" below for more
-    details on statement handles.
+    keys ID and NAME. See the STATEMENT HANDLES entry elsewhere in this
+    document below for more details on statement handles.
 
     But now for a more formal approach:
 
@@ -132,10 +133,10 @@ DESCRIPTION
 
         A `database' must always be specified.
 
-    host
-    port        The hostname, if not specified or specified as '', will default
-                to an mysql or mSQL daemon running on the local machine on
-                the default port for the UNIX socket.
+        host
+        port    The hostname, if not specified or specified as '', will
+                default to an mysql or mSQL daemon running on the local
+                machine on the default port for the UNIX socket.
 
                 Should the mysql or mSQL daemon be running on a non-standard
                 port number, you may explicitly state the port number to
@@ -146,7 +147,7 @@ DESCRIPTION
                 config file and load it using the msql_configfile attribute,
                 see below.
 
-    mysql_client_found_rows
+        mysql_client_found_rows
                 Enables (TRUE value) or disables (FALSE value) the flag
                 CLIENT_FOUND_ROWS while connecting to the MySQL server. This
                 has a somewhat funny effect: Without
@@ -167,18 +168,18 @@ DESCRIPTION
                   make
                   make install
 
-    mysql_compression
+        mysql_compression
                 As of MySQL 3.22.3, a new feature is supported: If your DSN
                 contains the option "mysql_compression=1", then the
                 communication between client and server will be compressed.
 
-    mysql_connect_timeout
+        mysql_connect_timeout
                 If your DSN contains the option "mysql_connect_timeout=##",
                 the connect request to the server will timeout if it has not
                 been successful after the given number of seconds.
 
-    mysql_read_default_file
-    mysql_read_default_group
+        mysql_read_default_file
+        mysql_read_default_group
                 These options can be used to read a config file like
                 /etc/my.cnf or ~/.my.cnf. By default MySQL's C client
                 library doesn't use any config files unlike the client
@@ -209,7 +210,7 @@ DESCRIPTION
                 you'll be connected to *perlhost*. See the (missing :-)
                 documentation of the C function mysql_options() for details.
 
-    mysql_socket
+        mysql_socket
                 As of MySQL 3.21.15, it is possible to choose the Unix
                 socket that is used for connecting to the server. This is
                 done, for example, with
@@ -250,7 +251,7 @@ DESCRIPTION
             @tables = $dbh->func('_ListTables');
 
         Once connected to the desired database on the desired mysql or mSQL
-        mSQL daemon with the `DBI-'connect()> method, we may extract a list
+        mSQL daemon with the `DBI->connect()' method, we may extract a list
         of the tables that have been created within that database.
 
         `ListTables' returns an array containing the names of all the tables
@@ -264,11 +265,11 @@ DESCRIPTION
 
   Server Administration
 
-    admin   $rc = $drh->func("createdb", $dbname, [host, user, password,],
-            'admin'); $rc = $drh->func("dropdb", $dbname, [host, user,
-            password,], 'admin'); $rc = $drh->func("shutdown", [host, user,
-            password,], 'admin'); $rc = $drh->func("reload", [host, user,
-            password,], 'admin');
+        admin
+                $rc = $drh->func("createdb", $dbname, [host, user, password,], 'admin');
+                $rc = $drh->func("dropdb", $dbname, [host, user, password,], 'admin');
+                $rc = $drh->func("shutdown", [host, user, password,], 'admin');
+                $rc = $drh->func("reload", [host, user, password,], 'admin');
 
                   or
 
@@ -292,11 +293,12 @@ DESCRIPTION
             comparable to the m(y)sqladmin programs. The command being
             execute depends on the first argument:
 
-        createdb    Creates the database $dbname. Equivalent to "m(y)sqladmin
-                    create $dbname".
+            createdb
+                    Creates the database $dbname. Equivalent to
+                    "m(y)sqladmin create $dbname".
 
-        dropdb      Drops the database $dbname. Equivalent to "m(y)sqladmin drop
-                    $dbname".
+            dropdb  Drops the database $dbname. Equivalent to "m(y)sqladmin
+                    drop $dbname".
 
                     It should be noted that database deletion is *not
                     prompted for* in any way. Nor is it undo-able from DBI.
@@ -305,11 +307,12 @@ DESCRIPTION
 
                     These method should be used at your own risk.
 
-        shutdown    Silently shuts down the database engine. (Without
+            shutdown
+                    Silently shuts down the database engine. (Without
                     prompting!) Equivalent to "m(y)sqladmin shutdown".
 
-        reload      Reloads the servers configuration files and/or tables. This
-                    can be particularly important if you modify access
+            reload  Reloads the servers configuration files and/or tables.
+                    This can be particularly important if you modify access
                     privileges or create new users.
 
 DATABASE HANDLES
@@ -376,75 +379,77 @@ STATEMENT HANDLES
         with capitalized or mixed case names. Lower case attribute names are
         private to DBD::mSQL and DBD::mysql. The attribute list includes:
 
-    ChopBlanks
+        ChopBlanks
             this attribute determines whether a *fetchrow* will chop
             preceding and trailing blanks off the column values. Chopping
             blanks does not have impact on the *max_length* attribute.
 
-    mysql_insertid
+        mysql_insertid
             MySQL has the ability to choose unique key values automatically.
             If this happened, the new ID will be stored in this attribute.
             This attribute is not valid for DBD::mSQL. An alternative way
             for accessing this attribute is via $dbh->{'mysql_insertid'}.
             (Note we are using the $dbh in this case!)
 
-    mysql_is_blob
+        mysql_is_blob
             Reference to an array of boolean values; TRUE indicates, that
             the respective column is a blob. This attribute is valid for
             MySQL only.
 
-    mysql_is_key
+        mysql_is_key
             Reference to an array of boolean values; TRUE indicates, that
             the respective column is a key. This is valid for MySQL only.
 
-    mysql_is_num
+        mysql_is_num
             Reference to an array of boolean values; TRUE indicates, that
             the respective column contains numeric values.
 
-    mysql_is_pri_key
+        mysql_is_pri_key
             Reference to an array of boolean values; TRUE indicates, that
             the respective column is a primary key. This is only valid for
             MySQL and mSQL 1.0.x: mSQL 2.x uses indices.
 
-    mysql_length
-    mysql_max_length
+        mysql_length
+        mysql_max_length
             A reference to an array of maximum column sizes. The
             *max_length* is the maximum physically present in the result
             table, *length* gives the theoretically possible maximum.
             *max_length* is valid for MySQL only.
 
-    NAME    A reference to an array of column names.
+        NAME
+            A reference to an array of column names.
 
-    NULLABLE
+        NULLABLE
             A reference to an array of boolean values; TRUE indicates that
             this column may contain NULL's.
 
-    NUM_OF_FIELDS
+        NUM_OF_FIELDS
             Number of fields returned by a *SELECT* or *LISTFIELDS*
             statement. You may use this for checking whether a statement
             returned a result: A zero value indicates a non-SELECT statement
             like *INSERT*, *DELETE* or *UPDATE*.
 
-    mysql_table
+        mysql_table
             A reference to an array of table names, useful in a *JOIN*
             result.
 
-    TYPE    A reference to an array of column types. The engine's native column
-            types are mapped to portable types like DBI::SQL_INTEGER() or
-            DBI::SQL_VARCHAR(), as good as possible. Not all native types
-            have a meaningfull equivalent, for example DBD::mSQL::IDX_TYPE()
-            or DBD::mysql::FIELD_TYPE_INTERVAL are mapped to
-            DBI::SQL_VARCHAR(). If you need the native column types, use
-            *mysql_type* or *msql_type*, respectively. See below.
+        TYPE
+            A reference to an array of column types. The engine's native
+            column types are mapped to portable types like
+            DBI::SQL_INTEGER() or DBI::SQL_VARCHAR(), as good as possible.
+            Not all native types have a meaningfull equivalent, for example
+            DBD::mSQL::IDX_TYPE() or DBD::mysql::FIELD_TYPE_INTERVAL are
+            mapped to DBI::SQL_VARCHAR(). If you need the native column
+            types, use *mysql_type* or *msql_type*, respectively. See below.
 
-    mysql_type
+        mysql_type
             A reference to an array of MySQL's native column types, for
             example DBD::mysql::FIELD_TYPE_SHORT() or
             DBD::mysql::FIELD_TYPE_STRING(). Use the *TYPE* attribute, if
             you want portable types like DBI::SQL_SMALLINT() or
             DBI::SQL_VARCHAR().
 
-    mysql_type_name
+        mysql_type_name
             Similar to mysql, but type names and not numbers are returned.
             Whenever possible, the ANSI SQL name is preferred.
 
@@ -454,36 +459,36 @@ SQL EXTENSIONS
         implemented as "SQL extensions" because they return in fact nothing
         else but the equivalent of a statement handle. These are:
 
-    LISTFIELDS $table
+        LISTFIELDS $table
             Returns a statement handle that describes the columns of $table.
             Ses the docs of msqlListFields or mysql_list_fields (C API) for
             details.
 
-    LISTINDEX $table $index
+        LISTINDEX $table $index
             mSQL only; returns a statement handle that describes the index
             $index of table $table. See the docs of msqlListIndex for
             details.
 
 COMPATIBILITY ALERT
-        The statement attribute *TYPE* has changed its meaning, as of Msql-
-        Mysql-modules 1.19_19. Formerly it used to be the an array of native
-        engine's column types, but it is now an array of portable SQL column
-        types. The old attribute is still available as *mysql_type* or
-        *msql_type*, respectively.
+        The statement attribute *TYPE* has changed its meaning, as of
+        Msql-Mysql-modules 1.19_19. Formerly it used to be the an array of
+        native engine's column types, but it is now an array of portable SQL
+        column types. The old attribute is still available as *mysql_type*
+        or *msql_type*, respectively.
 
         The Msql-Mysql-modules are a moving target, due to a number of
         reasons:
 
-    -           Of course they have to conform the DBI guidelines and
+        -       Of course they have to conform the DBI guidelines and
                 developments.
 
-    -           They have to keep track with the latest MySQL developments.
+        -       They have to keep track with the latest MySQL developments.
 
-    -           And, surprisingly, they have to be as close to ODBC as possible:
-                This is due to the current direction of DBI.
+        -       And, surprisingly, they have to be as close to ODBC as
+                possible: This is due to the current direction of DBI.
 
-    -           And, last not least, as any tool they have a little bit of own
-                life.
+        -       And, last not least, as any tool they have a little bit of
+                own life.
 
         This means that a lot of things had to and have to be changed. As I
         am not interested in maintaining a lot of compatibility kludges,
@@ -492,13 +497,13 @@ COMPATIBILITY ALERT
 
         To ensure a smooth upgrade, the following policy will be applied:
 
-    Obsolete features
+        Obsolete features
                 The first step is to declare something obsolete. This means,
                 that no code is changed, but the feature appears in the list
-                of obsolete features. See the section on "Obsolete Features"
-                below.
+                of obsolete features. See the Obsolete Features entry
+                elsewhere in this document below.
 
-    Deprecated features
+        Deprecated features
                 If the feature has been obsolete for quite some time,
                 typically in the next major stable release, warnings will be
                 inserted in the code. You can suppress these warnings by
@@ -508,13 +513,14 @@ COMPATIBILITY ALERT
 
                 In the docs the feature will be moved from the list of
                 obsolete features to the list of deprecated features. See
-                the section on "Deprecated Features" below.
+                the Deprecated Features entry elsewhere in this document
+                below.
 
-    Removing features
+        Removing features
                 Finally features will be removed silently in the next major
                 stable release. The feature will be shown in the list of
-                historic features. See the section on "Historic Features"
-                below.
+                historic features. See the Historic Features entry elsewhere
+                in this document below.
 
         Example: The statement handle attribute
 
@@ -555,32 +561,32 @@ COMPATIBILITY ALERT
             in 1.23_xy and 1.24xy.
 
     Statement handle attributes:
-    affected_rows
-    IS_PRI_KEY
-    is_pri_key
-    IS_NOT_NULL
-    is_not_null
-    IS_KEY
-    is_key
-    IS_BLOB
-    is_blob
-    IS_NUM
-    is_num
-    LENGTH
-    length
-    MAXLENGTH
-    maxlength
-    NUMROWS
-    numrows
-    NUMFIELDS
-    numfields
-    RESULT
-    result
-    TABLE
-    table
-    format_max_size
-    format_default_size
-    format_type_name
+            affected_rows
+            IS_PRI_KEY
+            is_pri_key
+            IS_NOT_NULL
+            is_not_null
+            IS_KEY
+            is_key
+            IS_BLOB
+            is_blob
+            IS_NUM
+            is_num
+            LENGTH
+            length
+            MAXLENGTH
+            maxlength
+            NUMROWS
+            numrows
+            NUMFIELDS
+            numfields
+            RESULT
+            result
+            TABLE
+            table
+            format_max_size
+            format_default_size
+            format_type_name
             All of the above statement handle attributes are not conforming
             to DBI's naming conventions, thus they have been declared
             deprecated in 1.20xy. However, I forgot to insert warnings in
@@ -665,9 +671,9 @@ MULTITHREADING
 
     In the case of MySQL the answer is "mostly" and, in theory, you should
     be able to get a "yes", if the C library is compiled for being thread
-    safe (By default it isn't.) by passing the option -with-thread-safe-
-    client to configure. See the section on *How to make a threadsafe
-    client* in the manual.
+    safe (By default it isn't.) by passing the option
+    -with-thread-safe-client to configure. See the section on *How to make a
+    threadsafe client* in the manual.
 
 EXAMPLE
       #!/usr/bin/perl
@@ -707,8 +713,9 @@ EXAMPLE
       $dbh->disconnect();
 
 INSTALLATION
-    Windows users may skip this section and pass over to the section on
-    "WIN32 INSTALLATION" below. Others, go on reading.
+    Windows users may skip this section and pass over to the WIN32
+    INSTALLATION entry elsewhere in this document below. Others, go on
+    reading.
 
     First you need to install the DBI module. For using *dbimon*, a simple
     DBI shell it is recommended to install Data::ShowTable another Perl
@@ -778,8 +785,8 @@ INSTALLATION
     go looking for msql.h (typically in /usr/include/msql.h and libmsql.a
     (probably in /usr/lib/libmsql.a).
 
-    See the the section on "KNOWN PROBLEMS" section below if you encounter
-    any problems within "make" or "make test".
+    See the the KNOWN PROBLEMS entry elsewhere in this document section
+    below if you encounter any problems within "make" or "make test".
 
 WIN32 INSTALLATION
     I have never attempted to install DBD::mSQL under Win32, so this is only
@@ -804,8 +811,8 @@ WIN32 INSTALLATION
     under Win32, available for download on www.tcx.se. The following steps
     have been required for me:
 
-    -       Extract sources into C:\. This will create a directory C:\mysql with
-            subdirectories include and lib.
+    -       Extract sources into C:\. This will create a directory C:\mysql
+            with subdirectories include and lib.
 
             IMPORTANT: Make sure this subdirectory is not shared by other
             TCX files! In particular do *not* store the MySQL server in the
@@ -814,13 +821,13 @@ WIN32 INSTALLATION
             Note that you can remove this directory entirely once you have
             installed the Msql-Mysql-modules.
 
-    -       Extract the Msql-Mysql-modules sources into another directory, for
-            example C:\src\siteperl
+    -       Extract the Msql-Mysql-modules sources into another directory,
+            for example C:\src\siteperl
 
     -       Open a DOS shell and change directory to C:\src\siteperl.
 
-    -       The next step is only required if you repeat building the modules:
-            Make sure that you have a clean build tree by running
+    -       The next step is only required if you repeat building the
+            modules: Make sure that you have a clean build tree by running
 
               nmake realclean
 
@@ -850,7 +857,8 @@ WIN32 INSTALLATION
               nmake
               nmake install
 
-    See the first section of the section on "KNOWN PROBLEMS" below.
+    See the first section of the KNOWN PROBLEMS entry elsewhere in this
+    document below.
 
     If you want to create a PPM package for the ActiveState Perl version,
     then modify the above steps as follows: Run
@@ -888,14 +896,14 @@ KNOWN PROBLEMS
             This means, that your linker doesn't include libgcc.a. You have
             the following options:
 
-    a)                  Either recompile Perl or Mysql, it doesn't matter which.
-                        The important thing is that you use the same
+            a)          Either recompile Perl or Mysql, it doesn't matter
+                        which. The important thing is that you use the same
                         compiler for both. This is definitely the
                         recommended solution in the long term.
 
-    b)                  A simple workaround is to include libgcc.a manually. Do
-                        a "make clean" and "make" and in the output wait for
-                        a line like
+            b)          A simple workaround is to include libgcc.a manually.
+                        Do a "make clean" and "make" and in the output wait
+                        for a line like
 
                           LD_RUN_PATH="/usr/lib/mysql:/lib" egcs -o
                           ../blib/arch/auto/DBD/mysql/mysql.so  -shared -L/usr/local/lib
@@ -915,8 +923,8 @@ KNOWN PROBLEMS
 
                           gcc -v
 
-    2.)     There are known problems with shared versions of libmysqlclient, at
-            least on some Linux boxes. If you receive an error message
+    2.)     There are known problems with shared versions of libmysqlclient,
+            at least on some Linux boxes. If you receive an error message
             similar to
 
               install_driver(mysql) failed: Can't load
@@ -936,9 +944,9 @@ KNOWN PROBLEMS
 
             This option forces linkage against the static libmysqlclient.a.
 
-    3.)     By default mSQL2 is installed to allow local access only. This can
-            break the test scripts akmisc.t, msql1.t and msql2.t. You might
-            notice a message like
+    3.)     By default mSQL2 is installed to allow local access only. This
+            can break the test scripts akmisc.t, msql1.t and msql2.t. You
+            might notice a message like
 
               t/akmisc............Can't connect to MSQL server on localhost at
               t/akmisc.t line 131
@@ -979,8 +987,8 @@ KNOWN PROBLEMS
             this is an ugly hack and hopefully Monty will fix the missing
             symbol in the next release of MyODBC.)
 
-    5.)     mSQL 2.0.4 had a bug, that caused the test t/40bindparam.t to fail.
-            This bug is fixed in later versions, 2.0.6 and higher.
+    5.)     mSQL 2.0.4 had a bug, that caused the test t/40bindparam.t to
+            fail. This bug is fixed in later versions, 2.0.6 and higher.
 
     6.)     From time to time compiling DBD::mSQL fails with messages like
 
