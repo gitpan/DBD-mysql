@@ -48,6 +48,7 @@ use Term::ReadLine ();
 use Data::ShowTable ();
 
 
+
 ############################################################################
 #
 #   Constants
@@ -221,9 +222,20 @@ sub Connect (@) {
 	my $errmsg = $DBI::errstr;
 	print "Failed to connect: $errmsg\n";
 	if (!$batchMode  &&  !defined($npassword)  ||  $npassword eq '') {
+	    $@ = '';
+	    eval { require Term::ReadKey; };
+	    my($readKeyAvailable) = $@ ? 0 : 1;
 	    print "This might be due to a missing password. If so, enter\n";
 	    print "the password, otherwise just type return: ";
-	    $npassword = <STDIN>; chomp $npassword;
+	    if ($readKeyAvailable) {
+		Term::ReadKey::ReadMode('noecho');
+		$npassword = Term::ReadKey::ReadLine(0);
+		Term::ReadKey::ReadMode('restore');
+		print "\n";
+	    } else {
+		$npassword = <STDIN>;
+	    }
+	    chomp $npassword;
 	    if (defined($npassword)  &&  $npassword ne '') {
 		$dbh = DBI->connect($ndsn, $nuser, $npassword);;
 		if (!defined($dbh)) {
@@ -458,7 +470,7 @@ sub FieldList($$;$) {
 		(undef);
 	    }
 	} else {
-	    $sth = $dbh->prepare($table, "LISTFIELDS $table");
+	    $sth = $dbh->prepare("LISTFIELDS $table");
 	    $sth->execute;
 	    ($sth);
 	}

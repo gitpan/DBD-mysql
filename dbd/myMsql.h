@@ -54,7 +54,6 @@ extern char** environ;
 
 #include <msql.h>   /* installed during the installation of msql itself   */
 typedef int dbh_t;
-typedef int* dbh_connect_t;
 typedef m_result* result_t;
 typedef m_row row_t;
 typedef m_field* field_t;
@@ -70,7 +69,7 @@ typedef m_field* field_t;
 #define MyErrno(s, m) (m)
 #define MyQuery(s, q, l) msqlQuery(s, q)
 #define MyStoreResult(s) msqlStoreResult()
-#define MyGetHostInfo(s) msqlGetHostInfo(s)
+#define MyGetHostInfo(s) msqlGetHostInfo()
 #define MyGetServerInfo(s) msqlGetServerInfo()
 #define MyGetProtoInfo(s) msqlGetProtoInfo()
 #define MyShutdown(s) msqlShutdown(s)
@@ -146,7 +145,6 @@ extern int MysqlReconnect(SV*);
 #endif
 
 
-int MyConnect(dbh_connect_t, char*, char*, char*);
-int MyLogin(dbh_connect_t, char*, char*, char*);
+int MyConnect(dbh_t*, char*, char*, char*, char*);
 
 #endif

@@ -1,4 +1,14 @@
-1998-02-06  Jochen Wiedmann  <joe@laptop.ispsoft.de> (1.19_03)
+1998-02-26  Jochen Wiedmann  <joe@ispsoft.de> (1.19_10)
+
+	* M(y)sqlPerl now emulated by DBI drivers.
+	* dbd/dbdimp.c: Added $dbh->{'info'} and $dbh->{'thread_id'}
+ 	  (mysql only)
+	* dbd/dbimon.in: Fixed minor bug in "rel db test"
+	* dbd/dbimon.in (Connect): Added noecho mode for entering
+	  passwords.
+	* dbd/myMsql.c: Fixed bugs in OdbcParse.
+
+1998-02-06  Jochen Wiedmann  <joe@ispsoft.de> (1.19_03)
 
 	* dbd/dbd.xs.in: Fixed $dbh->quote(undef) to return "NULL"
 	  and not 'undef'.
@@ -11,7 +21,7 @@
 	* Added a missing DROP TABLE in ak-dbd.t.
 	* Added ODBC style DSN's like DBI:mysql:database=test;host=localhost.
 
-1998-01-20  Jochen Wiedmann  <joe@laptop.ispsoft.de> (1.19_02)
+1998-01-20  Jochen Wiedmann  <joe@ispsoft.de> (1.19_02)
 
 	* dbd/dbd.xs.in (quote): Fixed "int len" to "STRLEN len"; the
 	  Irix compiler refuses to compile this. (A little bit picky,

@@ -16,7 +16,7 @@ use DynaLoader();
 use Carp ();
 @ISA = qw(DynaLoader);
 
-$VERSION = '2.01_03';
+$VERSION = '2.01_10';
 
 bootstrap DBD::mSQL $VERSION;
 
@@ -40,6 +40,48 @@ sub driver{
 				 });
 
     $drh;
+}
+
+sub _OdbcParse($$$) {
+    my($class, $dsn, $hash, $args) = @_;
+    my($var, $val);
+    if (!defined($dsn)) {
+	return;
+    }
+    while (length($dsn)) {
+	if ($dsn =~ /([^:;]*)[:;](.*)/) {
+	    $val = $1;
+	    $dsn = $2;
+	} else {
+	    $val = $dsn;
+	    $dsn = '';
+	}
+	if ($val =~ /([^=]*)=(.*)/) {
+	    $var = $1;
+	    $val = $2;
+	    if ($var eq 'hostname') {
+		$hash->{'host'} = $val;
+	    } elsif ($var eq 'db'  ||  $var eq 'dbname') {
+		$hash->{'database'} = $val;
+	    } else {
+		$hash->{$var} = $val;
+	    }
+	} else {
+	    foreach $var (@$args) {
+		if (!defined($hash->{$var})) {
+		    $hash->{$var} = $val;
+		}
+		last;
+	    }
+	}
+    }
+}
+
+sub _OdbcParseHost ($$) {
+    my($class, $dsn) = @_;
+    my($hash) = {};
+    $class->_OdbcParse($dsn, $hash, ['host', 'port']);
+    ($hash->{'host'}, $hash->{'port'});
 }
 
 sub AUTOLOAD {
@@ -69,15 +111,21 @@ sub connect {
     $password ||= '';
 
     # create a 'blank' dbh
-    my $this;
+    my($this, $privateAttrHash);
+    $privateAttrHash = {
+	'dsn' => $dsn,
+	'user' => $username,
+	'password' => $password
+    };
 
-    if (!defined($this = DBI::_new_dbh($drh, {},
-				       { 'dsn' => $dsn,
-					 'user' => $username,
-					 'password' => $password
-					 }))) {
+    DBD::mSQL->_OdbcParse($dsn, $privateAttrHash,
+				  ['database', 'host', 'port']);
+
+    if (!defined($this = DBI::_new_dbh($drh, {}, $privateAttrHash))) {
 	return undef;
     }
+
+    $this->{'private_DBD_mSQL_attr'} = $privateAttrHash;
 
     # Call msqlConnect func in mSQL.xs file
     # and populate internal handle data.
@@ -101,11 +149,15 @@ sub admin {
     my($command) = shift;
     my($dbname) = ($command eq 'createdb'  ||  $command eq 'dropdb') ?
 	shift : '';
-    my($host) = shift || '';
-    my ($user) = shift || '';
-    my ($password) = shift || '';
-    $drh->func(undef, $command, $dbname, $host, $user, $password,
-	       '_admin_internal');
+    my($host, $port) = DBD::mSQL->_OdbcParseHost(shift(@_) || '');
+    my($user) = shift || '';
+    my($password) = shift || '';
+
+    $drh->func(undef, $command,
+	       $dbname || '',
+	       $host || '',
+	       $port || '',
+	       $user, $password, '_admin_internal');
 }
 
 sub _CreateDB {
@@ -250,7 +302,7 @@ Interface (DBI)
     $dbh = DBI->connect("DBI:mysql:$database:$hostname:$port",
 			$user, $password);
 
-    @databases = DBD::mysql::dr->func( $hostname, '_ListDBs' );
+    @databases = DBD::mysql::dr->func($host, $port, '_ListDBs');
     @tables = $dbh->func( '_ListTables' );
 
     $sth = $dbh->prepare("SELECT * FROM foo WHERE bla");
@@ -473,6 +525,17 @@ concerning the missing prompt for dropping a database!
 =back
 
 
+=head1 DATABASE HANDLES
+
+The DBD::mysql driver supports the following attributes of database
+handles (read only):
+
+    $infoString = $dbh->{'info'};
+    $threadId = $dbh->{'thread_id'};
+
+These correspond to mysql_info() and mysql_tread_id(), respectively.
+
+
 =head1 STATEMENT HANDLES
 
 The statement handles of DBD::mysql and DBD::mSQL support a number
@@ -524,7 +587,7 @@ header of table names together with all rows:
       }
       print "\n";
   }
-x
+
 For portable applications you should restrict yourself to attributes with
 capitalized or mixed case names. Lower case attribute names are private
 to DBD::mSQL and DBD::mysql. The attribute list includes:
@@ -710,15 +773,11 @@ be.)
 =head1 BUGS
 
 The I<port> part of the first argument to the connect call is
-implemented in an unsafe way. In fact it never did more than set
-the environment variable MSQL_TCP_PORT during the connect call. If
-another connect call uses another port and the handles are used
-simultaneously, they will interfere. In a future version this
-behaviour will hoefully change, depending on David and Monty. :-)
-
-The func method call on a driver handle seems to be undocumented in
-the DBI manpage. DBD::mSQL has func methods on driverhandles, database
-handles, and statement handles. What gives?
+implemented in an unsafe way when using mSQL. In fact it is just
+stting the environment variable MSQL_TCP_PORT during the connect
+call. If another connect call uses another port and the handles
+are used simultaneously, they will interfere. I doubt that this
+will ever change.
 
 Please speak up now (June 1997) if you encounter additional bugs. I'm
 still learning about the DBI API and can neither judge the quality of

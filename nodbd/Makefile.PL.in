@@ -10,11 +10,8 @@ _MY::Config::Init(0);
 
 my $DRIVER = "~DRIVER~";
 
-my(@xtractFiles) = (["../dbd/myMsql.c", "myMsql.c"],
-		    ["../nodbd/nodbd.xs.in", "~DRIVER~.xs"],
-		    ["../nodbd/pmsql.in",
+my(@xtractFiles) = (["../nodbd/pmsql.in",
 		     ($DRIVER eq 'Msql') ? 'pmsql' : 'pmysql', 1],
-		    ["../nodbd/typemap", "typemap"],
 		    ["../tests/lib.pl", "t/lib.pl"],
 #xtract Msql
 		    ["../tests/msql1.t", "t/msql1.t"],
@@ -36,7 +33,6 @@ sub ~DRIVER~_config () {
     my %hash = %$ref;
     $hash{NAME} = $DRIVER;
     $hash{VERSION} = "~NODBD_VERSION~";
-    $hash{OBJECT} = '$(O_FILES)';
     $hash{EXE_FILES} = [ ($DRIVER eq 'Msql') ? 'pmsql' : 'pmysql' ];
     \%hash;
 }

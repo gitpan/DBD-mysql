@@ -12,13 +12,73 @@
 */
 
 #include "dbdimp.h"
-#include "../nodbd/constants.h"
+#include "../dbd/constants.h"
 
 
 /* --- Variables --- */
 
 
 DBISTATE_DECLARE;
+
+
+SV* _quote(SV* dbh, SV* str) {
+    SV* result;
+    char* ptr;
+    char* sptr;
+    STRLEN len;
+
+    if (!SvOK(str)) {
+        static SV* nullStrSv = NULL;
+	if (!nullStrSv) {
+	    nullStrSv = newSVpv("NULL", 4);
+	    SvREFCNT_inc(nullStrSv);
+	}
+	result = nullStrSv;
+    } else {
+        ptr = SvPV(str, len);
+	result = sv_2mortal(newSV(len*2+3));
+	sptr = SvPVX(result);
+
+	*sptr++ = '\'';
+	while (len--) {
+	    switch (*ptr) {
+	      case '\'':
+		*sptr++ = '\\';
+		*sptr++ = '\'';
+		break;
+	      case '\\':
+		*sptr++ = '\\';
+		*sptr++ = '\\';
+		break;
+#if defined(DBD_MYSQL)
+	      case '\n':
+		*sptr++ = '\\';
+		*sptr++ = 'n';
+		break;
+	      case '\r':
+		*sptr++ = '\\';
+		*sptr++ = 'r';
+		break;
+	      case '\0':
+		*sptr++ = '\\';
+		*sptr++ = '0';
+		break;
+#endif
+	      default:
+		*sptr++ = *ptr;
+		break;
+	    }
+	    ++ptr;
+	}
+	*sptr++ = '\'';
+	SvPOK_on(result);
+	SvCUR_set(result, sptr - SvPVX(result));
+	*sptr++ = '\0';  /*  Never hurts NUL terminating a Perl
+			  *	 string ...
+			  */
+    }
+    return result;
+}
 
 
 MODULE = DBD::~DBD_DRIVER~	PACKAGE = DBD::~DBD_DRIVER~
@@ -36,21 +96,61 @@ constant(name, arg)
   OUTPUT:
     RETVAL
 
+#if defined(DBD_MSQL) && defined(IDX_TYPE) && defined(HAVE_STRPTIME)
+
+char*
+unixtimetodate(package = Package, clock)
+    time_t clock
+  PROTOTYPE: $$
+  CODE:
+    RETVAL = msqlUnixTimeToDate(clock);
+  OUTPUT:
+    RETVAL
+
+char*
+unixtimetotime(package = Package, clock)
+    time_t clock
+  PROTOTYPE: $$
+  CODE:
+    RETVAL = msqlUnixTimeToTime(clock);
+  OUTPUT:
+    RETVAL
+
+time_t
+datetounixtime(package = Package, clock)
+  PROTOTYPE: $$
+  CODE:
+    RETVAL = msqlDateToUnixTime(clock);
+  OUTPUT:
+    RETVAL
+
+time_t
+timetounixtime(package = Package, clock)
+  PROTOTYPE: $$
+  CODE: $$
+    RETVAL = msqlTimeToUnixTime(clock);
+  OUTPUT:
+    RETVAL
+
+#endif /* defined(DBD_MSQL) && defined(IDX_TYPE) && defined(HAVE_STRPTIME) */
+
+
 MODULE = DBD::~DBD_DRIVER~	PACKAGE = DBD::~DBD_DRIVER~::dr
 
 void
-_ListDBs(drh, host)
+_ListDBs(drh, host, port=NULL)
     SV *        drh
     char *	host
+    char *      port
   PPCODE:
-#xtract Mysql
+{
+#if defined(DBD_MYSQL)
     MYSQL mysql;
     dbh_t sock = &mysql;
-    if (MyConnect(sock,host,NULL,NULL)) {
-#xtract Msql
+#elif defined(DBD_MSQL)
     dbh_t sock;
-    if (MyConnect(&sock,host,NULL,NULL)) {
-#endxtract
+#endif
+    if (MyConnect(&sock,host,port,NULL,NULL)) {
         result_t res;
         row_t cur;
         res = MyListDbs(sock);
@@ -65,24 +165,27 @@ _ListDBs(drh, host)
         }
         MyClose(sock);
     }
+}
 
 
 SV*
-_admin_internal(drh,dbh,command,dbname=NULL,host=NULL,user=NULL,password=NULL)
+_admin_internal(drh,dbh,command,dbname=NULL,host=NULL,port=NULL,user=NULL,password=NULL)
     SV* drh
     SV* dbh
     char* command
     char* dbname
     char* host
+    char* port
     char* user
     char* password
   PPCODE:
     {
         dbh_t sock;
-#xtract Mysql
-	MYSQL mysql;
-#endxtract
 	int result;
+#if defined(DBD_MYSQL)
+	MYSQL mysql;
+	sock = &mysql;
+#endif
 
 	/*
 	 *  Connect to the database, if required.
@@ -91,12 +194,7 @@ _admin_internal(drh,dbh,command,dbname=NULL,host=NULL,user=NULL,password=NULL)
 	    D_imp_dbh(dbh);
 	    sock = imp_dbh->svsock;
 	} else {
-#xtract Mysql
-	    sock = &mysql;
-	    if (!MyConnect(sock,host,user,password)) {
-#xtract Msql
-	    if (!MyConnect(&sock,host,user,password)) {
-#endxtract
+	    if (!MyConnect(&sock,host,port,user,password)) {
 	        do_error(drh, MyErrno(sock, JW_ERR_CONNECT), MyError(sock));
 		XPUSHs(&sv_no);
 	    }
@@ -113,11 +211,11 @@ _admin_internal(drh,dbh,command,dbname=NULL,host=NULL,user=NULL,password=NULL)
        } else {
 	  croak("Unknown command: %s", command);
        }
-#xtract Mysql
+#if defined(DBD_MYSQL)
        if (result) {
-#xtract Msql
+#elif defined(DBD_MSQL)
        if (result < 0) {
-#endxtract
+#endif
 	   do_error(SvOK(dbh) ? dbh : drh, MyErrno(sock, JW_ERR_LIST_DB),
 		    MyError(sock));
 	   result = 0;
@@ -134,8 +232,7 @@ _admin_internal(drh,dbh,command,dbname=NULL,host=NULL,user=NULL,password=NULL)
 MODULE = DBD::~DBD_DRIVER~    PACKAGE = DBD::~DBD_DRIVER~::db
 
 
-
-#xtract Mysql
+#if defined(DBD_MYSQL)
 
 int
 _InsertID(dbh)
@@ -149,7 +246,7 @@ _InsertID(dbh)
   OUTPUT:
     RETVAL
 
-#endxtract
+#endif
 
 void
 _ListDBs(dbh)
@@ -242,16 +339,16 @@ ping(dbh)
     {
         int result;
 	D_imp_dbh(dbh);
-#xtract Mysql
+#if defined(DBD_MYSQL)
 	char* ptr = mysql_stat(imp_dbh->svsock);
 	result = (mysql_errno(imp_dbh->svsock) == 0);
 	if (!result  &&  MyReconnect(imp_dbh->svsock, dbh)) {
 	    ptr = mysql_stat(imp_dbh->svsock);
 	    result = (mysql_errno(imp_dbh->svsock) == 0);
 	}
-#xtract Msql
+#elif defined(DBD_MSQL)
 	result = TRUE;
-#endxtract
+#endif
 	RETVAL = boolSV(result);
     }
   OUTPUT:
@@ -272,63 +369,51 @@ quote(dbh, str)
     SV* dbh
     SV* str
   PROTOTYPE: $$
+  PPCODE: 
+    EXTEND(sp, 1);
+    PUSHs(_quote(dbh, str));
+
+#if defined(DBD_MSQL) && defined(IDX_TYPE)
+
+SV*
+getsequenceinfo(dbh, table)
+    SV* dbh
+    char* table
+  PROTOTYPE: $$
   PPCODE:
-    {
-        SV* result;
-        char* ptr;
-	char* sptr;
-	STRLEN len;
-
-        if (!SvOK(str)) {
-	    static SV* nullStrSv = NULL;
-	    if (!nullStrSv) {
-	        nullStrSv = newSVpv("NULL", 4);
-		SvREFCNT_inc(nullStrSv);
-	    }
-	    result = nullStrSv;
-	} else {
-	    ptr = SvPV(str, len);
-	    result = sv_2mortal(newSV(len*2+3));
-	    sptr = SvPVX(result);
-
-	    *sptr++ = '\'';
-	    while (len--) {
-	        switch (*ptr) {
-		  case '\'':
-		    *sptr++ = '\\';
-		    *sptr++ = '\'';
-		    break;
-		  case '\\':
-		    *sptr++ = '\\';
-		    *sptr++ = '\\';
-		    break;
-#xtract Mysql
-		  case '\n':
-		    *sptr++ = '\\';
-		    *sptr++ = 'n';
-		    break;
-		  case '\r':
-		    *sptr++ = '\\';
-		    *sptr++ = 'r';
-		    break;
-		  case '\0':
-		    *sptr++ = '\\';
-		    *sptr++ = '0';
-		    break;
-#endxtract
-		  default:
-		    *sptr++ = *ptr;
-		    break;
-		}
-		++ptr;
-	    }
-	    *sptr++ = '\'';
-	    SvPOK_on(result);
-	    SvCUR_set(result, sptr - SvPVX(result));
-	    *sptr++ = '\0';  /*  Never hurts NUL terminating a Perl
-			      *	 string ...
-			      */
-	}
-	EXTEND(sp, 1);
-	PUSHs(result);
+  {
+    m_seq* seq;
+    D_imp_dbh(dbh);
+    seq = msqlGetSequenceInfo(imp_dbh->svsock, table);
+    if (!seq) {
+        do_error(dbh, MyErrno(sock, JW_ERR_SEQUENCE), MyError(sock));
+    } else {
+        EXTEND(sp, 2);
+	PUSHs(sv_2mortal(newSViv(seq->step)));
+	PUSHs(sv_2mortal(newSViv(seq->value)));
+	Safefree(seq);
     }
+  }
+
+#endif /* defined(DBD_MSQL) && defined(IDX_TYPE) */
+
+MODULE = DBD::~DBD_DRIVER~    PACKAGE = DBD::~DBD_DRIVER~::st
+
+int
+dataseek(sth, pos)
+    SV* sth
+    int pos
+  PROTOTYPE: $$
+  CODE:
+{
+    D_imp_sth(sth);
+    if (imp_sth->cda) {
+        MyDataSeek(imp_sth->cda, pos);
+	RETVAL = 1;
+    } else {
+        RETVAL = 0;
+	do_error(sth, JW_ERR_NOT_ACTIVE, "Statement not active");
+    }
+}
+  OUTPUT:
+    RETVAL

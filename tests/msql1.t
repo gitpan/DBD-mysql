@@ -241,7 +241,7 @@ if ($dbh = Msql->connect($host,"test")){
 	     where him = 'Thomas')");
 
     # $Msql::db_errstr should contain the word "error" now
-    Msql->errmsg =~ /error/
+    $dbh->errmsg =~ /error/
 	and print("ok 15\n") or print("not ok 15\n");
 }
 
@@ -406,7 +406,7 @@ print "ok 32\n";
 # The following tests show, that NULL fields (introduced with
 # msql-1.0.6) are handled correctly:
 
-if (Msql->getserverinfo lt 2) { # Before version 2 we have the "primary key" syntax
+if ($dbh->getserverinfo lt 2) { # Before version 2 we have the "primary key" syntax
     $firsttable = create($dbh,$firsttable,"( she char(14) primary key,
 	him integer, who char(1))") or test_error();
 } else {
@@ -484,6 +484,8 @@ $sth = $dbh->query("insert into $firsttable values (\047x\047,2,\047y\047)");
 eval {$sth->fetchrow;};
 if ($@ =~ /^Can\'t call method/) {
     print "ok 43\n";
+} else {
+    print "not ok 43 Error message was $@";
 }
     
 
