@@ -8,12 +8,12 @@ SYNOPSIS
         $driver = "mSQL"; # or "mSQL1";
         $dsn = "DBI:$driver:database=$database;host=$hostname";
 
-        $dbh = DBI->connect($dsn,   undef, undef);
+        $dbh = DBI->connect($dsn, undef, undef);
 
             or
 
         $driver = "mysql";
-        $dsn = "DBI:$driver:database=$database;$options";
+        $dsn = "DBI:$driver:database=$database;host=$hostname;port=$port";
 
         $dbh = DBI->connect($dsn, $user, $password);
 
@@ -40,6 +40,17 @@ SYNOPSIS
         $rc = $dbh->func('dropdb', $database, 'admin');
         $rc = $dbh->func('shutdown', 'admin');
         $rc = $dbh->func('reload', 'admin');
+
+EXPERIMENTAL SOFTWARE
+    This package contains experimental software and should *not* be used in
+    a production environment. We are following the Linux convention and
+    treat the "even" releases (1.18xx as of this writing, perhaps 1.20xx,
+    1.22xx, ... in the future) as stable. Only bug or portability fixes will
+    go into these releases.
+
+    The "odd" releases (1.19xx as of this writing, perhaps 1.21xx, 1.23xx in
+    the future) will be used for testing new features or other serious code
+    changes.
 
 DESCRIPTION
     DBD::mysql and DBD::mSQL are the Perl5 Database Interface drivers for
@@ -118,20 +129,19 @@ DESCRIPTION
 
             $driver = "mSQL";  #  or "mSQL1"
             $dsn = "DBI:$driver:$database";
-            $dsn = "DBI:$driver:database=$database;$options";
+            $dsn = "DBI:$driver:database=$database;host=$hostname";
 
             $dbh = DBI->connect($dsn, undef, undef);
 
                 or
 
             $dsn = "DBI:mysql:$database";
-            $dsn = "DBI:mysql:database=$database;$options";
+            $dsn = "DBI:mysql:database=$database;host=$hostname";
+            $dsn = "DBI:mysql:database=$database;host=$hostname;port=$port";
 
             $dbh = DBI->connect($dsn, $user, $password);
 
         A `database' must always be specified.
-
-        Possible options are, separated by semicolon:
 
     host
     port        The hostname, if not specified or specified as '', will default
@@ -210,9 +220,9 @@ DESCRIPTION
   Private MetaData Methods
 
     ListDBs
-            $drh = DBI->install_driver("DBD::mysql");
-            @dbs = $drh->func("$hostname:$port", "_ListDBs");
-            @dbs = $drh->func($hostname, $port, "_ListDBs");
+            my $drh = DBI->install_driver("mysql");
+            @dbs = $drh->func("$hostname:$port", '_ListDBs');
+            @dbs = $drh->func($hostname, $port, '_ListDBs');
             @dbs = $dbh->func('_ListDBs');
 
         Returns a list of all databases managed by the mysql daemon or mSQL
@@ -232,6 +242,8 @@ DESCRIPTION
         `ListDBs'. :-(
 
     ListTables
+        *WARNING*: This method is obsolete due to DBI's $dbh->table_info().
+
             @tables = $dbh->func('_ListTables');
 
         Once connected to the desired database on the desired mysql or mSQL
@@ -247,294 +259,393 @@ DESCRIPTION
                 print "Table: $table\n";
               }
 
-    ListFields
-        Deprecated, see the section on "/COMPATIBILITY ALERT" below. Used to
-        be equivalent to
-
-            $sth = $dbh->prepare("LISTFIELDS $table");
-            $sth->execute;
-
-        See the section on "/SQL EXTENSIONS" below.
-
-    ListSelectedFields
-        Deprecated, see the section on "/COMPATIBILITY ALERT" below.
-
   Server Administration
 
-    admin
-            $rc = $drh->func("createdb", $dbname, [host, user, password,], 'admin');
-            $rc = $drh->func("dropdb", $dbname, [host, user, password,], 'admin');
-            $rc = $drh->func("shutdown", [host, user, password,], 'admin');
-            $rc = $drh->func("reload", [host, user, password,], 'admin');
+    admin   $rc = $drh->func("createdb", $dbname, [host, user, password,],
+            'admin'); $rc = $drh->func("dropdb", $dbname, [host, user,
+            password,], 'admin'); $rc = $drh->func("shutdown", [host, user,
+            password,], 'admin'); $rc = $drh->func("reload", [host, user,
+            password,], 'admin');
 
-              or
+                  or
 
-            $rc = $dbh->func("createdb", $dbname, 'admin');
-            $rc = $dbh->func("dropdb", $dbname, 'admin');
-            $rc = $dbh->func("shutdown", 'admin');
-            $rc = $dbh->func("reload", 'admin');
+                $rc = $dbh->func("createdb", $dbname, 'admin');
+                $rc = $dbh->func("dropdb", $dbname, 'admin');
+                $rc = $dbh->func("shutdown", 'admin');
+                $rc = $dbh->func("reload", 'admin');
 
-        For server administration you need a server connection. For
-        obtaining this connection you have two options: Either use a driver
-        handle (drh) and supply the appropriate arguments (host, defaults
-        localhost, user, defaults to '' and password, defaults to ''). A
-        driver handle can be obtained with
+            For server administration you need a server connection. For
+            obtaining this connection you have two options: Either use a
+            driver handle (drh) and supply the appropriate arguments (host,
+            defaults localhost, user, defaults to '' and password, defaults
+            to ''). A driver handle can be obtained with
 
-            $drh = DBI->install_driver('DBD::mysql');
+                $drh = DBI->install_driver('mysql');
+
+            Otherwise reuse the existing connection of a database handle
+            (dbh).
+
+            There's only one function available for administrative purposes,
+            comparable to the m(y)sqladmin programs. The command being
+            execute depends on the first argument:
+
+        createdb    Creates the database $dbname. Equivalent to "m(y)sqladmin
+                    create $dbname".
+
+        dropdb      Drops the database $dbname. Equivalent to "m(y)sqladmin drop
+                    $dbname".
+
+                    It should be noted that database deletion is *not
+                    prompted for* in any way. Nor is it undo-able from DBI.
+
+                        Once you issue the dropDB() method, the database will be gone!
+
+                    These method should be used at your own risk.
+
+        shutdown    Silently shuts down the database engine. (Without
+                    prompting!) Equivalent to "m(y)sqladmin shutdown".
+
+        reload      Reloads the servers configuration files and/or tables. This
+                    can be particularly important if you modify access
+                    privileges or create new users.
+
+DATABASE HANDLES
+        The DBD::mysql driver supports the following attributes of database
+        handles (read only):
+
+            $infoString = $dbh->{'info'};
+            $threadId = $dbh->{'thread_id'};
+            $insertId = $dbh->{'mysql_insertid'}
+
+        These correspond to mysql_info(), mysql_thread_id() and
+        mysql_insertid(), respectively.
+
+STATEMENT HANDLES
+        The statement handles of DBD::mysql and DBD::mSQL support a number
+        of attributes. You access these by using, for example,
+
+          my $numFields = $sth->{'NUM_OF_FIELDS'};
+
+        Note, that most attributes are valid only after a successfull
+        *execute*. An `undef' value will returned in that case. The most
+        important exception is the `mysql_use_result' attribute: This forces
+        the driver to use mysql_use_result rather than mysql_store_result.
+        The former is faster and less memory consuming, but tends to block
+        other processes. (That's why mysql_store_result is the default.)
+
+        To set the `mysql_use_result' attribute, use either of the
+        following:
+
+          my $sth = $dbh->prepare("QUERY", { "mysql_use_result" => 1});
 
         or
 
-            $drh = DBI->install_driver('DBD::mSQL');
+          my $sth = $dbh->prepare("QUERY");
+          $sth->{"mysql_use_result"} = 1;
 
-        Otherwise reuse the existing connection of a database handle (dbh).
+        Column dependent attributes, for example *NAME*, the column names,
+        are returned as a reference to an array. The array indices are
+        corresponding to the indices of the arrays returned by *fetchrow*
+        and similar methods. For example the following code will print a
+        header of table names together with all rows:
 
-        There's only one function available for administrative purposes,
-        comparable to the m(y)sqladmin programs. The command being execute
-        depends on the first argument:
-
-    createdb    Creates the database $dbname. Equivalent to "m(y)sqladmin create
-                $dbname".
-
-    dropdb      Drops the database $dbname. Equivalent to "m(y)sqladmin drop
-                $dbname".
-
-                It should be noted that database deletion is *not prompted
-                for* in any way. Nor is it undo-able from DBI.
-
-                    Once you issue the dropDB() method, the database will be gone!
-
-                These method should be used at your own risk.
-
-    shutdown    Silently shuts down the database engine. (Without prompting!)
-                Equivalent to "m(y)sqladmin shutdown".
-
-    reload      Reloads the servers configuration files and/or tables. This can
-                be particularly important if you modify access privileges or
-                create new users.
-
-    _CreateDB
-    _DropDB
-        These methods are deprecated, see the section on "/COMPATIBILITY
-        ALERT" below.!
-
-            $rc = $drh->func( $database, '_CreateDB' );
-            $rc = $drh->func( $database, '_DropDB' );
-
-              or
-
-            $rc = $drh->func( $host, $database, '_CreateDB' );
-            $rc = $drh->func( $host, $database, '_DropDB' );
-
-        These methods are equivalent to the admin method with "createdb" or
-        "dropdb" commands, respectively. In particular note the warnings
-        concerning the missing prompt for dropping a database!
-
-DATABASE HANDLES
-    The DBD::mysql driver supports the following attributes of database
-    handles (read only):
-
-        $infoString = $dbh->{'info'};
-        $threadId = $dbh->{'thread_id'};
-
-    These correspond to mysql_info() and mysql_tread_id(), respectively.
-
-STATEMENT HANDLES
-    The statement handles of DBD::mysql and DBD::mSQL support a number of
-    attributes. You access these by using, for example,
-
-      my $numFields = $sth->{'NUM_OF_FIELDS'};
-
-    Note, that most attributes are valid only after a successfull *execute*.
-    An `undef' value will returned in that case. The most important
-    exception is the `mysql_use_result' attribute: This forces the driver to
-    use mysql_use_result rather than mysql_store_result. The former is
-    faster and less memory consuming, but tends to block other processes.
-    (That's why mysql_store_result is the default.)
-
-    To set the `mysql_use_result' attribute, use either of the following:
-
-      my $sth = $dbh->prepare("QUERY", { "mysql_use_result" => 1});
-
-    or
-
-      my $sth = $dbh->prepare("QUERY");
-      $sth->{"mysql_use_result"} = 1;
-
-    Column dependent attributes, for example *NAME*, the column names, are
-    returned as a reference to an array. The array indices are corresponding
-    to the indices of the arrays returned by *fetchrow* and similar methods.
-    For example the following code will print a header of table names
-    together with all rows:
-
-      my $sth = $dbh->prepare("SELECT * FROM $table");
-      if (!$sth) {
-          die "Error:" . $dbh->errstr . "\n";
-      }
-      if (!$sth->execute) {
-          die "Error:" . $sth->errstr . "\n";
-      }
-      my $names = $sth->{'NAME'};
-      my $numFields = $sth->{'NUM_OF_FIELDS'};
-      for (my $i = 0;  $i < $numFields;  $i++) {
-          printf("%s%s", $$names[$i], $i ? "," : "");
-      }
-      print "\n";
-      while (my $ref = $sth->fetchrow_arrayref) {
+          my $sth = $dbh->prepare("SELECT * FROM $table");
+          if (!$sth) {
+              die "Error:" . $dbh->errstr . "\n";
+          }
+          if (!$sth->execute) {
+              die "Error:" . $sth->errstr . "\n";
+          }
+          my $names = $sth->{'NAME'};
+          my $numFields = $sth->{'NUM_OF_FIELDS'};
           for (my $i = 0;  $i < $numFields;  $i++) {
-              printf("%s%s", $$ref[$i], $i ? "," : "");
+              printf("%s%s", $$names[$i], $i ? "," : "");
           }
           print "\n";
-      }
+          while (my $ref = $sth->fetchrow_arrayref) {
+              for (my $i = 0;  $i < $numFields;  $i++) {
+                  printf("%s%s", $$ref[$i], $i ? "," : "");
+              }
+              print "\n";
+          }
 
-    For portable applications you should restrict yourself to attributes
-    with capitalized or mixed case names. Lower case attribute names are
-    private to DBD::mSQL and DBD::mysql. The attribute list includes:
+        For portable applications you should restrict yourself to attributes
+        with capitalized or mixed case names. Lower case attribute names are
+        private to DBD::mSQL and DBD::mysql. The attribute list includes:
 
     ChopBlanks
-        this attribute determines whether a *fetchrow* will chop preceding
-        and trailing blanks off the column values. Chopping blanks does not
-        have impact on the *max_length* attribute.
+            this attribute determines whether a *fetchrow* will chop
+            preceding and trailing blanks off the column values. Chopping
+            blanks does not have impact on the *max_length* attribute.
 
     insertid
-        MySQL has the ability to choose unique key values automatically. If
-        this happened, the new ID will be stored in this attribute. This
-        attribute is not valid for DBD::mSQL.
+            MySQL has the ability to choose unique key values automatically.
+            If this happened, the new ID will be stored in this attribute.
+            This attribute is not valid for DBD::mSQL. An alternative way
+            for accessing this attribute is via $dbh->{'mysql_insertid'}.
+            (Note we are using the $dbh in this case!)
 
-    is_blob
-        Reference to an array of boolean values; TRUE indicates, that the
-        respective column is a blob. This attribute is valid for MySQL only.
+    is_blob Reference to an array of boolean values; TRUE indicates, that the
+            respective column is a blob. This attribute is valid for MySQL
+            only.
 
-    is_key
-        Reference to an array of boolean values; TRUE indicates, that the
-        respective column is a key. This is valid for MySQL only.
+    is_key  Reference to an array of boolean values; TRUE indicates, that the
+            respective column is a key. This is valid for MySQL only.
 
-    is_num
-        Reference to an array of boolean values; TRUE indicates, that the
-        respective column contains numeric values.
+    is_num  Reference to an array of boolean values; TRUE indicates, that the
+            respective column contains numeric values.
 
     is_pri_key
-        Reference to an array of boolean values; TRUE indicates, that the
-        respective column is a primary key. This is only valid for MySQL and
-        mSQL 1.0.x: mSQL 2.x uses indices.
+            Reference to an array of boolean values; TRUE indicates, that
+            the respective column is a primary key. This is only valid for
+            MySQL and mSQL 1.0.x: mSQL 2.x uses indices.
 
     is_not_null
-        A reference to an array of boolean values; FALSE indicates that this
-        column may contain NULL's. You should better use the *NULLABLE*
-        attribute above which is a DBI standard.
+            A reference to an array of boolean values; FALSE indicates that
+            this column may contain NULL's. You should better use the
+            *NULLABLE* attribute above which is a DBI standard.
 
     length
     max_length
-        A reference to an array of maximum column sizes. The *max_length* is
-        the maximum physically present in the result table, *length* gives
-        the theoretically possible maximum. *max_length* is valid for MySQL
-        only.
+            A reference to an array of maximum column sizes. The
+            *max_length* is the maximum physically present in the result
+            table, *length* gives the theoretically possible maximum.
+            *max_length* is valid for MySQL only.
 
-    NAME
-        A reference to an array of column names.
+    NAME    A reference to an array of column names.
 
     NULLABLE
-        A reference to an array of boolean values; TRUE indicates that this
-        column may contain NULL's.
+            A reference to an array of boolean values; TRUE indicates that
+            this column may contain NULL's.
 
     NUM_OF_FIELDS
-        Number of fields returned by a *SELECT* or *LISTFIELDS* statement.
-        You may use this for checking whether a statement returned a result:
-        A zero value indicates a non-SELECT statement like *INSERT*,
-        *DELETE* or *UPDATE*.
+            Number of fields returned by a *SELECT* or *LISTFIELDS*
+            statement. You may use this for checking whether a statement
+            returned a result: A zero value indicates a non-SELECT statement
+            like *INSERT*, *DELETE* or *UPDATE*.
 
-    table
-        A reference to an array of table names, useful in a *JOIN* result.
+    table   A reference to an array of table names, useful in a *JOIN* result.
 
-    TYPE
-        A reference to an array of column types. The engine's native column
-        types are mapped to portable types like DBI::SQL_INTEGER() or
-        DBI::SQL_VARCHAR(), as good as possible. Not all native types have a
-        meaningfull equivalent, for example DBD::mSQL::IDX_TYPE() or
-        DBD::mysql::FIELD_TYPE_INTERVAL are mapped to DBI::SQL_VARCHAR(). If
-        you need the native column types, use *mysql_type* or *msql_type*,
-        respectively. See below.
+    TYPE    A reference to an array of column types. The engine's native column
+            types are mapped to portable types like DBI::SQL_INTEGER() or
+            DBI::SQL_VARCHAR(), as good as possible. Not all native types
+            have a meaningfull equivalent, for example DBD::mSQL::IDX_TYPE()
+            or DBD::mysql::FIELD_TYPE_INTERVAL are mapped to
+            DBI::SQL_VARCHAR(). If you need the native column types, use
+            *mysql_type* or *msql_type*, respectively. See below.
 
     mysql_type
-        A reference to an array of MySQL's native column types, for example
-        DBD::mysql::FIELD_TYPE_SHORT() or DBD::mysql::FIELD_TYPE_STRING().
-        Use the *TYPE* attribute, if you want portable types like
-        DBI::SQL_SMALLINT() or DBI::SQL_VARCHAR().
+            A reference to an array of MySQL's native column types, for
+            example DBD::mysql::FIELD_TYPE_SHORT() or
+            DBD::mysql::FIELD_TYPE_STRING(). Use the *TYPE* attribute, if
+            you want portable types like DBI::SQL_SMALLINT() or
+            DBI::SQL_VARCHAR().
+
+    mysql_type_name
+            Similar to mysql, but type names and not numbers are returned.
+            Whenever possible, the ANSI SQL name is preferred.
 
 SQL EXTENSIONS
-    Certain metadata functions of mSQL and mysql that are available on the C
-    API level, haven't been implemented here. Instead they are implemented
-    as "SQL extensions" because they return in fact nothing else but the
-    equivalent of a statement handle. These are:
+        Certain metadata functions of mSQL and mysql that are available on
+        the C API level, haven't been implemented here. Instead they are
+        implemented as "SQL extensions" because they return in fact nothing
+        else but the equivalent of a statement handle. These are:
 
     LISTFIELDS $table
-        Returns a statement handle that describes the columns of $table. Ses
-        the docs of msqlListFields or mysql_list_fields (C API) for details.
+            Returns a statement handle that describes the columns of $table.
+            Ses the docs of msqlListFields or mysql_list_fields (C API) for
+            details.
 
     LISTINDEX $table $index
-        mSQL only; returns a statement handle that describes the index
-        $index of table $table. See the docs of msqlListIndex for details.
+            mSQL only; returns a statement handle that describes the index
+            $index of table $table. See the docs of msqlListIndex for
+            details.
 
 COMPATIBILITY ALERT
-    The statement attribute *TYPE* has changed its meaning, as of Msql-
-    Mysql-modules 1.19_19. Formerly it used to be the an array of native
-    engine's column types, but it is now an array of portable SQL column
-    types. The old attribute is still available as *mysql_type* or
-    *msql_type*, respectively.
+        The statement attribute *TYPE* has changed its meaning, as of Msql-
+        Mysql-modules 1.19_19. Formerly it used to be the an array of native
+        engine's column types, but it is now an array of portable SQL column
+        types. The old attribute is still available as *mysql_type* or
+        *msql_type*, respectively.
 
-    Certain attributes methods have been declared obsolete or deprecated,
-    partially because there names are agains DBI's naming conventions,
-    partially because they are just superfluous or obsoleted by other
-    methods.
+        The Msql-Mysql-modules are a moving target, due to a number of
+        reasons:
 
-    Obsoleted attributes and methods will be explicitly listed below. You
-    cannot expect them to work in future versions, but they have not yet
-    been scheduled for removal and currently they should be usable without
-    any code modifications.
+    -           Of course they have to conform the DBI guidelines and
+                developments.
 
-    Deprecated attributes and methods will currently issue a warning unless
-    you set the variable $DBD::mysql::QUIET (or $DBD::mSQL::QUIET,
-    respectively) to a true value. This will be the same for Msql-Mysql-
-    modules 1.19xx and 1.20xx. They will be silently removed in 1.21xx.
+    -           They have to keep track with the latest MySQL developments.
 
-    Here is a list of obsoleted attributes and/or methods:
+    -           And, surprisingly, they have to be as close to ODBC as possible:
+                This is due to the current direction of DBI.
+
+    -           And, last not least, as any tool they have a little bit of own
+                life.
+
+        This means that a lot of things had to and have to be changed. As I
+        am not interested in maintaining a lot of compatibility kludges,
+        which only increase the drivers code without being really usefull, I
+        did and will remove some features, methods or attributes.
+
+        To ensure a smooth upgrade, the following policy will be applied:
+
+    Obsolete features
+                The first step is to declare something obsolete. This means,
+                that no code is changed, but the feature appears in the list
+                of obsolete features. See the section on "Obsolete Features"
+                below.
+
+    Deprecated features
+                If the feature has been obsolete for quite some time,
+                typically in the next major stable release, warnings will be
+                inserted in the code. You can suppress these warnings by
+                setting
+
+                    $DBD::mysql = 1;
+
+                In the docs the feature will be moved from the list of
+                obsolete features to the list of deprecated features. See
+                the section on "Deprecated Features" below.
+
+    Removing features
+                Finally features will be removed silently in the next major
+                stable release. The feature will be shown in the list of
+                historic features. See the section on "Historic Features"
+                below.
+
+        Example: The statement handle attribute
+
+            $sth->{'LENGTH'}
+
+        was declared obsolete in Msql-Mysql-modules 1.18xy. It is considered
+        deprecated in Msql-Mysql-modules 1.20xy (current as of this writing)
+        and will finally be removed in Msql-Mysql-modules 1.22xy.
+
+  Obsolete Features
+
+    _ListTables
+            This method is obsoleted by DBI's new method
+
+                $dbh->tables()
+
+            See also $dbh->table_info(). Portable applications will prefer
+
+                @tables = map { $_ =~ s/.*\.//; $_ } $dbh->tables()
+
+            because, depending on the engine, the string "user.table" will
+            be returned, user being the table owner. The method will be
+            deprecated in 1.23_xy and 1.24xy and removed in 1.25_xy and
+            1.26xy.
+
+  Deprecated Features
+
+    _InsertID
+            The method
+
+                $dbh->func('_InsertID');
+
+            can be replaced with
+
+                $dbh->{'mysql_insertid'};
+
+            The method is deprecated as of 1.21_xy, thus it will be removed
+            in 1.23_xy and 1.24xy.
+
+    Statement handle attributes:
+    affected_rows
+    IS_PRI_KEY
+    is_pri_key
+    IS_NOT_NULL
+    is_not_null
+    IS_KEY
+    is_key
+    IS_BLOB
+    is_blob
+    IS_NUM
+    is_num
+    LENGTH
+    length
+    MAXLENGTH
+    maxlength
+    NUMROWS
+    numrows
+    NUMFIELDS
+    numfields
+    RESULT
+    result
+    TABLE
+    table
+    format_max_size
+    format_default_size
+    format_type_name
+            All of the above statement handle attributes are not conforming
+            to DBI's naming conventions, thus they have been declared
+            deprecated in 1.20xy. However, I forgot to insert warnings in
+            the driver. These warnings have been inserted in 1.21_07, thus
+            the attributes will be removed in 1.23_xy and 1.24xy.
+
+            In most of the above cases the driver name has been added and
+            the resulting name was lowercased. For example, you use
+
+                $sth->{'mysql_is_num'};
+
+            now. IS_NOT_NULL can be replaced with NULLABLE (note you need to
+            invert the logical value!), LENGTH, format_max_size and
+            format_default_size will be dropped in favour of PRECISION,
+            affected_rows and NUMROWS are identical with
+
+                $sth->rows();
+
+            and NUMFIELDS is the same as NUM_OF_FIELDS. Finally
+            format_right_justify is the same as mysql_type_name.
+
+  Historic Features
 
     _CreateDB
-    _DropDB
-        deprecated, use
+    _DropDB The methods
 
-            $drh->func("createdb", $dbname, $host, "admin")
-            $drh->func("dropdb", $dbname, $host, "admin")
+                $dbh->func($db, '_CreateDB');
+                $dbh->func($db, '_DropDB');
+
+            have been used for creating or dropping databases. They have
+            been removed in 1.21_07 in favour of
+
+                $drh->func("createdb", $dbname, $host, "admin")
+                $drh->func("dropdb", $dbname, $host, "admin")
 
     _ListFields
-        deprecated, use
+            The method
 
-            $sth = $dbh->prepare("LISTFIELDS $table")
-            $sth->execute;
+                $sth = $dbh->func($table, '_ListFields');
+
+            has been used to list a tables columns names, types and other
+            attributes. This method has been removed in 1.21_07 in favour of
+
+                $sth = $dbh->prepare("LISTFIELDS $table");
 
     _ListSelectedFields
-        deprecated, just use the statement handles for accessing the same
-        attributes.
+            The method
+
+                $sth->func('_ListSelectedFields');
+
+            use to return a hash ref of attributes like 'IS_NUM', 'IS_KEY'
+            and so on. These attributes are now accessible via
+
+                $sth->{'mysql_is_num'};
+                $sth->{'mysql_is_key'};
+
+            and so on. Thus the method has been removed in 1.21_07.
 
     _NumRows
-        deprecated, use
+            The method
 
-            $numRows = $sth->rows;
+                $sth->func('_NumRows');
 
-    IS_PRI_KEY
-    IS_NOT_NULL
-    IS_KEY
-    IS_BLOB
-    IS_NUM
-    LENGTH
-    MAXLENGTH
-    NUMROWS
-    NUMFIELDS
-    RESULT
-    TABLE
-        All these statement handle attributes are obsolete. They can be
-        simply replaced by just downcasing the attribute names. You should
-        expect them to be deprecated as of Msql-Mysql-modules 1.1821.
-        (Whenever that will be.)
+            used to be equivalent to
+
+                $sth->rows();
+
+            and has been removed in 1.21_07.
 
 MULTITHREADING
     The multithreading capabilities of the Msql-Mysql-modules depend
@@ -937,6 +1048,7 @@ COPYRIGHT
     released under the same license as Perl itself. See the Perl README for
     details.
 
+MAILING LIST SUPPORT
 MAILING LIST SUPPORT
     This module is maintained and supported on a mailing list,
 

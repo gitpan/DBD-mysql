@@ -7,8 +7,8 @@
 # are configured wrong in this respect. But you're welcome to test it
 # out.
 
-my $host = shift @ARGV || "~test_host~";
-my $dbname = shift @ARGV || "~test_db~";
+my $host = shift @ARGV || "~~test_host~~";
+my $dbname = shift @ARGV || "~~test_db~~";
 
 # That's the standard perl way tostart a testscript. It announces that
 # that many tests are to follow. And it does so before anything can go
@@ -20,10 +20,10 @@ BEGIN {
 	print "1..0\n";
 	exit 0;
     }
-    print "1..69\n";
+    print "1..70\n";
 }
 
-use ~DRIVER~;
+use ~~nodbd_driver~~;
 
 # Force yourself to strict programming. See man strict for details.
 use strict;
@@ -45,16 +45,16 @@ my(
 
 # You may connect in two steps: (1) Connect and (2) SelectDB...
 
-if ($dbh = ~DRIVER~->connect($host)){
+if ($dbh = ~~nodbd_driver~~->connect($host)){
     print "ok 1\n";
 } else {
-    $~DRIVER~::db_errstr ||= "";
+    $~~nodbd_driver~~::db_errstr ||= "";
     my $onhost = $host ? " (on $host)" : "";
     printf STDERR (qq{not ok 1: %s
 \tIt looks as if your server$onhost is not up and running.
 \tThis test requires a running server.
 \tPlease make sure your server is running and retry.
-}, ~DRIVER~->errmsg());
+}, ~~nodbd_driver~~->errmsg());
     exit;
 }
 
@@ -70,10 +70,10 @@ if ($dbh->selectdb($dbname)){
 # Or you may call connect with two arguments, the first being the
 # host, and the second being the DB
 
-if ($dbh = ~DRIVER~->connect($host,$dbname)){
+if ($dbh = ~~nodbd_driver~~->connect($host,$dbname)){
     print("ok 3\n");
 } else {
-    die "not ok 3: " . ~DRIVER~->errmsg() . "\n";
+    die "not ok 3: " . ~~nodbd_driver~~->errmsg() . "\n";
 }
 
 # For the error messages we're going to produce within this script we
@@ -85,7 +85,7 @@ sub test_error {
     $id    ||= "?";               # Newer Test::Harness will accept that
     $query ||= "";                # query is optional
     $query = "\n\tquery $query" if $query;
-    $error ||= ~DRIVER~->errmsg;  # without error we ask Msql
+    $error ||= ~~nodbd_driver~~->errmsg;  # without error we ask Msql
     print qq{Not ok $id:\n\terrmsg $error$query\n};
 }
 
@@ -189,10 +189,10 @@ $sth->is_not_null->[1] > 0
 
 # Are we able to just reconnect with the *same* scalar ($dbh) playing
 # the role of the db-handle?
-if ($dbh = ~DRIVER~->connect($host,$dbname)){
+if ($dbh = ~~nodbd_driver~~->connect($host,$dbname)){
     print("ok 12\n");
 } else {
-    print "not ok 12: " . ~DRIVER~->errmsg() . "\n";
+    print "not ok 12: " . ~~nodbd_driver~~->errmsg() . "\n";
 }
 
 # We may have an arbitrary number of statementhandles. Each
@@ -237,7 +237,7 @@ if ($dbh = ~DRIVER~->connect($host,$dbname)){
     # if you want the -w switch but do NOT want to see Msql's error
     # messages, you can turn them off using $Msql::QUIET
 
-    local($~DRIVER~::QUIET) = 1;
+    local($~~nodbd_driver~~::QUIET) = 1;
     # In reality we would say "or die ...", but in this case we forgot it:
     $sth = $dbh->query  ("select * from $firsttable
 	     where him = 'Thomas')");
@@ -287,7 +287,7 @@ $row[2] eq "Pauline" and print ("ok 17\n") or print("not ok 17\n");
 # economically -- they cost you a slot in the server connection table,
 # and you can easily run out of available slots -- we, in the test
 # script want to know what happens with more than one handle
-if ($dbh2 = ~DRIVER~->connect($host,$dbname)){
+if ($dbh2 = ~~nodbd_driver~~->connect($host,$dbname)){
     print("ok 19\n");
 } else {
     print "not ok 19\n";
@@ -313,7 +313,7 @@ $dbh2->query("drop table $secondtable") and print("ok 22\n") or print("not ok 22
 }
 
 # The third connection within a single script. I promise, this will do...
-if ($dbh3 = Connect ~DRIVER~($host,$dbname)){
+if ($dbh3 = Connect ~~nodbd_driver~~($host,$dbname)){
     print("ok 25\n");
 } else {
     test_error(25,"connect->$host");
@@ -545,14 +545,14 @@ if ($@ =~ /^Can\'t call method/) {
 	}
 	$i++;
     }
-}    
+}
 
 $dbh->query("drop table $firsttable") or test_error;
 
 # Although it is a bad idea to specify constants in lowercase,
 # I have to test if it is supported as it has been documented:
 
-if (~DRIVER~::int___type() == INT_TYPE) {
+if (~~nodbd_driver~~::int___type() == INT_TYPE) {
     print "ok 66\n";
 } else {
     print "not ok 66\n";
@@ -562,21 +562,69 @@ if (~DRIVER~::int___type() == INT_TYPE) {
 # Let's create another table where we inspect if we can insert
 # 8 bit characters:
 
-$query = "create table $firsttable (ascii int, chrctr char(2))";
-$dbh->query($query) or test_error;
-my $nchar;
+$query = "create table $firsttable (ascii int, chrctr char(1))";
+$dbh->query($query) or test_error();
+$query = "create table $secondtable (ascii int, chrctr char(2))";
+$dbh->query($query) or test_error();
+my($nchar, $error_found, $use_secondtable, $message_seen);
 for $nchar (1..255) {
     my $chr = $dbh->quote(chr($nchar));
-    $query = qq{
-insert into $firsttable values ($nchar, $chr)
-    };
+    my $second_ok = 1;
+    $query = qq{insert into $secondtable values ($nchar, $chr)};
     unless ($dbh->query($query)) {
 	$query = unctrl($query);
-	print("not ok 67 (q[$query] err[",
-	      $dbh->errmsg(),
-	      "])\n"); # well, could happen more thn once, but ...
+	print "While inserting charachter $nchar: ", $dbh->errmsg(), "\n";
+	print "Query was: $query\n";
+	$error_found = 1;
+	$second_ok = 0;
+    }
+
+    $query = qq{insert into $firsttable values ($nchar, $chr)};
+    local($~~nodbd_driver~~::QUIET) = 1;
+    unless ($dbh->query($query)) {
+	my $errmsg = $dbh->errmsg();
+
+	# There's a nasty bug in later mSQL versions: They miscalculate
+	# the size of a string when using escape sequences like \' or
+	# \\.
+	# We try to detect this by looking into $secondtable.
+	if ($second_ok) {
+	    my $query = "SELECT * FROM $secondtable WHERE ascii = $nchar";
+	    my $sth = $dbh->query($query);
+	    if ($sth) {
+		my %hash = $sth->fetchhash();
+		if (length($hash{'chrctr'}) == 1  &&
+		    $errmsg =~ /Value for "chrctr" is too large/) {
+		    if (!$message_seen) {
+			$message_seen = 1;
+			print STDERR q{
+
+Your mSQL engine seems to have a bug: Column sizes are miscalculated when
+using Escape sequences like \' or \\. This may give unexpected errors like
+
+	Value for "chrctr" is too large
+
+We ignore this, as it is not the drivers fault.
+
+};
+		    }
+		} else {
+		    $second_ok = 0;
+		}
+	    }
+	}
+
+	if ($second_ok) {
+	    $use_secondtable = 1;
+	} else {
+	    $query = unctrl($query);
+	    print "While inserting charachter $nchar: $errmsg\n";
+	    print "Query was: $query\n";
+	    $error_found = 1;
+	}
     }
 }
+print $error_found ? "not ok 67\n" : "ok 67\n";
 
 sub unctrl {
     my $str = shift;
@@ -584,25 +632,28 @@ sub unctrl {
     return $str;
 }
 
-$sth = $dbh->query("select * from $firsttable") or test_error;
-if ($sth->numrows() == 255){
-    print "ok 67\n";
+my $used_table = $use_secondtable ? $secondtable : $firsttable;
+$sth = $dbh->query("select * from $used_table") or test_error;
+my $nrows = $sth->numrows();
+if ($nrows == 255){
+    print "ok 68\n";
 } else {
-    print "not ok 67\n";
+    print "not ok 68, got $nrows\n";
 }
 while (%hash = $sth->fetchhash) {
-    $hash{chrctr} eq chr($hash{ascii}) or print "not ok 68 [char no $hash{ascii}]\n";
+    $hash{chrctr} eq chr($hash{ascii}) or print "not ok 69 [char no $hash{ascii}]\n";
 }
-print "ok 68\n";
+print "ok 69\n";
 
 $dbh->query("drop table $firsttable") or test_error;
+$dbh->query("drop table $secondtable") or test_error;
 
 # mSQL up to 1.0.16 had this annoying lost table bug, so I try to
 # force our users to upgrade somehow
 
 {
     my @created = ();
-    local($~DRIVER~::QUIET) = 1;
+    local($~~nodbd_driver~~::QUIET) = 1;
 
     # create 8 tables
     for (1..8) {
@@ -622,12 +673,12 @@ $dbh->query("drop table $firsttable") or test_error;
     # reference the first table in the cache: 1.0.16 did not know the contents
     if ( $dbh->listfields($created[0])->numfields == 0) {
 	my $version = $dbh->getserverinfo;
-	print "not ok 69\n";
+	print "not ok 70\n";
         print STDERR "Your version $version of the msqld has a serious bug,
 \teither upgrade the server to something > 1.0.16 (if that something exists)
 or read the file patch.lost.tables\n";
     } else {
-	print "ok 69\n";
+	print "ok 70\n";
     }
 
     # drop the eight tables

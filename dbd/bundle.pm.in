@@ -1,8 +1,8 @@
 # -*- perl -*-
 
-package Bundle::DBD::~DBD_DRIVER~;
+package Bundle::DBD::~~dbd_driver~~;
 
-$VERSION = '~DBD_VERSION~';
+$VERSION = '~~dbd_version~~';
 
 1;
 
@@ -10,11 +10,11 @@ __END__
 
 =head1 NAME
 
-Bundle::DBD::~DBD_DRIVER~ - A bundle to install Perl drivers for mSQL or MySQL
+Bundle::DBD::~~dbd_driver~~ - A bundle to install Perl drivers for mSQL or MySQL
 
 =head1 SYNOPSIS
 
-C<perl -MCPAN -e 'install Bundle::DBD::~DBD_DRIVER~'>
+C<perl -MCPAN -e 'install Bundle::DBD::~~dbd_driver~~'>
 
 =head1 CONTENTS
 
@@ -22,9 +22,11 @@ DBI
 
 Data::ShowTable
 
-~DRIVER~
+ExtUtils::PerlPP
 
-DBD::~DBD_DRIVER~
+~~nodbd_driver~~
+
+DBD::~~dbd_driver~~
 
 =head1 DESCRIPTION
 

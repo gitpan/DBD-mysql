@@ -1,6 +1,6 @@
 # -*- perl -*-
 
-package ~DRIVER~;
+package ~~nodbd_driver~~;
 
 use 5.004;
 use strict;
@@ -9,15 +9,15 @@ require Carp;
 require DynaLoader;
 require Exporter;
 require DBI;
-require ~DRIVER~::Statement;
-require DBD::~DBD_DRIVER~;
+require ~~nodbd_driver~~::Statement;
+require DBD::~~dbd_driver~~;
 
 use vars qw($QUIET @ISA @EXPORT @EXPORT_OK $VERSION $db_errstr);
 
 $db_errstr = '';
 $QUIET  = 0;
 @ISA    = qw(DBI); # Inherits Exporter and DynaLoader via DBI
-$VERSION = '~NODBD_VERSION~';
+$VERSION = '~~nodbd_version~~';
 
 # @EXPORT is a relict from old times...
 @EXPORT = qw(
@@ -37,7 +37,7 @@ $VERSION = '~NODBD_VERSION~';
 		SYSVAR_TYPE
 	       );
 
-my($FETCH_map) = {
+my $FETCH_map = {
     'HOST' => '_host',
     'DATABASE' => 'database'
 };
@@ -63,51 +63,60 @@ sub STORE ($$$) {
     }
 }
 
+sub connect ($;$$$$) {
+    my($class, $host, $db, $user, $password) = @_;
+    my($self) = { 'host' => ($host || ''),
+		  'user' => $user,
+		  'password' => $password,
+		  'db' => $db,
+	          'driver' => '~~dbd_driver~~',
+	          'COMPATIBILITY' => 1 };
+    bless($self, $class);
+    $self->{'drh'} = DBI->install_driver($self->{'driver'});
+    if ($db) {
+	my $dsn = "DBI:~~dbd_driver~~:database=$db;host=$host";
+	my $dbh = $class->SUPER::connect($dsn, $user, $password);
+	if (!$dbh) {
+	    $db_errstr = $DBI::errstr;
+	    return undef;
+	}
+	$self->{'dbh'} = $dbh;
+	$dbh->{'CompatMode'} = 1;
+	$dbh->{'PrintError'} = !$~~nodbd_driver~~::QUIET;
+    }
+    $self;
+}
+
 sub DESTROY {
     my $self = shift;
     my $dbh = $self->{'dbh'};
     if ($dbh) {
-	local $SIG{'__WARN__'} = sub { };
+	local $SIG{'__WARN__'} = sub {};
 	$dbh->disconnect();
     }
 }
 
-
-sub connect ($;$$$$) {
-    my($class, $host, $db, $user, $password) = @_;
-    my $self = { 'class' => $class,
-		 'host' => ($host || ''),
-		 'user' => $user,
-		 'password' => $password,
-		 'db' => $db,
-		 'driver' => '~DBD_DRIVER~',
-		 'COMPATIBILITY' => 1 };
-    bless($self, $class);
-    $self->{'drh'} = DBI->install_driver($self->{'driver'});
-    $db ? $self->selectdb($db) : $self;
-}
-
 sub selectdb ($$) {
     my($self, $db) = @_;
-    my $dsn = "DBI:~DBD_DRIVER~:database=$db:host=" . $self->{'host'};
-    my $dbh = $self->{'class'}->SUPER::connect
-	($dsn, $self->{'user'}, $self->{'password'},
-	 {'CompatMode' => 1, 'PrintError' => !$~DRIVER~::QUIET});
+    my $dsn = "DBI:~~dbd_driver~~:database=$db:host=" . $self->{'host'};
+    my $dbh = DBI->connect($dsn, $self->{'user'}, $self->{'password'});
     if (!$dbh) {
 	$db_errstr = $self->{'errstr'} = $DBI::errstr;
 	$self->{'errno'} = $DBI::err;
-	return undef;
+	undef;
+    } else {
+	if ($self->{'dbh'}) {
+	    local $SIG{'__WARN__'} = sub {};
+	    $self->{'dbh'}->disconnect();
+	}
+	$self->{'dbh'} = $dbh;
+	$self->{'db'} = $db;
+	$self;
     }
-    if ($self->{'dbh'}) {
-	local $SIG{'__WARN__'} = 'IGNORE';
-	$self->{'dbh'}->disconnect();
-    }
-    $self->{'dbh'} = $dbh;
-    $self;
 }
 
 sub listdbs ($) {
-    my $self = shift;
+    my($self) = shift;
     my $drh = $self->{'drh'};
     my @dbs = $drh->func($self->{'host'}, '_ListDBs');
     $db_errstr = $drh->errstr();
@@ -159,20 +168,17 @@ sub query ($$) {
 	$db_errstr = $dbh->errstr();
 	return undef;
     }
-
-    $sth->{'PrintError'} = !$~DRIVER~::QUIET;
+    $sth->{'PrintError'} = !$~~nodbd_driver~~::QUIET;
     my $result = $sth->execute();
     if (!$result) {
 	$db_errstr = $sth->errstr();
 	return undef;
     }
-#xtract Msql
+~#if#~ ('~~dbd_driver~~' ne 'mysql')
     return $result unless $sth->{'NUM_OF_FIELDS'};
-#xtract Msql1
-    return $result unless $sth->{'NUM_OF_FIELDS'};
-#endxtract
+~#endif#~
     $sth->{'CompatMode'} = 1;
-    bless($sth, (ref($self) . "::Statement"));
+    bless($sth, ref($self) . "::Statement");
     undef $db_errstr;
     $sth;
 }
@@ -215,7 +221,7 @@ sub sockfd ($) { shift->{'dbh'}->{'sockfd'} }
 
 
 sub AUTOLOAD {
-    my $meth = $~DRIVER~::AUTOLOAD;
+    my $meth = $~~nodbd_driver~~::AUTOLOAD;
     my $converted = 0;
 
     my $class;
@@ -228,9 +234,9 @@ sub AUTOLOAD {
 
 
     TRY: {
-	my $val = DBD::~DBD_DRIVER~::constant($meth, @_ ? $_[0] : 0);
+	my $val = DBD::~~dbd_driver~~::constant($meth, @_ ? $_[0] : 0);
 	if ($! == 0) {
-	    eval "sub $~DRIVER~::AUTOLOAD { $val }";
+	    eval "sub $~~nodbd_driver~~::AUTOLOAD { $val }";
 	    return $val;
 	}
 
@@ -253,11 +259,11 @@ sub AUTOLOAD {
 	}
     }
 
-  Carp::croak("$~DRIVER~::AUTOLOAD: Not defined in $class and not"
+  Carp::croak("$~~nodbd_driver~~::AUTOLOAD: Not defined in $class and not"
 	      . " autoloadable (last try $meth)");
 }
 
-#xtract Msql
+~#if#~ ('~~dbd_driver~~' ne 'mysql')
 
 sub unixtimetodate($$) {
     my($class, $clock) = @_;
@@ -280,7 +286,7 @@ sub getsequenceinfo($$) {
     $self->{'dbh'}->func($table, 'getsequenceinfo');
 }
 
-#endxtract
+~#endif#~
 
 sub gethostinfo ($) { shift->{'dbh'}->{'hostinfo'} }
 sub getprotoinfo ($) { shift->{'dbh'}->{'protoinfo'} }
@@ -288,16 +294,16 @@ sub getserverinfo ($) { shift->{'dbh'}->{'serverinfo'} }
 sub getserverstats ($) { shift->{'dbh'}->{'stats'} }
 
 
-~DRIVER~->init_rootclass();
+~~nodbd_driver~~->init_rootclass();
 
-package ~DRIVER~::dr;
-@~DRIVER~::dr::ISA = qw(DBI::dr);
+package ~~nodbd_driver~~::dr;
+@~~nodbd_driver~~::dr::ISA = qw(DBI::dr);
 
-package ~DRIVER~::db;
-@~DRIVER~::db::ISA = qw(DBI::db);
+package ~~nodbd_driver~~::db;
+@~~nodbd_driver~~::db::ISA = qw(DBI::db);
 
-package ~DRIVER~::st;
-@~DRIVER~::st::ISA = qw(~DRIVER~::Statement);
+package ~~nodbd_driver~~::st;
+@~~nodbd_driver~~::st::ISA = qw(~~nodbd_driver~~::Statement);
 
 1;
 __END__

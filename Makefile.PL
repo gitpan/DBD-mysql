@@ -1,13 +1,11 @@
 #   Hej, Emacs, don't you see this is -*- perl -*- mode? :-)
 #
-#   Copyright (c) 1997  Andreas König, Jochen Wiedmann
+#   Copyright (c) 1997,1998  Andreas König, Jochen Wiedmann
 #
 #  You may distribute this under the terms of either the GNU General Public
-#  License or the Artistic License, as specified in the Perl README file,
-#  with the exception that it cannot be placed on a CD-ROM or similar media
-#  for commercial distribution without the prior approval of the author.
+#  License or the Artistic License, as specified in the Perl README file.
 #
-#  $Id: Makefile.PL,v 1.13 1999/05/23 19:20:30 joe Exp $
+#  $Id: Makefile.PL,v 1.1.1.1.2.8.2.1 1999/05/23 19:08:26 joe Exp $
 #
 BEGIN {require 5.004;}
 use strict;
@@ -15,35 +13,251 @@ use Config ();
 use Getopt::Long ();
 use ExtUtils::MakeMaker qw(prompt WriteMakefile);
 use File::Path ();
-use Config ();
 use Cwd ();
-use lib ".";
+use lib "lib";
 
-use vars qw($MyConfig $VERSION $DBD_VERSION);
+use vars qw($VERSION $DBD_VERSION $options);
 
-$VERSION = "1.2018";
-$DBD_VERSION = "2.0218";
+$VERSION = "1.2200";
+$DBD_VERSION = "2.0400";
+
+$options = { 'prompt' => 1 };
 
 
-my %options = ( 'prompt' => 1,
-		'mysql-test-db' => 'test',
-		'msql-test-db' => 'test',
-		'msqql1-test-db' => 'test',
-	      );
-Getopt::Long::GetOptions(\%options, 'static', 'config', 'verbose', 'debug',
-			 'mysql-install!', 'msql-install!', 'msql1-install!',
-			 'mysql-install-nodbd', 'msql-install-nodbd',
-			 'msql1-install-nodbd',
-			 'mysql-test-db=s', 'msql-test-db=s',
-			 'msql1-test-db=s',
-			 'mysql-test-host=s', 'msql-test-host=s',
-			 'msql1-test-host=s',
-			 'mysql-test-user=s', 'mysql-test-pass=s',
-			 'mysql-libdir=s', 'msql-libdir=s', 'msql1-libdir=s',
-			 'mysql-incdir=s', 'msql-incdir=s', 'msql1-incdir=s',
-			 'help', 'prompt!');
-if ($options{'help'}) {
-    print <<"EOF";
+############################################################################
+#
+#   General hints:
+#
+#   This Makefile.PL can install several modules: DBD::mysql, DBD::mSQL
+#   and/or DBD::mSQL1.
+#
+#   This is done by creating a hash ref $config with keys 'mysql', 'mSQL'
+#   and 'mSQL1'. Each key has another hash ref as value with keys like
+#
+#       install (0 or 1)
+#       install_nodbd (0 or 1)
+#       files   (hash ref ready for using as MakeMakers PL_FILES)
+#       dbd_driver  (drivers name, same as the top level key)
+#       nodbd_driver (Mysql, Msql or Msql1)
+#       lc_dbd_driver (lowercased driver name)
+#       dbd_version
+#       nodbd_version
+#       test_dsn (DSN for running tests)
+#       test_user (User for running tests)
+#       test_pass (Password for running tests)
+#       test_db (Database for running tests; DSN is derived from this and
+#                test_host)
+#       test_host (Host for running tests)
+#
+############################################################################
+
+
+############################################################################
+#
+#   Name:    QueryDb
+#
+#   Purpose: Query settings for running the test suite
+#
+#   Inputs:  $cfg - Config hash ref
+#
+#   Returns: Nothing; creates
+#            $cfg->{$driver}->{test_(db|host|dsn|user|pass)}
+#
+############################################################################
+
+sub QueryDb ($) {
+    my($cfg) = @_;
+    my $db = $cfg->{'description'};
+    my $driver = $cfg->{'dbd_driver'};
+
+    my $d = lc $driver;
+    my $prompt = $options->{'prompt'};
+
+    my $test_db =  (-e $options->{"$d-test-db"}) ?
+	$options->{"$d-test-db"} : ($cfg->{'test_db'} || 'test');
+    $test_db = prompt
+	("Which database should I use for testing the $db drivers?",
+	 $test_db) if $prompt;
+
+    my $test_host = (-e $options->{"$d-test-host"}) ?
+	$options->{"$d-test-host"} : ($cfg->{'test_host'} || 'localhost');
+    $test_host = prompt
+	("On which host is database $test_db running (hostname, ip address\n" .
+	 "or host:port)", $test_host) if $prompt;
+
+    my($test_user, $test_pass);
+    if ($driver eq 'mysql') {
+	$test_user = (-e $options->{"$d-test-user"}) ?
+	    $options->{"$d-test-user"} : ($cfg->{'test_user'} || "undef");
+	$test_user = prompt
+	    ("User name for connecting to database $test_db?", $test_user)
+		if $prompt;
+	$test_user = undef if $test_user eq 'undef';
+
+	$test_pass = (-e $options->{"$d-test-pass"}) ?
+	    $options->{"$d-test-pass"} : ($cfg->{'test_pass'} || "undef")
+		if $prompt;
+	$test_pass = prompt
+	    ("Password for connecting to database $test_db?", $test_pass)
+		if $prompt;
+	$test_pass = undef if $test_pass eq 'undef';
+    }
+
+    $cfg->{$driver}->{'test_db'} = $test_db;
+    $cfg->{$driver}->{'test_host'} = $test_host;
+    if ($test_host eq 'undef'  ||  $test_host eq 'localhost') {
+	$test_host = '';
+    }
+    my $test_dsn = "DBI:$driver:database=$test_db";
+    if ($test_host) {
+	$cfg->{$driver}->{'test_dsn'} .= ";host=$test_host";
+    }
+
+    $cfg->{'test_dsn'} = $test_dsn;
+    $cfg->{'test_db'} = $test_db;
+    $cfg->{'test_host'} = $test_host;
+    $cfg->{'test_user'} = $test_user;
+    $cfg->{'test_pass'} = $test_pass;
+
+    if ($options->{'verbose'}) {
+	print("Driver $driver is using the following settings for tests:\n",
+	      "    Database $test_db\n",
+	      "    Host     $test_host\n",
+	      "    DSN      $test_dsn\n",
+	      "    User     $test_user\n",
+	      "    Password $test_pass\n");
+    }
+}
+
+
+############################################################################
+#
+#   This is main()
+#
+############################################################################
+
+sub SelectDrivers ($$) {
+    my($config, $old) = @_;
+    my $prompt = $options->{'prompt'};
+
+    # Set defaults
+    $config->{'mysql'}->{'install'} =
+	exists($options->{'mysql-install'}) ?
+	    $options->{'mysql-install'} :
+	    (!$old->{'mysql'}  ||
+	     ($old->{'mysql'} && $old->{'mysql'}->{'install'}));
+    eval "use Mysql";
+    $config->{'mysql'}->{'install_nodbd'} =
+	exists($options->{'mysql-install-nodbd'}) ?
+	    $options->{'mysql-install-nodbd'} :
+	    ($old->{'mysql'} ? $old->{'mysql'}->{'install_nodbd'} :
+	     (defined($Mysql::VERSION) and $Mysql::VERSION > 1.19));
+    $config->{'mSQL'}->{'install'} =
+	exists($options->{'msql-install'}) ?
+	    $options->{'msql-install'} :
+	    (!$old->{'mSQL'}  ||
+	     ($old->{'mSQL'} && $old->{'mSQL'}->{'install'}));
+    eval "use Msql";
+    $config->{'mSQL'}->{'install_nodbd'} =
+	exists($options->{'msql-install-nodbd'}) ?
+	    $options->{'msql-install-nodbd'} :
+	    (($old->{'mSQL'} ? $old->{'mSQL'}->{'install_nodbd'} :
+	      (defined($Msql::VERSION) and $Msql::VERSION > 1.19)));
+    $config->{'mSQL1'}->{'install'} =
+	exists($options->{'msql1-install'}) ?
+	    $options->{'msql1-install'} :
+	    ($old->{'mSQL1'}  &&  $old->{'mSQL1'}->{'install'});
+    eval "use Msql";
+    $config->{'mSQL1'}->{'install_nodbd'} =
+	exists($options->{'msql1-install-nodbd'}) ?
+	    $options->{'msql1-install'} :
+	    (defined($Msql1::VERSION) and $Msql::VERSION > 1.19);
+
+    if ($prompt) {
+	my $choice;
+	if ($config->{'mysql'}->{'install'}) {
+	    if ($config->{'mSQL'}->{'install'}) {
+		$choice = $config->{'mSQL1'}->{'install'} ? 5 : 3;
+	    } else {
+		$choice = 1;
+	    }
+	} else {
+	    $choice = $config->{'mSQL1'}->{'install'} ? 4 : 2;	
+	}
+
+	$choice = prompt
+	    ("Which drivers do you want to install?\n\n"
+	     . "    1)	MySQL only\n"
+	     . "    2)	mSQL only (either of mSQL 1 or mSQL 2)\n"
+	     . "    3)  MySQL and mSQL (either of mSQL 1 or mSQL 2)\n\n"
+	     . "    4)  mSQL 1 and mSQL 2\n"
+	     . "    5)  MySQL, mSQL 1 and mSQL 2\n\n"
+	     . "Enter the appropriate number: ", $choice);
+
+	my $reply;
+	if ($config->{'mysql'}->{'install'} =
+	    ($choice == 1  ||  $choice == 3  ||  $choice == 5)) {
+	    my $reply =
+		prompt(qq{
+
+Do you want to install the MysqlPerl emulation? You might keep your old
+Mysql module (to be distinguished from DBD::mysql!) if you are concerned
+about compatibility to existing applications!},
+		       $config->{'mysql'}->{'install_nodbd'} ? "y" : "n");
+	    $config->{'mysql'}->{'install_nodbd'} = ($reply =~ /y/i) ? 1 : 0;
+	}
+	if ($config->{'mSQL'}->{'install'} = ($choice > 1)) {
+	    my $reply =
+		prompt(qq{
+
+Do you want to install the MsqlPerl emulation? You might keep your old
+Mysql module (to be distinguished from DBD::mysql!) if you are concerned
+about compatibility to existing applications!},
+		       $config->{'mSQL'}->{'install_nodbd'} ? "y" : "n");
+	    $config->{'mSQL'}->{'install_nodbd'} = ($reply =~ /y/i) ? 1 : 0;
+	}
+	if ($config->{'mSQL1'}->{'install'} = ($choice > 4)) {
+	    $reply = prompt
+		(qq{
+
+Do you want to install the Msql1Perl emulation? You might keep your old
+Mysql module (to be distinguished from DBD::mysql!) if you are concerned
+about compatibility to existing applications!},
+		 $config->{'mSQL1'}->{'install_nodbd'} ? "y" : "n");
+	    $config->{'mSQL1'}->{'install_nodbd'} = ($reply =~ /y/i) ? 1 : 0;
+	}
+    }
+
+    $config->{'mSQL'}->{'description'} = 'mSQL 2'
+	if $config->{'mSQL'}->{'install'} and $config->{'mSQL1'}->{'install'};
+    $config->{'mysql'}->{'install_nodbd'} = 0
+	unless $config->{'mysql'}->{'install'};
+    $config->{'mSQL'}->{'install_nodbd'} = 0
+	unless $config->{'mSQL'}->{'install'};
+    $config->{'mSQL1'}->{'install_nodbd'} = 0
+	unless $config->{'mSQL1'}->{'install'};
+}
+
+
+use vars qw($README_created);
+
+{
+    Getopt::Long::GetOptions($options, "verbose", "debug", "static", "config",
+			     'mysql-install!', 'msql-install!',
+			     'msql1-install!',
+			     'mysql-install-nodbd', 'msql-install-nodbd',
+			     'msql1-install-nodbd',
+			     'mysql-test-db=s', 'msql-test-db=s',
+			     'msql1-test-db=s',
+			     'mysql-test-host:s', 'msql-test-host:s',
+			     'msql1-test-host:s',
+			     'mysql-test-user:s', 'mysql-test-pass:s',
+			     'mysql-libdir=s', 'mysql-incdir=s',
+			     'msql-libdir=s', 'msql-incdir=s',
+			     'msql1-libdir=s', 'msql1-incdir=s',
+			     'help', 'prompt!');
+    if ($options->{'help'}) {
+	print <<"EOF";
 Usage: perl Makefile.PL <options>
 
 Possible Options are:
@@ -84,1015 +298,212 @@ Possible Options are:
   --msql1-incdir=dir		Sets directories with mSQL1's header and
   --msql1-libdir=dir		library files.
 EOF
-    exit 1;
-}
-$options{'verbose'} = 1 if $options{'debug'};
-
-
-############################################################################
-#
-#   Name:    Search
-#
-#   Purpose: Find installed files (headers or libraries)
-#
-#   Inputs:  $gooddirs - List of directories where to search; these
-#                directories are accepted immediately if a file is
-#                found there
-#            $dirs - List of additional directories where to search;
-#                these are accepted only if the users confirms them
-#            $files - List of files to search for; any of these will
-#                be sufficient
-#            $prompt - Prompt for asking the user to confirm a
-#                directory
-#
-#   Returns: List of two directories: The first directory is the basename
-#       of "$dir/$file" where $dir is one of $gooddirs or $dirs and $file
-#       is one of $files. (Note that the file name may contain preceding
-#       directory names!) The second directory is the corresponding dir
-#       od $gooddirs or $dirs.
-#
-############################################################################
-
-sub Search ($$$$) {
-    my ($gooddirs, $dirs, $files, $prompt) = @_;
-    my ($dir, $file, $realfile);
-    foreach $dir (@$gooddirs) {
-	foreach $file (@$files) {
-	    if (-f ($realfile = "$dir/$file")) {
-		return (File::Basename::dirname($realfile), $dir, $realfile);
-	    }
-	}
+	exit 1;
     }
-    my ($gooddir);
-    foreach $dir (@$dirs) {
-	foreach $file (@$files) {
-	    if (-f "$dir/$file") {
-		$gooddir = $dir;
-		last;
-	    }
-	}
-	if ($gooddir) {
-	    last;
-	}
-    }
-    $gooddir ||= $$gooddirs[0] || $$dirs[0];
+    $options->{'verbose'} = 1 if $options->{'debug'};
 
-    if ($options{'prompt'}) {
-	$gooddir = prompt($prompt, $gooddir)  ||  $gooddir;  # for 5.002;
-    }
-
-    foreach $file (@$files) {
-	if (-f ($realfile = "$gooddir/$file")) {
-	    return (File::Basename::dirname($realfile), $gooddir, $realfile);
-	}
-    }
-
-    if (@$files == 1) {
-	die "Cannot find " . $$files[0] . " in $gooddir.\n";
-    }
-    die "Cannot find one of " . join(", ", @$files) . " in $gooddir";
-}
-
-
-############################################################################
-#
-#   Name:    QueryDb
-#
-#   Purpose: Query settings for running the test suite
-#
-#   Inputs:  $cfg - Config hash ref
-#            $db - Database name
-#            $driver - Driver name
-#
-#   Returns: Nothing; creates
-#            $cfg->{$driver}->{test_(db|host|dsn|user|pass)}
-#
-############################################################################
-
-sub QueryDb ($$$) {
-    my($cfg, $db, $driver) = @_;
-    my $db_lc = lc $driver;
-
-    my $dbname = $options{"$db_lc-test-db"};
-    if ($options{'prompt'}) {
-	$dbname = prompt("Which database should I use for testing the $db"
-			 . " drivers?", $dbname);
-    }
-    my $host = $options{"$db_lc-test-host"};
-    if ($options{'prompt'}) {
-	$host = "localhost" unless defined($host);
-	$host = prompt("On which host is database $dbname running (hostname, "
-		       . " ip address or host:port)\n", $host);
-    }
-
-    my($user, $pass);
-    if ($driver eq 'mysql') {
-	$user = $options{"$db_lc-test-user"};
-	if ($options{'prompt'}) {
-	    $user = "undef" unless defined($user);
-	    $user = prompt("User name for connecting to database $dbname?",
-			   $user);
-	}
-
-	$pass = $options{"$db_lc-test-password"};
-	if ($options{'prompt'}) {
-	    $pass = "undef" unless defined($pass);
-	    $pass = prompt("Password for connecting to database $dbname?",
-			   $pass);
-	}
-    }
-
-    $cfg->{$driver}->{"test_db"} = $dbname;
-    $cfg->{$driver}->{"test_host"} = $host;
-    if ($host eq 'undef'  ||  $host eq 'localhost') {
-	$host = '';
-    }
-    $cfg->{$driver}->{"test_dsn"} = "DBI:$driver:database=$dbname";
-    if ($host) {
-	$cfg->{$driver}->{"test_dsn"} .= ";host=$host";
-    }
-    $cfg->{$driver}->{"test_user"} =
-	($user && $user ne 'undef') ? $user : "";
-    $cfg->{$driver}->{"test_pass"} =
-	($pass && $pass ne 'undef') ? $pass : "";
-}
-
-
-############################################################################
-#
-#   Name:    Xtract
-#
-#   Purpose: Create files from the distribution directories dbd and nodbd
-#            using the "xtract" utility.
-#
-#   Inputs:  $ref - Array ref representing one file; the elements are
-#
-#                      $ref->[0]  Source file
-#                      $ref->[1]  Destination file
-#                      $ref->[2]  TRUE for executable (Mode 0755),
-#                                 FALSE otherwise
-#            $driver - Either "Msql" or "Mysql"
-#            $dbdDriver - Either "mSQL" or "mysql"
-#            $path - Path of the utility, defaults to "./xtract"
-#
-#   Returns: Nothing, aborts in case of trouble.
-#
-############################################################################
-
-sub Xtract($$$;$) {
-    my ($ref, $driver, $dbdDriver, $path) = @_;
-    if (!$path) {
-	$path = "xtract";
-    }
-    $ENV{'XTRACT_NOT_RUNNING'} = 1;
-    require "xtract";
-    Extract($ref->[0], $ref->[1], $driver, $dbdDriver,
-	    $MyConfig->{'VERSION'}, $MyConfig->{'DBD_VERSION'});
-    delete $ENV{'XTRACT_NOT_RUNNING'};
-    chmod $ref->[2] ? 0755 : 0644, $ref->[1];
-}
-
-
-############################################################################
-#
-#   Name:    XtractF
-#
-#   Purpose: Create Makefile rules for updating files from the distribution
-#            directories dbd and nodbd using the "xtract" utility.
-#
-#   Inputs:  $ref - Array ref representing one file; the elements are
-#
-#                      $ref->[0]  Source file
-#                      $ref->[1]  Destination file
-#                      $ref->[2]  TRUE for executable (Mode 0755),
-#                                 FALSE otherwise
-#            $driver - Either "Msql" or "Mysql"
-#            $dbdDriver - Either "mSQL" or "mysql"
-#            $path - Path of the utility, defaults to "./xtract"
-#
-#   Returns: String being inserted in the postamble.
-#
-############################################################################
-
-sub XtractF($$$;$) {
-    my ($ref, $driver, $dbdDriver, $path) = @_;
-    if (!$path) {
-	$path = "xtract";
-    }
-    sprintf("pm_to_blib: ../%s\n\n"
-	    . "../%s: ../%s\n"
-	    . "\t%s %s ../%s ../%s %s %s %s %s\n\tchmod %s ../%s\n\n",
-	    $ref->[1],
-	    $ref->[1], $ref->[0], $^X, $path,
-	    $ref->[0], $ref->[1], $driver, $dbdDriver,
-	    $MyConfig->{'VERSION'}, $MyConfig->{'DBD_VERSION'},
-	    $ref->[2] ? "0755" : "0644", $ref->[1]);
-}
-
-
-############################################################################
-#
-#   Name:    InitializeMysql
-#
-#   Purpose: Setup mysql dependent variables
-#
-#   Inputs:  None
-#
-#   Returns: Hash ref of MakeMaker variables
-#
-############################################################################
-
-sub CheckForLibGcc() {
-    # For reasons I don't understand the 'specs' files of some
-    # gcc versions disable linking against libgcc.a in conjunction
-    # with '-shared'. Unfortunately we need libgcc.a because of
-    # some arithmetic functions.
-    #
-    # We try to fix this by always linking against libgcc.a. Unfortunately
-    # it's somewhat hard to find out the path of this file ...
-    #
-    # However, this must not happen under NetBSD, because it duplicates
-    # libc functions. These get pulled in instead of the libc functions,
-    # but since the library is static only, they're not PIC and thus render
-    # mysql.so unsharable.
-    #
-    return '' if ($Config::Config{gccversion} eq ''  ||
-		  $Config::Config{osname} =~ /^(net|open|free)bsd$/);
-
-    my($libgccfile) = `$Config::Config{cc} -print-libgcc-file-name 2>&1`;
-    my($libgccdir);
-    if ($libgccfile =~ /^\S+$/) {
-	if ($libgccfile =~ /(.*)\/lib(\S+)\.a/) {
-	    $libgccdir = $1;
-	    $libgccfile = $2;
-	}
-    } else {
-	my($specs) = `$Config::Config{cc} -v 2>&1`;
-	if ($specs =~ /Reading specs from (\S+)/) {
-	    $specs = $1;
+    # Checking for existing installations
+    my $package;
+    my $old = {};
+    my $config = {};
+    foreach $package ('mysql', 'mSQL', 'mSQL1') {
+	my $class = "DBD::${package}::Install";
+	# Try to find an existing configuration
+	eval qq{
+	    require $class;
+	    \$old->{\$package} = require $class\::Config;
+	};
+	if ($old->{$package}) {
+	    $config->{$package} = $old->{$package};
 	} else {
-	    printf(<<"MSG", $Config::Config{cc});
-Your Perl configuration says you are using gcc, but your compiler (%s) doesn't
-look like gcc. There might be missing symbols in libmysqlclient.a, typically
-'umoddi3' or something similar, if you have precompiled mysql binaries. If so,
-try to compile your own binaries, perhaps the '--without-server' option
-might help in the configure stage.
-MSG
-	    return '';
+	    $config->{$package} = $class->new($DBD_VERSION, $VERSION);
 	}
-
-	$specs = $1;
-	if ($specs =~ /(.*)\//) {
-	    $libgccdir = $1;
-	    $libgccfile = "gcc";
-	} else {
-	    printf(<<"MSG", $Config::Config{cc});
-Your Perl configuration says you are using gcc (%s), but I cannot determine the
-path of your libgcc.a file. There might be missing symbols in
-libmysqlclient.a, typically 'umoddi3' or something similar, if you have
-precompiled mysql binaries. If so, try to compile your own binaries, perhaps
-the '--without-server' option might help in the configure stage.
-MSG
-	    return '';
+	if ($config->{$package}->{'install'}  &&  !$README_created) {
+	    my $driver = $config->{$package}->{'dbd_driver'};
+	    $README_created = "\npm_to_blib: README\n\n"
+		. "README: $driver/lib/DBD/$driver.pm\n"
+		. "\tpod2text $driver/lib/DBD/$driver.pm >README\n\n";
 	}
     }
 
-    if ($libgccdir) {
-        " -L$libgccdir -l$libgccfile";
-    } else {
-        " $libgccfile";
-    }
-}
-
-
-sub InitializeMysql ($) {
-    my $cfg = shift;
-
-    my %X;
-    my @mysqldirs = ($^O =~ /mswin32/i) ?  qw(C:/mysql C:/my/myodbc)  :
-	qw{/usr/local /usr/local/mysql /usr /usr/mysql /opt/mysql};
-    my @gooddirs = ();
-    if (exists($ENV{MYSQL_HOME})) {
-	unshift @gooddirs, $ENV{MYSQL_HOME};
-    }
-    if (exists($ENV{MYSQL_BUILD})) {
-	unshift @gooddirs, $ENV{MYSQL_BUILD};
-    }
-
-    my($headerdir, $gooddir);
-    if ($options{'mysql-incdir'}) {
-	$headerdir = $options{'mysql-incdir'};
-    } else {
-	($headerdir, $gooddir) = Search(\@gooddirs, \@mysqldirs,
-					["include/mysql/mysql.h",
-					 "include/mysql.h"],
-					"Where is your mysql installed? Please"
-					. " tell me the directory that"
-					. " contains\n"
-					. "the subdir include/.");
-	unshift(@gooddirs, $gooddir);
-    }
-
-    my($libdir, $libfilename);
-    if ($options{'mysql-libdir'}) {
-	$libdir = $options{'mysql-libdir'};
-    } else {
-	my @searchpath;
-	if ($^O =~ /mswin32/i) {
-	    @searchpath = qw(lib/opt/mysqlclient.lib
-			     lib_release/mysqlclient.lib
-			     lib/mysqlclient.lib
-			     lib/debug/mysqlclient.lib
-			     lib_debug/mysqlclient.lib
-			     lib/opt/lib.lib
-			     lib_release/lib.lib 
-			     lib/lib.lib
-			     lib/debug/lib.lib
-			     lib_debug/lib.lib);
-	} else {
-	    @searchpath = qw(lib/mysql/libmysqlclient.a
-			     lib/libmysqlclient.a
-			     client/libmysqlclient.a
-			     lib/mysql/libmysqlclient.so
-			     lib/libmysqlclient.so
-			     client/libmysqlclient.so);
-	}
-	($libdir, $gooddir, $libfilename) =
-	    Search(\@gooddirs, \@mysqldirs, \@searchpath,
-		   "Where is your mysql installed? Please tell me the"
-		   . " directory that contains\n"
-		   . "the subdir lib/.");
-    }
-
-    # List the libraries we're linking with (ADESC)
-    my $sysliblist;
-    my $extra_libs = '';
-    my $final_libs = '';
-    if ($options{'static'}) {
-	if ($libfilename !~ /\.a/) {
-	    die "Option -static given, but no static libmysqlclient.a found";
-	}
-	$extra_libs .= " $libfilename";
-	$MY::LIBS = $libfilename;
-    } else {
-	$sysliblist = "-L$libdir -lmysqlclient";
-    }
-    $sysliblist .= " -lm";
-    my $linkwith = "";
-    my $defines = "-DDBD_MYSQL -DMyConnect=mysql_dr_connect"
-	. " -DMyLogin=mysql_dr_login";
-    if ($Config::Config{osname} eq 'sco_sv'  ||
-	$Config::Config{osname} eq 'svr4') {
-	# Some extra libraries need added for SCO and Unixware
-	$sysliblist .= " -lc";
-    } elsif ($Config::Config{osname} eq 'solaris') {
-	# We need to link with -R if we're on Solaris.......Brain-damaged....
-	$linkwith = "-R$libdir";
-    } elsif ($Config::Config{osname} eq 'hpux') {
-	# We need to add +z to the list of CFLAGS if we're on HP-SUX, or -fPIC 
-	# if we're on HP-SUX and using 'gcc'
-	if ($Config::Config{cccdlflags} eq '+z') {
-	    print("\nYou're building on HP-UX with the HP compiler.\n");
-	} elsif ($Config::Config{cccdlflags} eq '-fPIC') {
-	    print("\nYou're building on HP-UX with the GNU C Compiler.\n");
-	} else {
-	    print("\nYou're building on HP-UX with an unknown compiler.\n");
-	}
-	print("You might get a warning at the link stage of:\n\n",
-	      "ld: DP-Relative Code in file .../libmysqlclient.a",
-	      "(libmysql.o)\n",
-	      ">  - Shared Library must be Position-Independent\n\n",
-	      "You'll have to recompile libmysqlclient.a from the mysql",
-	      " distribution specifying\n",
-	      "the '", $Config::Config{cccdlflags}, "' flag",
-	      " of your C compiler.\n");
-    } elsif ($Config::Config{osname} eq 'MSWin32') {
-	$defines .= " -DWIN32";
-
-	if (! -f "$libdir/mysqlclient.lib"  &&
-	    -f "$libdir/lib.lib") {
-	    # Looks like we're using MyODBC ...
-	    $defines .= " -D__WIN32__";
-	    $sysliblist =~ s/-lmysqlclient/-llib/;
-	    $sysliblist .= " -lmysys -lstrings";
-	}
-	if (-f "$libdir/zlib.lib") {
-	    $sysliblist .= " -lzlib";
-	}
-	# For some reasons libs.lib is not linked against msvcrt.lib
-	# with VC++ ...
-	if ($Config::Config{libs} =~ /\bmsvcrt\.lib\b/ &&
-	    $Config::Config{libs} !~ /\blibc.lib\b/) {
-	    $sysliblist .= " -lmsvcrt -lc";
-	  } elsif ($Config::Config{libs} =~ /\bPerlCRT\.lib\b/) {
-	    $final_libs .= " libc.lib";
-	}
-    }
-
-    $sysliblist .= CheckForLibGcc();
-    $cfg->{'Mysql'}->{'EXTRA_LIBS'} = $extra_libs;
-    $cfg->{'Mysql'}->{'FINAL_LIBS'} = $final_libs;
-
-    my(@headerfiles) = ("$headerdir/mysql.h");
-    $X{dynamic_lib} = { OTHERLDFLAGS => "-L$libdir $linkwith" };
-    $X{DEFINE}   = $defines;
-    $X{LIBS}     = $sysliblist;
-    $X{INC}      = "-I$headerdir -I../dbd  -I\$(INSTALLSITEARCH)/auto/DBI"
-	. " -I\$(INSTALLARCHLIB)";
-    $X{H}        = \@headerfiles;
-    if ($ENV{HOSTNAME} eq 'laptop.ispsoft.de'  &&  $ENV{'LOGNAME'} eq 'joe') {
-	$X{'DEFINE'} .= ' -Wall -Wstrict-prototypes';
-    }
-
-    my $dir;
-    foreach $dir (@INC) {
-	if (-f "$dir/auto/DBI/DBIXS.h") {
-	    $X{INC} = "-I$dir/auto/DBI " . $X{INC};
-	    last;
-	}
-    }
-
-    \%X;
-}
-
-
-############################################################################
-#
-#   Name:    InitializeMsql
-#
-#   Purpose: Setup msql dependent variables
-#
-#   Inputs:  None
-#
-#   Returns: Hash ref of MakeMaker variables
-#
-############################################################################
-
-sub InitializeMsql ($) {
-    my($ver) = @_;
-    my($homeVar, $dbVar, $dbiDriver);
-    my($queryVar) = $ver ? "mSQL $ver" : "mSQL";
-    if ($ver && $ver == 1) {
-	$homeVar = "MSQL1_HOME";
-	$dbVar = "-DDBD_MSQL -DDBD_MSQL1";
-	$dbiDriver = "mSQL1";
-    } else {
-	$homeVar = "MSQL_HOME";
-	$dbVar = "-DDBD_MSQL";
-	$dbiDriver = "mSQL";
-	$ver = 2;
-    }
-    my $lcDbiDriver = lc $dbiDriver;
-
-    my %X;
-    my @msqldirs = qw{/usr/local/Hughes /usr/local/Minerva /usr/local
-			  /usr/mSQL /opt/mSQL /usr};
-    my @gooddirs;
-    if (exists($ENV{$homeVar})) { push(@gooddirs, $ENV{$homeVar}); }
-
-    my($headerdir, $libdir, $gooddir);
-    if ($options{"$lcDbiDriver-incdir"}) {
-	$headerdir = $options{"$lcDbiDriver-incdir"};
-    } else {
-	($headerdir, $gooddir)
-	    = Search(\@gooddirs, \@msqldirs,
-		     ["include/msql.h"],
-		     "Where is your $queryVar installed? Please"
-		     . " tell me the directory that"
-		     . " contains\n"
-		     . " the subdir include/.");
-    }
-    unshift(@gooddirs, $gooddir) if $gooddir;
-    if ($options{"$lcDbiDriver-libdir"}) {
-	$libdir = $options{"$lcDbiDriver-libdir"};
-    } else {
-	$libdir
-	    = Search(\@gooddirs, \@msqldirs, ["lib/libmsql.a"],
-		     "Where is your $queryVar installed? Please tell me the"
-		     . " directory that contains\n"
-		     . " the subdir lib/.");
-    }
-
-    # the necessity to determine how many arguments are needed for
-    # msqlget*conf is due to random changes in the API
-    my($getconf) = '';
-    open MSQL, "$headerdir/msql.h" 
-	or die "Couldn't open $headerdir/msql.h: $!";
-    local $/ = "\n";
-    while (<MSQL>) {
-	if (m{
-	        ^
-		(int|char)
-		\s+
-		\*?
-		msqlGet
-		(Int|Char)
-		Conf
-		\s+
-		__ANSI_PROTO
-		\(\(
-		char
-		\s*
-		\*\)\)
-	    }x) {
-	    $getconf = " -DMSQLGETXCONF1";
-	}
-    }
-
-    my $extralibs = "";
-    my $linkwith = "";
-    if ( $Config::Config{osname} eq 'sco_sv' ) {
-	# Some extra libraries need added for SCO
-	$extralibs = "-lc";
-    } elsif ( $Config::Config{osname} eq 'solaris' ) {
-	# We need to link with -R if we're on Solaris.......Brain-damaged....
-	$linkwith = "-R$libdir";
-    } elsif ( $Config::Config{osname} eq 'hpux' ) {
-	# We need to add +z to the list of CFLAGS if we're on HP-SUX, or -fPIC 
-	# if we're on HP-SUX and using 'gcc'
-	if ( $Config::Config{cccdlflags} eq '+z' ) {
-	    print q{You\'re building on HP-UX with the HP compiler.
-You might get a warning at the link stage of:
-
-ld: DP-Relative Code in file .../libmsql.a(libmsql.o)
->  - Shared Library must be Position-Independent
-
-You\'ll have to recompile libmsql.a from the mSQL distribution with the
-'+z' flag of your C compiler.
-};
-	} elsif( $Config::Config{cccdlflags} eq '-fPIC' ) {
-	    print q{You\'re building on HP-UX with the GNU C Compiler.
-You might get a warning at the link stage like:
-
-ld: DP-Relative Code in file .../libmsql.a(libmsql.o)
->  - Shared Library must be Position-Independent
-
-You\'ll have to recompile libmsql.a from the mSQL distribution specifying
-the '-fPIC' flag to produce Position-Independent code.
-};
-	}
-    }
-
-    my($sysliblist) = "-L$libdir -lmsql -lm $extralibs";
-
-    my(@headerfiles) = ("$headerdir/msql.h");
-    $X{macro} = {$homeVar => $gooddir};
-    $X{dynamic_lib} = { OTHERLDFLAGS => "-L$libdir $linkwith" };
-    $X{DEFINE}   = "$dbVar $getconf -DMyConnect=${dbiDriver}_dr_connect"
-	. " -DMyLogin=${dbiDriver}_dr_login";
-    if ($ENV{HOSTNAME} eq 'laptop.ispsoft.de'  &&  $ENV{'LOGNAME'} eq 'joe') {
-	$X{'DEFINE'} .= ' -Wall -Wstrict-prototypes';
-    }
-    $X{LIBS}     = $sysliblist;
-    $X{INC}      = "-I../dbd -I$headerdir  -I\$(INSTALLSITEARCH)/auto/DBI"
-	. " -I\$(INSTALLARCHLIB)";
-    $X{H}        = \@headerfiles;
-
-    my $dir;
-    foreach $dir (@INC) {
-	if (-f "$dir/auto/DBI/DBIXS.h") {
-	    $X{INC} .= " -I$dir/auto/DBI";
-	    last;
-	}
-    }
-
-    \%X;
-}
-
-
-############################################################################
-#
-#    Name:    Init
-#
-#    Purpose: Setup variables that are manually configurable
-#
-#    Inputs:  None
-#
-#    Result:  Nothing; the $MyConfig hash will be modified
-#
-############################################################################
-
-sub Init () {
-    my($reply);
-
-    if (-f ".status"  and  !$options{'config'}) {
-	# Read settings from .status file
-	require ".status";
-	return;
-    }
-
-    $MyConfig = { 'VERSION' => $VERSION,
-		  'DBD_VERSION' => $DBD_VERSION };
-
-    my $ok = 2;
-
-    print "Checking for DBI, 0.93 or later ... ";
-    $@ = '';
-    eval "use DBI 0.93 (); require DBI::DBD;";
+    # Checking for prerequisites
+    eval "use ExtUtils::PerlPP";
     if ($@) {
-	$ok = 0;
-	print qq{
-You don't have installed the DBI module, version 0.93 or later. I cannot
-continue installing the Msql-Mysql modules.
-};
-    } else {
-	print "ok\n";
-    }
-
-    print "Checking for Data::Dumper ... ";
-    $@ = '';
-    eval "require Data::Dumper";
-    if ($@) {
-	$ok = 0;
-	print qq{
-You don't have installed the Data::Dumper module. I cannot continue
-installing the Msql-Mysql modules.
-};
-    } else {
-	print "ok\n";
-    }
-
-    print "Checking for Data::ShowTable ... ";
-    $@ = '';
-    eval "require Data::ShowTable";
-    if ($@) {
-	print qq{
-You don't have installed the Data::ShowTable module. You won't be able
-to use 'dbimon' the DBI shell.};
-	if ($ok == 2) {
-	    $ok = 1;
-	    print qq{I'll continue installing the Msql-Mysql modules
-anyways so that you can install Data::ShowTable at a later time.
-};
-	}
-    } else {
-	print "ok\n";
-    }
-
-    if ($ok < 2) {
-	print qq{
-Missing modules are available from any CPAN mirror, for example
+	print q{
+You don't have installed the ExtUtils::PerlPP module, which is
+required for building this package. Missing modules are available
+from any CPAN mirror, for example
 
    ftp://ftp.funet.fi/pub/languages/perl/CPAN/modules/by-module
+
 };
+	exit 1;
     }
-    if (!$ok) {
+    eval "use Data::Dumper";
+    if ($@) {
+	print q{
+You don't have installed the Data::Dumper module, which is
+required for building this package. Missing modules are available
+from any CPAN mirror, for example
+
+   ftp://ftp.funet.fi/pub/languages/perl/CPAN/modules/by-module
+
+};
 	exit 1;
     }
 
-    my $choice = 0;
-    while (!$choice) {
-	if (exists($options{'mysql-install'})  or
-	    exists($options{'msql-install'})   or
-	    exists($options{'msql1-install'})) {
-	    $options{'msql-install'} = 1 if $options{'msql1-install'};
-	    if ($options{'mysql-install'}) {
-		if ($options{'msql-install'}) {
-		    $choice = $options{'msql1-install'} ? 5 : 3;
-		} else {
-		    $choice = 1;
-		}
-	    } else {
-		$choice = $options{'msql1-install'} ? 4 : 2;
-	    }
-	}
-	if ($options{'prompt'}) {
-	    $reply = prompt("\n\nWhich DBMS do you want to use?\n\n" .
-			    "  1) MySQL\n" .
-			    "  2) mSQL (1 or 2)\n" .
-			    "  3) Both MySQL and mSQL\n\n" .
-			    "  4) mSQL1 and mSQL2\n" .
-			    "  5) Everything (MySQL, mSQL1 and mSQL2)\n\n" .
-			    "Enter your choice: ", "3");
-	    if ($reply =~ /(\d+)/) {
-		$choice = $1;
-		if ($choice < 1  ||  $choice > 5) {
-		    $choice = 0;
-		}
-	    }
-	}
+
+    if ($options->{'config'}  ||
+	!$old->{'mysql'}  ||  !$old->{'mSQL'}  ||  !$old->{'mSQL1'}) {
+	SelectDrivers($config, $old);
     }
 
-    $MyConfig->{'install_dbd_mysql'} =
-	($choice == 1 || $choice == 3 || $choice == 5);
-    $MyConfig->{'install_dbd_msql'} =
-	($choice == 2 || $choice == 3 || $choice == 4 || $choice == 5);
-    $MyConfig->{'install_dbd_msql1'} = ($choice == 4 || $choice == 5);
-
-    if ($MyConfig->{'install_dbd_mysql'}) {
-	if ($options{'mysql-install-nodbd'}) {
-	    $MyConfig->{'install_mysqlperl'} = 1;
-        } else {
-	    eval { require Mysql };
-	    my $default =
-		(defined($Mysql::VERSION) and $Mysql::VERSION >= 1.19) ?
-		    "y" : "n";
-
-	    $reply = $options{'prompt'} ? prompt(qq{
-
-Do you want to install the MysqlPerl emulation? You might keep your old
-Mysql module (to be distinguished from DBD::mysql!) if you are concerned
-about compatibility to existing applications!}, $default) : $default;
-            $MyConfig->{'install_mysqlperl'} = ($reply =~ /y/i) ? 1 : 0;
-        }
-	QueryDb($MyConfig, 'Mysql', 'mysql');
-        if (!exists $MyConfig->{'X_mysql'}) {
-            $MyConfig->{'X_mysql'} = InitializeMysql($MyConfig);
-        }
-    }
-
-    $MyConfig->{'files_dbd_mysql'} =
-        [ ["dbd/Makefile.PL.in", "Mysql/Makefile.PL"],
-          ["dbd/bundle.pm.in", "Mysql/lib/Bundle/DBD/mysql.pm"],
-          ["dbd/dbdimp.c", "Mysql/dbdimp.c"],
-          ["dbd/dbd.xs.in", "Mysql/mysql.xs"],
-          ["dbd/dbd.pm.in", "Mysql/mysql.pm"],
-          ["tests/00base.t", "Mysql/t/00base.t"],
-          ["tests/10dsnlist.t", "Mysql/t/10dsnlist.t"],
-          ["tests/20createdrop.t", "Mysql/t/20createdrop.t"],
-          ["tests/30insertfetch.t", "Mysql/t/30insertfetch.t"],
-          ["tests/40bindparam.t", "Mysql/t/40bindparam.t"],
-          ["tests/40blobs.t", "Mysql/t/40blobs.t"],
-          ["tests/40listfields.t", "Mysql/t/40listfields.t"],
-          ["tests/40nulls.t", "Mysql/t/40nulls.t"],
-          ["tests/40numrows.t", "Mysql/t/40numrows.t"],
-          ["tests/50chopblanks.t", "Mysql/t/50chopblanks.t"],
-          ["tests/50commit.t", "Mysql/t/50commit.t"],
-          ["tests/60leaks.t", "Mysql/t/60leaks.t"],
-          ["tests/ak-dbd.t", "Mysql/t/ak-dbd.t"],
-          ["tests/dbdadmin.t", "Mysql/t/dbdadmin.t"],
-          ["tests/lib.pl", "Mysql/t/lib.pl"] ];
-    $MyConfig->{'files_mysqlperl'} =
-        [ ["tests/akmisc.t", "Mysql/t/akmisc.t"],
-          ["tests/mysql.t", "Mysql/t/mysql.t"],
-          ["tests/mysql2.t", "Mysql/t/mysql2.t"],
-          ["nodbd/nodbd.pm.in", "Mysql/lib/Mysql.pm"],
-          ["nodbd/statement.pm.in", "Mysql/lib/Mysql/Statement.pm"],
-          ["nodbd/pmsql.in", "Mysql/pmysql", 1]];
-
-
-    if ($MyConfig->{'install_dbd_msql'}) {
-	if ($options{'msql-install-nodbd'}) {
-	    $MyConfig->{'install_msqlperl'} = 1;
-        } else {
-	    eval { require Msql };
-	    my $default =
-		(defined($Msql::VERSION) and $Msql::VERSION >= 1.19) ?
-		    "y" : "n";
-
-	    $reply = $options{'prompt'} ? prompt(qq{
-
-Do you want to install the MsqlPerl emulation? You might keep your old
-Msql module (to be distinguished from DBD::mSQL!) if you are concerned
-about compatibility to existing applications!}, $default) : $default;
-	    $MyConfig->{'install_msqlperl'} = ($reply =~ /y/i) ? 1 : 0;
-	}
-	QueryDb($MyConfig,
-		$MyConfig->{'install_dbd_msql1'} ? 'mSQL 2' : 'mSQL',
-		'mSQL');
-        if (!exists($MyConfig->{X_msql})) {
-            $MyConfig->{'X_msql'} =
-               InitializeMsql($MyConfig->{'install_dbd_msql1'} ? 2 : 0);
-        }
-    }
-
-    $MyConfig->{'files_dbd_msql'} =
-        [ ["dbd/Makefile.PL.in", "Msql/Makefile.PL"],
-          ["dbd/bundle.pm.in", "Msql/lib/Bundle/DBD/mSQL.pm"],
-          ["dbd/dbdimp.c", "Msql/dbdimp.c"],
-          ["dbd/dbd.xs.in", "Msql/mSQL.xs"],
-          ["dbd/dbd.pm.in", "Msql/mSQL.pm"],
-          ["tests/00base.t", "Msql/t/00base.t"],
-          ["tests/10dsnlist.t", "Msql/t/10dsnlist.t"],
-          ["tests/20createdrop.t", "Msql/t/20createdrop.t"],
-          ["tests/30insertfetch.t", "Msql/t/30insertfetch.t"],
-          ["tests/40bindparam.t", "Msql/t/40bindparam.t"],
-          ["tests/40blobs.t", "Msql/t/40blobs.t"],
-          ["tests/40listfields.t", "Msql/t/40listfields.t"],
-          ["tests/40nulls.t", "Msql/t/40nulls.t"],
-          ["tests/40numrows.t", "Msql/t/40numrows.t"],
-          ["tests/50chopblanks.t", "Msql/t/50chopblanks.t"],
-          ["tests/50commit.t", "Msql/t/50commit.t"],
-          ["tests/60leaks.t", "Msql/t/60leaks.t"],
-          ["tests/ak-dbd.t", "Msql/t/ak-dbd.t"],
-          ["tests/dbdadmin.t", "Msql/t/dbdadmin.t"],
-          ["tests/lib.pl", "Msql/t/lib.pl"] ];
-    $MyConfig->{'files_msqlperl'} =
-        [ ["tests/akmisc.t", "Msql/t/akmisc.t"],
-          ["tests/msql1.t", "Msql/t/msql1.t"],
-          ["tests/msql2.t", "Msql/t/msql2.t"],
-          ["nodbd/nodbd.pm.in", "Msql/lib/Msql.pm"],
-          ["nodbd/statement.pm.in", "Msql/lib/Msql/Statement.pm"],
-          ["nodbd/pmsql.in", "Msql/pmsql", 1]];
-
-
-    if ($MyConfig->{'install_dbd_msql1'}) {
-	if ($options{'msql1-install-nodbd'}) {
-	    $MyConfig->{'install_msql1perl'} = 1;
-        } else {
-	    eval { require Msql1 };
-	    my $default =
-		(defined($Msql1::VERSION) and $Msql1::VERSION >= 1.19) ?
-		    "y" : "n";
-
-	    $reply = $options{'prompt'} ? prompt(qq{
-
-Do you want to install the Msql1Perl emulation? You might keep your old
-Mysql module (to be distinguished from DBD::mSQL1!) if you are concerned
-about compatibility to existing applications!}, $default) : $default;
-	    $MyConfig->{'install_msql1perl'} = ($reply =~ /y/i) ? 1 : 0;
-	}
-	QueryDb($MyConfig, 'mSQL 1', 'mSQL1');
-        if (!exists $MyConfig->{'X_msql1'}) {
-            $MyConfig->{'X_msql1'} = InitializeMsql(1);
-        }
-    }
-
-    $MyConfig->{'files_dbd_msql1'} =
-        [ ["dbd/Makefile.PL.in", "Msql1/Makefile.PL"],
-          ["dbd/bundle.pm.in", "Msql1/lib/Bundle/DBD/mSQL1.pm"],
-          ["dbd/dbdimp.c", "Msql1/dbdimp.c"],
-          ["dbd/dbd.xs.in", "Msql1/mSQL1.xs"],
-          ["dbd/dbd.pm.in", "Msql1/mSQL1.pm"],
-          ["tests/00base.t", "Msql1/t/00base.t"],
-          ["tests/10dsnlist.t", "Msql1/t/10dsnlist.t"],
-          ["tests/20createdrop.t", "Msql1/t/20createdrop.t"],
-          ["tests/30insertfetch.t", "Msql1/t/30insertfetch.t"],
-          ["tests/40bindparam.t", "Msql1/t/40bindparam.t"],
-          ["tests/40blobs.t", "Msql1/t/40blobs.t"],
-          ["tests/40listfields.t", "Msql1/t/40listfields.t"],
-          ["tests/40nulls.t", "Msql1/t/40nulls.t"],
-          ["tests/40numrows.t", "Msql1/t/40numrows.t"],
-          ["tests/50chopblanks.t", "Msql1/t/50chopblanks.t"],
-          ["tests/50commit.t", "Msql1/t/50commit.t"],
-          ["tests/60leaks.t", "Msql1/t/60leaks.t"],
-          ["tests/ak-dbd.t", "Msql1/t/ak-dbd.t"],
-          ["tests/dbdadmin.t", "Msql1/t/dbdadmin.t"],
-          ["tests/lib.pl", "Msql1/t/lib.pl"] ];
-    $MyConfig->{'files_msql1perl'} =
-        [ ["tests/akmisc.t", "Msql1/t/akmisc.t"],
-          ["tests/msql1.t", "Msql1/t/msql1.t"],
-          ["tests/msql2.t", "Msql1/t/msql2.t"],
-          ["nodbd/nodbd.pm.in", "Msql1/lib/Msql1.pm"],
-          ["nodbd/statement.pm.in", "Msql1/lib/Msql1/Statement.pm"],
-          ["nodbd/pmsql.in", "Msql1/pmsql1", 1]];
-
-    if ($MyConfig->{'install_dbd_mysql'}) {
-        push(@{$MyConfig->{'files_dbd_mysql'}},
-	     ["dbd/dbimon.in", "dbimon", 1]);
-    } else {
-        push(@{$MyConfig->{'files_dbd_msql'}},
-	     ["dbd/dbimon.in", "dbimon", 1]);
-    }
-
-    MakeDirs();
-    $Data::Dumper::Indent = 1;
-    if (!open(STATUS, ">.status")
-        || !print STATUS Data::Dumper->Dump([$MyConfig], [qw($MyConfig)])
-        || !close(STATUS)) {
-        die "Cannot create .status file: $!\n";
-    }
-}
-
-
-############################################################################
-#
-#    Name:    MakeDirs
-#
-#    Purpose: Create the directories Msql, Msql1 and Mysql
-#
-#    Inputs:  None
-#
-#    Result:  Nothing; aborts in case of trouble
-#
-############################################################################
-
-my $README_created;
-
-sub CreatePostamble($$$$) {
-    my($driver, $dbdDriver, $xtractFiles, $unlinkFiles) = @_;
-    my $ref;
-    my $pa = '';
-
-    unless ($README_created) {
-	$README_created = "\npm_to_blib: README\n\n"
-	    . "README: $driver/$dbdDriver.pm\n"
-	    . "\tpod2text $driver/$dbdDriver.pm >README\n\n";
-    }
-
+    my(@installdirs, @pl_files, @delete_files, $dbimon_done);
     $| = 1;
-    if (@$xtractFiles) {
-	print "Creating $driver files ";
-	foreach $ref (@$xtractFiles) {
-	    $pa .= XtractF($ref, $driver, $dbdDriver, "../xtract");
-	    Xtract($ref, $driver, $dbdDriver);
-	    print ".";
+    foreach $package ('mysql', 'mSQL', 'mSQL1') {
+	my $cfg = $config->{$package};
+	# Create the config file
+	my $dir = $cfg->{'dbd_driver'};
+
+	if ($cfg->{'install'}) {
+	    my $description = $cfg->{'description'};
+	    push(@installdirs, $dir);
+	    push(@pl_files, 'dbd/Makefile.PL.in', "$dir/Makefile.PL",
+		 "lib/DBD/$dir/Install/Config.pm");
+	    if (!$dbimon_done) {
+		$dbimon_done = 1;
+		push(@pl_files, 'dbd/dbimon.in', 'dbimon',
+		     "lib/DBD/$dir/Install/Config.pm");
+	    }
+	    if (!$old->{$package} or $options->{'config'}) {
+		$cfg->Initialize($options);
+		QueryDb($cfg);
+		# Create the Makefile.PL
+		print "Creating files for $description ";
+	        ExtUtils::PerlPP::ppp('dbd/Makefile.PL.in',
+				      "$dir/Makefile.PL",
+				      $cfg);
+		print ".";
+		# Create other files.
+		my($var, $val);
+		while (($var, $val) = each %{$cfg->{'files'}}) {
+		    ExtUtils::PerlPP::ppp($var, $val, $cfg);
+		      print ".";
+		}
+		if ($cfg->{'install_nodbd'}) {
+		    while (($var, $val) = each %{$cfg->{'files_nodbd'}}) {
+		        ExtUtils::PerlPP::ppp($var, $val, $cfg);
+			print ".";
+		    }
+		} else {
+		    push(@delete_files, values %{$cfg->{'files_nodbd'}});
+		}
+		print "\n";
+	    }
+
+	    $Data::Dumper::Indent = 1;
+	    my $cf = Data::Dumper->Dump
+		([$cfg], ["\$DBD::${dir}::Install::Config::configuration"]);
+	    my $time = localtime();
+	    my $cfg_file = <<"CFG_FILE";
+# -*- perl -*-
+#
+#    This file was automatically generated at $time
+#    by Makefile.PL. Do not edit, instead do a "make realclean" in
+#    the toplevel directory and rerun "perl makefile.PL".
+#
+package DBD::${dir}::Install::Config;
+
+$cf
+CFG_FILE
+            my $d = "lib/DBD/$dir/Install";
+	    if (! -d $d  &&  !mkdir $d, 0755) {
+		die "Error while creating $d: $!";
+	    }
+	    if (!open(CFG, ">$d/Config.pm")
+		|| !(printf CFG $cfg_file)  || !close(CFG)) {
+		die "Cannot create config file $d/Config.pm: $!";
+	    }
+        } else {
+	    push(@delete_files, "$dir/Makefile.PL",
+		 values %{$cfg->{'files'}},
+		 values %{$cfg->{'files_nodbd'}});
 	}
-	print "\n";
-    }
-    if (@$unlinkFiles) {
-	unlink map {
-	    my $f = $_->[1]; $f =~ /\.pm$/ ? () : ($f)
-	} @$unlinkFiles;
-    }
-    $pa;
-}
-
-sub MakeDirs () {
-    my (@createList, @deleteList);
-
-    if ($MyConfig->{'install_dbd_mysql'}) {
-	push(@createList, @{$MyConfig->{'files_dbd_mysql'}});
-    } else {
-	push(@deleteList, @{$MyConfig->{'files_dbd_mysql'}});
-    }
-    if ($MyConfig->{'install_mysqlperl'}) {
-	push(@createList, @{$MyConfig->{'files_mysqlperl'}});
-    } else {
-	push(@deleteList, @{$MyConfig->{'files_mysqlperl'}});
     }
 
-    $MyConfig->{'postamble_mysql'} = CreatePostamble('Mysql', 'mysql',
-						     \@createList,
-						     \@deleteList);
-
-    @createList = ();
-    @deleteList = ();
-    if ($MyConfig->{'install_dbd_msql'}) {
-	push(@createList, @{$MyConfig->{'files_dbd_msql'}});
-    } else {
-	push(@deleteList, @{$MyConfig->{'files_dbd_msql'}});
-    }
-    if ($MyConfig->{'install_msqlperl'}) {
-	push(@createList, @{$MyConfig->{'files_msqlperl'}});
-    } else {
-	push(@deleteList, @{$MyConfig->{'files_msqlperl'}});
+    my $f;
+    foreach $f (@delete_files) {
+ 	if ($f !~ /\.pm$/  and  -f $f) {
+ 	    if ($options->{'verbose'}) {
+ 		print "Removing file: $f\n";
+ 	    }
+ 	    if (!unlink $f) {
+ 		die "Error while removing $f: $!";
+ 	    }
+ 	}
     }
 
-    $MyConfig->{'postamble_msql'} = CreatePostamble('Msql', 'mSQL',
-						    \@createList,
-						    \@deleteList);
-
-    @createList = ();
-    @deleteList = ();
-    if ($MyConfig->{'install_dbd_msql1'}) {
-	push(@createList, @{$MyConfig->{'files_dbd_msql1'}});
-    } else {
-	push(@deleteList, @{$MyConfig->{'files_dbd_msql1'}});
+    my %opts = (
+	 'NAME'         => 'Msql-Mysql-modules',
+         'DIR'          => \@installdirs,
+         'EXE_FILES'    => [ 'dbimon' ],
+         'dist'         => { 'SUFFIX'       => ".gz",
+			     'DIST_DEFAULT' => 'all tardist',
+			     'COMPRESS'     => "gzip -9f" },
+         'VERSION'      => $VERSION,
+         'realclean'    => {
+	     FILES => 'Mysql/Makefile.PL Msql/Makefile.PL Msql1/Makefile.PL'
+		 . ' lib/DBD/mysql/Install/Config.pm'
+		 . ' lib/DBD/mSQL/Install/Config.pm'
+		 . ' lib/DBD/mSQL1/Install/Config.pm'
+	     },
+         'PL_FILES'     => \@pl_files
+    );
+    if ($ExtUtils::MakeMaker::VERSION >= 5.43) {
+        $opts{'CAPI'} = 'TRUE';
+	$opts{'AUTHOR'} = 'Jochen Wiedmann (joe@ispsoft.de)';
+	$opts{'ABSTRACT'} =
+	    'mSQL and MySQL drivers for the Perl5 Database Interface (DBI)';
+	$opts{'PREREQ_PM'} = { 'DBI' => 1.08,
+			       'Data::Dumper' => 0,
+			       'ExtUtils::PerlPP' => 0.02,
+			       'Data::ShowTable' => 0 };
     }
-    if ($MyConfig->{'install_msql1perl'}) {
-	push(@createList, @{$MyConfig->{'files_msql1perl'}});
-    } else {
-	push(@deleteList, @{$MyConfig->{'files_msql1perl'}});
-    }
-
-    $MyConfig->{'postamble_msql1'} = CreatePostamble('Msql1', 'mSQL1',
-						    \@createList,
-						    \@deleteList);
+    ExtUtils::MakeMaker::WriteMakefile(%opts);
 }
 
 
-############################################################################
-#
-#   This is main()
-#
-############################################################################
 
-Init();
-
-my(@dirs);
-if ($MyConfig->{'install_dbd_msql'}) {
-    push(@dirs, "Msql");
-}
-if ($MyConfig->{'install_dbd_mysql'}) {
-    push(@dirs, "Mysql");
-}
-if ($MyConfig->{'install_dbd_msql1'}) {
-    push(@dirs, "Msql1");
-}
-
-my %opts =
-    ('NAME'         => 'Msql-Mysql-modules',
-     'DIR'          => \@dirs,
-     'EXE_FILES'    => [ 'dbimon' ],
-     'dist'         => { 'SUFFIX'       => ".gz",
-			 'DIST_DEFAULT' => 'all tardist',
-			 'COMPRESS'     => "gzip -9f" },
-     'VERSION'      => $MyConfig->{'VERSION'},
-     'realclean'    => { FILES => 'Mysql/Makefile.PL Msql/Makefile.PL'
-			     . ' Msql1/Makefile.PL .status' }
-     );
-
-if ($ExtUtils::MakeMaker::VERSION >= 5.43) {
-    $opts{ABSTRACT} =
-	'mSQL and MySQL drivers for the Perl5 Database Interface (DBI)';
-    $opts{AUTHOR} = 'Jochen Wiedmann (joe@ispsoft.de)';
-    $opts{CAPI} = 'TRUE' if $Config::Config{archname} =~ /-object\b/i;
-    $opts{PREREQ_PM} = { 'DBI' => 1.02 };
-}
-
-ExtUtils::MakeMaker::WriteMakefile(%opts);
 
 package MY;
 
-sub postamble { $README_created }
+sub libscan {
+    my($self, $path) = @_;
+    if ($path =~ /(PerlPP\.pm|Config\.pm|Install\.pm|,v|~)$/) { return undef; }
+    $path;
+}
+
+sub processPL {
+    my($self) = shift;
+    my @output;
+    my @files = @{$self->{'PL_FILES'}};
+    while (@files) {
+	my $from = shift @files;
+	my $to = shift @files;
+	my $cfg = shift @files;
+	push(@output, <<"PART");
+pm_to_blib: $to
+
+$to :: $from
+	\$(PERL) -I\$(INST_ARCHLIB) -I\$(INST_LIB) -I\$(PERL_ARCHLIB) \\
+		-I\$(PERL_LIB) -Ilib -MExtUtils::PerlPP \\
+		-e "ppp('$from', '$to', '$cfg')"
+
+PART
+    }
+    join "", @output;
+}
+
+sub postamble {
+    $::README_created || '';
+}

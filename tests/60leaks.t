@@ -1,6 +1,6 @@
 #!/usr/local/bin/perl
 #
-#   $Id: 60leaks.t,v 1.1.1.1 1998/12/22 14:29:52 joe Exp $
+#   $Id: 60leaks.t,v 1.1.1.1.2.1 1998/12/22 15:01:41 joe Exp $
 #
 #   This is a skeleton test. For writing new tests, take this file
 #   and modify/extend it.
@@ -107,33 +107,6 @@ while (Testing()) {
 	    }
 	    $dbh2->disconnect();
 	    undef $dbh2;
-	    if ($i % 100  ==  99) {
-		$size = size();
-		if (defined($prevSize)  &&  $size == $prevSize) {
-		    ++$ok;
-		} else {
-		    ++$notOk;
-		}
-		$prevSize = $size;
-	    }
-	}
-    }
-    Test($state or ($ok > $notOk))
-	or print "$msg\n";
-
-
-    if (!$state) {
-	print "Testing memory leaks in prepare/execute\n";
-	$msg = "Possible memory leak in prepare/execute detected";
-
-	$ok = 0;
-	$notOk = 0;
-	undef $prevSize;
-	for (my $i = 0;  $i < $COUNT_PREPARE;  $i++) {
-	    my $sth = $dbh->prepare("SELECT * FROM $table");
-	    $sth->execute();
-	    undef $sth;
-
 	    if ($i % 100  ==  99) {
 		$size = size();
 		if (defined($prevSize)  &&  $size == $prevSize) {

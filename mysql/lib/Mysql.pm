@@ -17,7 +17,7 @@ use vars qw($QUIET @ISA @EXPORT @EXPORT_OK $VERSION $db_errstr);
 $db_errstr = '';
 $QUIET  = 0;
 @ISA    = qw(DBI); # Inherits Exporter and DynaLoader via DBI
-$VERSION = '1.2018';
+$VERSION = '1.2200';
 
 # @EXPORT is a relict from old times...
 @EXPORT = qw(
@@ -37,7 +37,7 @@ $VERSION = '1.2018';
 		SYSVAR_TYPE
 	       );
 
-my($FETCH_map) = {
+my $FETCH_map = {
     'HOST' => '_host',
     'DATABASE' => 'database'
 };
@@ -63,51 +63,60 @@ sub STORE ($$$) {
     }
 }
 
+sub connect ($;$$$$) {
+    my($class, $host, $db, $user, $password) = @_;
+    my($self) = { 'host' => ($host || ''),
+		  'user' => $user,
+		  'password' => $password,
+		  'db' => $db,
+	          'driver' => 'mysql',
+	          'COMPATIBILITY' => 1 };
+    bless($self, $class);
+    $self->{'drh'} = DBI->install_driver($self->{'driver'});
+    if ($db) {
+	my $dsn = "DBI:mysql:database=$db;host=$host";
+	my $dbh = $class->SUPER::connect($dsn, $user, $password);
+	if (!$dbh) {
+	    $db_errstr = $DBI::errstr;
+	    return undef;
+	}
+	$self->{'dbh'} = $dbh;
+	$dbh->{'CompatMode'} = 1;
+	$dbh->{'PrintError'} = !$Mysql::QUIET;
+    }
+    $self;
+}
+
 sub DESTROY {
     my $self = shift;
     my $dbh = $self->{'dbh'};
     if ($dbh) {
-	local $SIG{'__WARN__'} = sub { };
+	local $SIG{'__WARN__'} = sub {};
 	$dbh->disconnect();
     }
-}
-
-
-sub connect ($;$$$$) {
-    my($class, $host, $db, $user, $password) = @_;
-    my $self = { 'class' => $class,
-		 'host' => ($host || ''),
-		 'user' => $user,
-		 'password' => $password,
-		 'db' => $db,
-		 'driver' => 'mysql',
-		 'COMPATIBILITY' => 1 };
-    bless($self, $class);
-    $self->{'drh'} = DBI->install_driver($self->{'driver'});
-    $db ? $self->selectdb($db) : $self;
 }
 
 sub selectdb ($$) {
     my($self, $db) = @_;
     my $dsn = "DBI:mysql:database=$db:host=" . $self->{'host'};
-    my $dbh = $self->{'class'}->SUPER::connect
-	($dsn, $self->{'user'}, $self->{'password'},
-	 {'CompatMode' => 1, 'PrintError' => !$Mysql::QUIET});
+    my $dbh = DBI->connect($dsn, $self->{'user'}, $self->{'password'});
     if (!$dbh) {
 	$db_errstr = $self->{'errstr'} = $DBI::errstr;
 	$self->{'errno'} = $DBI::err;
-	return undef;
+	undef;
+    } else {
+	if ($self->{'dbh'}) {
+	    local $SIG{'__WARN__'} = sub {};
+	    $self->{'dbh'}->disconnect();
+	}
+	$self->{'dbh'} = $dbh;
+	$self->{'db'} = $db;
+	$self;
     }
-    if ($self->{'dbh'}) {
-	local $SIG{'__WARN__'} = 'IGNORE';
-	$self->{'dbh'}->disconnect();
-    }
-    $self->{'dbh'} = $dbh;
-    $self;
 }
 
 sub listdbs ($) {
-    my $self = shift;
+    my($self) = shift;
     my $drh = $self->{'drh'};
     my @dbs = $drh->func($self->{'host'}, '_ListDBs');
     $db_errstr = $drh->errstr();
@@ -122,7 +131,7 @@ sub listtables ($) {
 sub quote ($$) {
     my($self) = shift;
     my $obj = (ref($self) && $self->{'dbh'}) ?
-	$self->{'dbh'} : 'DBD::mysql::db';
+	$self->{'dbh'} : 'DBD::~DBD_DRIVER~::db';
     $obj->quote(shift);
 }
 
@@ -159,7 +168,6 @@ sub query ($$) {
 	$db_errstr = $dbh->errstr();
 	return undef;
     }
-
     $sth->{'PrintError'} = !$Mysql::QUIET;
     my $result = $sth->execute();
     if (!$result) {
@@ -167,7 +175,7 @@ sub query ($$) {
 	return undef;
     }
     $sth->{'CompatMode'} = 1;
-    bless($sth, (ref($self) . "::Statement"));
+    bless($sth, ref($self) . "::Statement");
     undef $db_errstr;
     $sth;
 }
