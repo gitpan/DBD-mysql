@@ -11,11 +11,13 @@ if (!defined($MyConfig)) {
     require ".status";
 }
 
-my(%hash) = %{$MyConfig->{'X_' . (lc '~DRIVER~')}};
+my($lcDriver) = lc '~DRIVER~';
+my(%hash) = %{$MyConfig->{"X_$lcDriver"}};
 $hash{'NAME'} = 'DBD::~DBD_DRIVER~';
 $hash{'OBJECT'} = '$(O_FILES)';
 $hash{'VERSION'} = $MyConfig->{'DBD_VERSION'};
 $hash{'clean'} = { 'FILES' => '*.xsi' };
+$hash{'PMLIBDIRS'} = $MyConfig->{"install_${lcDriver}perl"} ? ["lib"] : [];
 
 ExtUtils::MakeMaker::WriteMakefile(%hash);
 

@@ -6,7 +6,7 @@ require Config;
 require File::Basename;
 require File::Path;
 
-my $EXPERIMENTAL = 1;
+my($EXPERIMENTAL) = 1;
 
 
 sub Extract ($$$$$$) {
@@ -49,7 +49,7 @@ sub Extract ($$$$$$) {
 	}
 	close(OUT);
 	if ($oContents eq $contents) {
-	    exit 0;
+	    return;
 	}
     }
 	
@@ -64,11 +64,14 @@ sub Extract ($$$$$$) {
     }
 }
 
+if (!$ENV{'XTRACT_NOT_RUNNING'}) {
+    if (@ARGV != 6) {
+	print "Usage: $0 <from> <to> <driver> <dbd_driver> <version>",
+	    " <dbd_version>\n";
+	exit 10;
+    }
 
-if (@ARGV != 6) {
-    print "Usage: $0 <from> <to> <driver> <dbd_driver> <version>",
-	" <dbd_version>\n";
-    exit 10;
+    Extract($ARGV[0], $ARGV[1], $ARGV[2], $ARGV[3], $ARGV[4], $ARGV[5]);
 }
 
-Extract($ARGV[0], $ARGV[1], $ARGV[2], $ARGV[3], $ARGV[4], $ARGV[5]);
+1;

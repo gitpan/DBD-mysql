@@ -7,7 +7,7 @@
 #   You may distribute under the terms of either the GNU General Public
 #   License or the Artistic License, as specified in the Perl README file.
 
-package DBD::mSQL;
+package DBD::mysql;
 use strict;
 use vars qw(@ISA $VERSION $err $errstr $drh);
 
@@ -16,9 +16,9 @@ use DynaLoader();
 use Carp ();
 @ISA = qw(DynaLoader);
 
-$VERSION = '2.01_11';
+$VERSION = '2.01_12';
 
-bootstrap DBD::mSQL $VERSION;
+bootstrap DBD::mysql $VERSION;
 
 
 $err = 0;	# holds error code   for DBI::err
@@ -32,11 +32,11 @@ sub driver{
     $class .= "::dr";
 
     # not a 'my' since we use it above to prevent multiple drivers
-    $drh = DBI::_new_drh($class, { 'Name' => 'mSQL',
+    $drh = DBI::_new_drh($class, { 'Name' => 'mysql',
 				   'Version' => $VERSION,
-				   'Err'    => \$DBD::mSQL::err,
-				   'Errstr' => \$DBD::mSQL::errstr,
-				   'Attribution' => 'DBD::mSQL by Jochen Wiedmann'
+				   'Err'    => \$DBD::mysql::err,
+				   'Errstr' => \$DBD::mysql::errstr,
+				   'Attribution' => 'DBD::mysql by Jochen Wiedmann'
 				 });
 
     $drh;
@@ -85,7 +85,7 @@ sub _OdbcParseHost ($$) {
 }
 
 sub AUTOLOAD {
-    my ($meth) = $DBD::mSQL::AUTOLOAD;
+    my ($meth) = $DBD::mysql::AUTOLOAD;
     my ($smeth) = $meth;
     $smeth =~ s/(.*)\:\://;
 
@@ -98,7 +98,7 @@ sub AUTOLOAD {
 1;
 
 
-package DBD::mSQL::dr; # ====== DRIVER ======
+package DBD::mysql::dr; # ====== DRIVER ======
 use strict;
 
 sub connect {
@@ -118,18 +118,18 @@ sub connect {
 	'password' => $password
     };
 
-    DBD::mSQL->_OdbcParse($dsn, $privateAttrHash,
+    DBD::mysql->_OdbcParse($dsn, $privateAttrHash,
 				  ['database', 'host', 'port']);
 
     if (!defined($this = DBI::_new_dbh($drh, {}, $privateAttrHash))) {
 	return undef;
     }
 
-    $this->{'private_DBD_mSQL_attr'} = $privateAttrHash;
+    $this->{'private_DBD_mysql_attr'} = $privateAttrHash;
 
     # Call msqlConnect func in mSQL.xs file
     # and populate internal handle data.
-    DBD::mSQL::db::_login($this, $dsn, $username, $password)
+    DBD::mysql::db::_login($this, $dsn, $username, $password)
 	  or $this = undef;
     $this;
 }
@@ -139,7 +139,7 @@ sub data_sources {
     my(@dsn) = $self->func('', '_ListDBs');
     my($i);
     for ($i = 0;  $i < @dsn;  $i++) {
-	$dsn[$i] = "DBI:mSQL:$dsn[$i]";
+	$dsn[$i] = "DBI:mysql:$dsn[$i]";
     }
     @dsn;
 }
@@ -149,7 +149,7 @@ sub admin {
     my($command) = shift;
     my($dbname) = ($command eq 'createdb'  ||  $command eq 'dropdb') ?
 	shift : '';
-    my($host, $port) = DBD::mSQL->_OdbcParseHost(shift(@_) || '');
+    my($host, $port) = DBD::mysql->_OdbcParseHost(shift(@_) || '');
     my($user) = shift || '';
     my($password) = shift || '';
 
@@ -164,7 +164,7 @@ sub _CreateDB {
     my($drh) = shift;
     my($host) = (@_ > 1) ? shift : undef;
     my($dbname) = shift;
-    if (!$DBD::mSQL::QUIET) {
+    if (!$DBD::mysql::QUIET) {
 	warn "'_CreateDB' is deprecated, use 'admin' instead";
     }
     $drh->func('createdb', $dbname, $host, 'admin');
@@ -174,24 +174,24 @@ sub _DropDB {
     my($drh) = shift;
     my($host) = (@_ > 1) ? shift : undef;
     my($dbname) = shift;
-    if (!$DBD::mSQL::QUIET) {
+    if (!$DBD::mysql::QUIET) {
 	warn "'DropDB' is deprecated, use 'admin' instead";
     }
     $drh->func('dropdb', $dbname, $host, 'admin');
 }
 
 
-package DBD::mSQL::db; # ====== DATABASE ======
+package DBD::mysql::db; # ====== DATABASE ======
 use strict;
 
-%DBD::mSQL::db::db2ANSI = ("INT"   =>  "INTEGER",
+%DBD::mysql::db::db2ANSI = ("INT"   =>  "INTEGER",
 			   "CHAR"  =>  "CHAR",
 			   "REAL"  =>  "REAL",
 			   "IDENT" =>  "DECIMAL"
                           );
 
 ### ANSI datatype mapping to mSQL datatypes
-%DBD::mSQL::db::ANSI2db = ("CHAR"          => "CHAR",
+%DBD::mysql::db::ANSI2db = ("CHAR"          => "CHAR",
 			   "VARCHAR"       => "CHAR",
 			   "LONGVARCHAR"   => "CHAR",
 			   "NUMERIC"       => "INTEGER",
@@ -221,7 +221,7 @@ sub prepare {
     });
 
     # Populate internal handle data.
-    if (!DBD::mSQL::st::_prepare($sth, $statement)) {
+    if (!DBD::mysql::st::_prepare($sth, $statement)) {
 	$sth = undef;
     }
 
@@ -231,18 +231,18 @@ sub prepare {
 sub db2ANSI {
     my $self = shift;
     my $type = shift;
-    return $DBD::mSQL::db::db2ANSI{"$type"};
+    return $DBD::mysql::db::db2ANSI{"$type"};
 }
 
 sub ANSI2db {
     my $self = shift;
     my $type = shift;
-    return $DBD::mSQL::db::ANSI2db{"$type"};
+    return $DBD::mysql::db::ANSI2db{"$type"};
 }
 
 sub _ListFields($$) {
     my($self, $table) = @_;
-    if (!$DBD::mSQL::QUIET) {
+    if (!$DBD::mysql::QUIET) {
 	warn "'_ListFields' is deprecated, use the SQL query 'LISTFIELDS \$table' instead.";
     }
     my($sth) = $self->prepare("LISTFIELDS $table");
@@ -262,19 +262,19 @@ sub admin {
 }
 
 
-package DBD::mSQL::st; # ====== STATEMENT ======
+package DBD::mysql::st; # ====== STATEMENT ======
 use strict;
 
 # Just a stub for backward compatibility; use is deprecated
 sub _ListSelectedFields ($) {
-    if (!$DBD::mSQL::QUIET) {
+    if (!$DBD::mysql::QUIET) {
 	warn "_ListSelectedFields is deprecated and superfluos";
     }
     shift;
 }
 
 sub _NumRows ($) {
-    if (!$DBD::mSQL::QUIET) {
+    if (!$DBD::mysql::QUIET) {
 	warn "_NumRows is deprecated, use \$sth->rows instead.";
     }
     shift->rows;
@@ -465,7 +465,7 @@ and supply the appropriate arguments (host, defaults localhost, user,
 defaults to '' and password, defaults to ''). A driver handle can be
 obtained with
 
-    $drh = DBI->install_driver('mSQL');
+    $drh = DBI->install_driver('mysql');
 
 Otherwise reuse the existing connection of a database handle (dbh).
 
@@ -704,7 +704,7 @@ expect them to work in future versions, but they have not yet been scheduled
 for removal and currently they should be usable without any code modifications.
 
 Deprecated attributes and methods will currently issue a warning unless
-you set the variable $DBD::mSQL::QUIET to a true value. This will
+you set the variable $DBD::mysql::QUIET to a true value. This will
 be the same for Msql-Mysql-modules 1.19xx and 1.20xx. They will be silently
 removed in 1.21xx.
 

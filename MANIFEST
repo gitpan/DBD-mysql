@@ -4,6 +4,14 @@ INSTALL
 MANIFEST
 Makefile.PL
 README
+Mysql/lib/Bundle/Mysql.pm	These are only distributed because PAUSE needs
+Mysql/lib/Mysql.pm		the .pm files being present. Instead modify
+Mysql/lib/Mysql/Statement.pm	the corresponding files in the dbd and nodbd
+Mysql/mysql.pm			directories. They are automatically
+Msql/lib/Bundle/Msql.pm		regenerated using "xtract". 
+Msql/lib/Msql.pm
+Msql/lib/Msql/Statement.pm
+Msql/mSQL.pm
 dbd/Acknowledgements
 dbd/Changes
 dbd/Makefile.PL.in	Makefile generator for DBI drivers
@@ -51,11 +59,3 @@ tests/pNET.dbtest	Core of testing pNET database access (dummy)
 tests/pNET.mtest	Core of testing pNET database access
 tests/skeleton.test	Skeleton file for writing new tests
 xtract			Script to create files from dbd/ and nodbd/
-lib/Bundle/Mysql.pm     These are only distributed because PAUSE needs
-lib/Bundle/Msql.pm      the .pm files being present. Instead modify the
-lib/Mysql.pm            corresponding files in the dbd and nodbd directories.
-lib/Mysql/Statement.pm  They are automatically regenerated using "xtract".
-lib/DBD/mysql.pm
-lib/DBD/mSQL.pm
-lib/Msql.pm
-lib/Msql/Statement.pm

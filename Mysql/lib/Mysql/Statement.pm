@@ -7,7 +7,7 @@ package Mysql::Statement;
 use strict;
 use vars qw($OPTIMIZE $VERSION $AUTOLOAD);
 
-$VERSION = '1.19_11';
+$VERSION = '1.19_12';
 
 $OPTIMIZE = 0; # controls, which optimization we default to
 

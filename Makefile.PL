@@ -20,8 +20,8 @@ use lib ".";
 
 use vars qw($MyConfig $VERSION $DBD_VERSION);
 
-$VERSION = "1.19_11";
-$DBD_VERSION = "2.01_11";
+$VERSION = "1.19_12";
+$DBD_VERSION = "2.01_12";
 
 
 ############################################################################
@@ -114,10 +114,11 @@ sub Xtract($$$;$) {
     if (!$path) {
 	$path = "xtract";
     }
-    system sprintf("%s %s %s %s %s %s %s %s",
-		   $^X, $path,
-		   $ref->[0], $ref->[1], $driver, $dbdDriver,
-		   $MyConfig->{'VERSION'}, $MyConfig->{'DBD_VERSION'});
+    $ENV{'XTRACT_NOT_RUNNING'} = 1;
+    require "xtract";
+    Extract($ref->[0], $ref->[1], $driver, $dbdDriver,
+	    $MyConfig->{'VERSION'}, $MyConfig->{'DBD_VERSION'});
+    delete $ENV{'XTRACT_NOT_RUNNING'};
     chmod $ref->[2] ? 0755 : 0644, $ref->[1];
 }
 
@@ -630,7 +631,7 @@ and can break existing code!}, "y");
         [ ["dbd/Makefile.PL.in", "Mysql/Makefile.PL"],
           ["dbd/dbdimp.c", "Mysql/dbdimp.c"],
           ["dbd/dbd.xs.in", "Mysql/mysql.xs"],
-          ["dbd/dbd.pm.in", "lib/DBD/mysql.pm"],
+          ["dbd/dbd.pm.in", "Mysql/mysql.pm"],
           ["tests/00base.t", "Mysql/t/00base.t"],
           ["tests/10dsnlist.t", "Mysql/t/10dsnlist.t"],
           ["tests/20createdrop.t", "Mysql/t/20createdrop.t"],
@@ -647,15 +648,15 @@ and can break existing code!}, "y");
         [ ["tests/akmisc.t", "Mysql/t/akmisc.t"],
           ["tests/mysql.t", "Mysql/t/mysql.t"],
           ["tests/mysql2.t", "Mysql/t/mysql2.t"],
-          ["nodbd/bundle.pm.in", "lib/Bundle/Mysql.pm"],
-          ["nodbd/nodbd.pm.in", "lib/Mysql.pm"],
-          ["nodbd/statement.pm.in", "lib/Mysql/Statement.pm"],
+          ["nodbd/bundle.pm.in", "Mysql/lib/Bundle/Mysql.pm"],
+          ["nodbd/nodbd.pm.in", "Mysql/lib/Mysql.pm"],
+          ["nodbd/statement.pm.in", "Mysql/lib/Mysql/Statement.pm"],
           ["nodbd/pmsql.in", "Mysql/pmysql", 1]];
     $MyConfig->{'files_dbd_msql'} =
         [ ["dbd/Makefile.PL.in", "Msql/Makefile.PL"],
           ["dbd/dbdimp.c", "Msql/dbdimp.c"],
           ["dbd/dbd.xs.in", "Msql/mSQL.xs"],
-          ["dbd/dbd.pm.in", "lib/DBD/mSQL.pm"],
+          ["dbd/dbd.pm.in", "Msql/mSQL.pm"],
           ["tests/00base.t", "Msql/t/00base.t"],
           ["tests/10dsnlist.t", "Msql/t/10dsnlist.t"],
           ["tests/20createdrop.t", "Msql/t/20createdrop.t"],
@@ -672,9 +673,9 @@ and can break existing code!}, "y");
         [ ["tests/akmisc.t", "Msql/t/akmisc.t"],
           ["tests/msql1.t", "Msql/t/msql1.t"],
           ["tests/msql2.t", "Msql/t/msql2.t"],
-          ["nodbd/bundle.pm.in", "lib/Bundle/Msql.pm"],
-          ["nodbd/nodbd.pm.in", "lib/Msql.pm"],
-          ["nodbd/statement.pm.in", "lib/Msql/Statement.pm"],
+          ["nodbd/bundle.pm.in", "Msql/lib/Bundle/Msql.pm"],
+          ["nodbd/nodbd.pm.in", "Msql/lib/Msql.pm"],
+          ["nodbd/statement.pm.in", "Msql/lib/Msql/Statement.pm"],
           ["nodbd/pmsql.in", "Mysql/pmsql", 1]];
     if ($MyConfig->{'install_dbd_mysql'}) {
         push(@{$MyConfig->{'files_dbd_mysql'}},
@@ -728,17 +729,13 @@ sub CreatePostamble($$$) {
 }
 
 sub MakeDirs () {
-    my (@removeList, @createList);
+    my (@createList);
 
     if ($MyConfig->{'install_dbd_mysql'}) {
 	push(@createList, @{$MyConfig->{'files_dbd_mysql'}});
-    } else {
-	push(@removeList, @{$MyConfig->{'files_dbd_mysql'}});
     }
     if ($MyConfig->{'install_mysqlperl'}) {
 	push(@createList, @{$MyConfig->{'files_mysqlperl'}});
-    } else {
-	push(@removeList, @{$MyConfig->{'files_mysqlperl'}});
     }
 
     $MyConfig->{'postamble_mysql'} = CreatePostamble('Mysql', 'mysql',
@@ -747,25 +744,13 @@ sub MakeDirs () {
     @createList = ();
     if ($MyConfig->{'install_dbd_msql'}) {
 	push(@createList, @{$MyConfig->{'files_dbd_msql'}});
-    } else {
-	push(@removeList, @{$MyConfig->{'files_dbd_msql'}});
     }
     if ($MyConfig->{'install_msqlperl'}) {
 	push(@createList, @{$MyConfig->{'files_msqlperl'}});
-    } else {
-	push(@removeList, @{$MyConfig->{'files_msqlperl'}});
     }
 
     $MyConfig->{'postamble_msql'} = CreatePostamble('Msql', 'mSQL',
 						    \@createList);
-
-    my($ref, $file);
-    foreach $ref (@removeList) {
-	$file = $ref->[1];
-	if (!unlink $file) {
-	    die "Cannot remove file $file: $!";
-	}
-    }
 }
 
 
@@ -777,8 +762,17 @@ sub MakeDirs () {
 
 Init();
 
+my(@dirs);
+if ($MyConfig->{'install_dbd_msql'}) {
+    push(@dirs, "Msql");
+}
+if ($MyConfig->{'install_dbd_mysql'}) {
+    push(@dirs, "Mysql");
+}
+
 ExtUtils::MakeMaker::WriteMakefile
     ('NAME'         => 'Msql-Mysql-modules',
+     'DIR'          => \@dirs,
      'EXE_FILES'    => [ 'dbimon' ],
      'dist'         => { 'SUFFIX'       => ".gz",
 			 'DIST_DEFAULT' => 'all tardist',
