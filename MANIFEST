@@ -3,27 +3,30 @@ FAQ.msql		FAQ for msql users
 INSTALL
 MANIFEST
 Makefile.PL
-Makefile.lib
 README
+Mysql/lib/Bundle/Mysql.pm	These are only distributed because PAUSE needs
+Mysql/lib/Mysql.pm		the .pm files being present. Instead modify
+Mysql/lib/Mysql/Statement.pm	the corresponding files in the dbd and nodbd
+Mysql/mysql.pm			directories. They are automatically
+Msql/lib/Bundle/Msql.pm		regenerated using "xtract". 
+Msql/lib/Msql.pm
+Msql/lib/Msql/Statement.pm
+Msql/mSQL.pm
 dbd/Acknowledgements
 dbd/Changes
 dbd/Makefile.PL.in	Makefile generator for DBI drivers
 dbd/README
 dbd/bindparam.h
+dbd/constants.h
 dbd/dbd.pm.in
 dbd/dbd.xs.in
 dbd/dbdimp.c
 dbd/dbdimp.h
 dbd/dbimon.in		The DBI monitor
-dbimon
-dbd/myMsql.c		Library file for common Msql/Mysql sources
 dbd/myMsql.h		Header file for common Msql/Mysql sources
 msql.patch.lost.tables
-nodbd/Makefile.PL.in
 nodbd/bundle.pm.in
-nodbd/constants.h
 nodbd/nodbd.pm.in
-nodbd/nodbd.xs.in
 nodbd/pmsql.in
 nodbd/statement.pm.in
 nodbd/typemap
@@ -42,42 +45,18 @@ tests/50commit.t	Test for commit, rollback and AutoCommit
 tests/lib.pl		Common declarations of the test suite
 tests/ak-dbd.t		Miscellaneous DBI driver tests
 tests/akmisc.t		Msql/Mysql only, also a valuable tutorial
+tests/dbdadmin.t	Check $dbh->ping and 'admin' methods
 tests/msql1.t		Test script for Msql only
 tests/msql2.t		Test script for Msql with msql2 only
 tests/mysql.t		Test script for Mysql only
 tests/mysql2.t		Test script for Mysql only
 tests/mSQL.dbtest	Core of testing mSQL database access
 tests/mSQL.mtest	Core of testing mSQL module
+tests/mSQL1.dbtest	Core of testing mSQL1 database access
+tests/mSQL1.mtest	Core of testing mSQL1 module
 tests/mysql.dbtest	Core of testing mysql database access
 tests/mysql.mtest	Core of testing mysql module
 tests/pNET.dbtest	Core of testing pNET database access (dummy)
 tests/pNET.mtest	Core of testing pNET database access
 tests/skeleton.test	Skeleton file for writing new tests
 xtract			Script to create files from dbd/ and nodbd/
-lib/Bundle/Mysql.pm     These are only distributed because PAUSE needs
-lib/Bundle/Msql.pm      the .pm files being present. Instead modify the
-lib/Mysql.pm            corresponding files in the dbd and nodbd directories.
-lib/Mysql/Statement.pm  They are automatically regenerated using "xtract".
-lib/DBD/mysql.pm
-lib/DBD/mSQL.pm
-lib/Msql.pm
-lib/Msql/Statement.pm
-Mysql/myMsql.c
-Mysql/Mysql.xs
-Mysql/pmysql
-Mysql/typemap
-DBD-mysql/mysql.xs
-DBD-mysql/dbdimp.c
-DBD-mysql/myMsql.c
-Msql/myMsql.c
-Msql/Msql.xs
-Msql/pmsql
-Msql/typemap
-DBD-mSQL/mSQL.xs
-DBD-mSQL/dbdimp.c
-DBD-mSQL/myMsql.c
-
-
-
-
-

@@ -2,7 +2,7 @@
 
 package Bundle::Mysql;
 
-$VERSION = '1.1832';
+$VERSION = '1.19_20';
 
 1;
 
