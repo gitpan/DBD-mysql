@@ -1,4 +1,4 @@
-#!/sw/linux-i386/perl-5.004.03/bin/perl
+#!/sw/linux-i386/perl-5.004.04/bin/perl
 #
 #   dbimon - DBI monitor
 #
@@ -39,7 +39,7 @@ use Data::ShowTable ();
 #
 #   Constants
 #
-my $VERSION = "1.1820";
+my $VERSION = "1.1821";
 
 my @VALID_VARS = ("escapeChar", "less", "listWrapMargin", "maxTableWidth",
 		  "noEscape", "quoteChar", "sepChar", "showMode");

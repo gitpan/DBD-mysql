@@ -1,4 +1,3 @@
-#!/usr/local/bin/perl
 
 require 5.004;
 use strict;

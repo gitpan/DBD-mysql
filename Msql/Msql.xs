@@ -5,6 +5,9 @@
 #include "XSUB.h"
 #include <myMsql.h>
 
+#include "../nodbd/constants.h"
+
+
 #ifndef IS_PRI_KEY
 #define IS_PRI_KEY(a) IS_UNIQUE(a)
 #endif
@@ -416,9 +419,12 @@ DESTROY(handle)
   }
 }
 
+
+MODULE = Msql		PACKAGE = Msql
+
 char *
 info(handle)
-  my_sth_t handle
+  my_dbh_t handle
   PROTOTYPE: $
   CODE:
 {
@@ -428,7 +434,10 @@ info(handle)
   dbh_t		sock;
 
   readMYSOCKET;
-  if (validSOCKET  &&  (RETVAL = mysql_info(sock))) {
+  if (validSOCKET) {
+    if (!(RETVAL = mysql_info(sock))) {
+        RETVAL = "";
+    }
     ok = TRUE;
   }
 #endif
@@ -440,18 +449,14 @@ info(handle)
    RETVAL
 
 
-
-MODULE = Msql		PACKAGE = Msql
-
 double
 constant(name,arg)
-	char *		name
-	char *		arg
-      CODE:
-        extern double mymsql_constant _((char*, char*));
-        RETVAL = mymsql_constant(name, arg);
-      OUTPUT:
-        RETVAL
+    char *		name
+    char *		arg
+  CODE:
+    RETVAL = mymsql_constant(name, arg);
+  OUTPUT:
+    RETVAL
 
 
 char *

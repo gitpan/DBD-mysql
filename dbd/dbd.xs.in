@@ -12,6 +12,7 @@
 */
 
 #include "dbdimp.h"
+#include "../nodbd/constants.h"
 
 
 /* --- Variables --- */
@@ -19,11 +20,20 @@
 
 DBISTATE_DECLARE;
 
-
 MODULE = DBD::~DBD_DRIVER~	PACKAGE = DBD::~DBD_DRIVER~
 
 INCLUDE: ~DBD_DRIVER~.xsi
 
+MODULE = DBD::~DBD_DRIVER~	PACKAGE = DBD::~DBD_DRIVER~
+
+double
+constant(name, arg)
+    char* name
+    char* arg
+  CODE:
+    RETVAL = mymsql_constant(name, arg);
+  OUTPUT:
+    RETVAL
 
 MODULE = DBD::~DBD_DRIVER~	PACKAGE = DBD::~DBD_DRIVER~::dr
 

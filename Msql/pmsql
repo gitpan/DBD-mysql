@@ -1,7 +1,7 @@
-#!/sw/linux-i386/perl-5.004.03/bin/perl
+#!/sw/solaris2-sparc/perl-5.004.02/bin/perl
 
 # $Id: pmysql.PL 1.1 Tue, 30 Sep 1997 01:28:08 +0200 joe $
-my $version = '1.1820';
+my $version = '1.1821';
 
 BEGIN {require 5.002;}
 # use strict;      # only for testing. Unfriendly for the user-eval()s

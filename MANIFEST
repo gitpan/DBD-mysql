@@ -3,11 +3,13 @@ FAQ.msql		FAQ for msql users
 INSTALL
 MANIFEST
 Makefile.PL
+Makefile.lib
 README
 dbd/Acknowledgements
 dbd/Changes
 dbd/Makefile.PL.in	Makefile generator for DBI drivers
 dbd/README
+dbd/bindparam.h
 dbd/dbd.pm.in
 dbd/dbd.xs.in
 dbd/dbdimp.c
@@ -19,7 +21,7 @@ dbd/myMsql.h		Header file for common Msql/Mysql sources
 msql.patch.lost.tables
 nodbd/Makefile.PL.in
 nodbd/bundle.pm.in
-nodbd/constants.c
+nodbd/constants.h
 nodbd/nodbd.pm.in
 nodbd/nodbd.xs.in
 nodbd/pmsql.in
@@ -60,7 +62,6 @@ lib/DBD/mysql.pm
 lib/DBD/mSQL.pm
 lib/Msql.pm
 lib/Msql/Statement.pm
-Mysql/constants.c
 Mysql/myMsql.c
 Mysql/Mysql.xs
 Mysql/pmysql
@@ -85,7 +86,6 @@ DBD-mysql/t/40numrows.t
 DBD-mysql/t/50chopblanks.t
 DBD-mysql/t/50commit.t
 DBD-mysql/t/ak-dbd.t
-Msql/constants.c
 Msql/myMsql.c
 Msql/Msql.xs
 Msql/pmsql

@@ -16,7 +16,7 @@ use DynaLoader();
 use Carp ();
 @ISA = qw(DynaLoader);
 
-$VERSION = '2.006';
+$VERSION = '2.007';
 
 bootstrap DBD::mysql $VERSION;
 
@@ -42,8 +42,18 @@ sub driver{
     $drh;
 }
 
-1;
+sub AUTOLOAD {
+    my ($meth) = $DBD::mysql::AUTOLOAD;
+    my ($smeth) = $meth;
+    $smeth =~ s/(.*)\:\://;
 
+    my $val = constant($smeth, @_ ? $_[0] : 0);
+    if ($! == 0) { eval "sub $meth { $val }"; return $val; }
+
+    Carp::croak "$meth: Not defined";
+}
+
+1;
 
 
 package DBD::mysql::dr; # ====== DRIVER ======
@@ -448,8 +458,8 @@ A reference to an array of table names, useful in a I<JOIN> result.
 
 A reference to an array of column types. It depends on the DBMS,
 which values are returned, even for identical types. mSQL will
-return types like &mSQL::INT_TYPE, &msql::TEXT_TYPE etc., MySQL
-uses &mysql::FIELD_TYPE_SHORT, &mysql::FIELD_TYPE_STRING etc.
+return types like &DBD::mSQL::INT_TYPE, &DBD::msql::TEXT_TYPE etc.,
+MySQL uses &DBD::mysql::FIELD_TYPE_SHORT, &DBD::mysql::FIELD_TYPE_STRING etc.
 
 =back
 

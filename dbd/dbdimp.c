@@ -27,6 +27,9 @@
 
 #include "dbdimp.h"
 
+#include "bindparam.h"
+
+
 DBISTATE_DECLARE;
 
 #if defined(DBD_MYSQL)  &&  defined(mysql_errno)
@@ -391,40 +394,12 @@ SV* dbd_db_FETCH_attrib(SV* dbh, imp_dbh_t* imp_dbh, SV* keysv) {
  **************************************************************************/
 
 int dbd_st_prepare(SV* sth, imp_sth_t* imp_sth, char* statement, SV* attribs) {
-    char* ptr = statement;
-    int num_param;
     int i;
 
     /*
      *  Count the number of parameters
      */
-    num_param = 0;
-    while (*ptr) {
-        switch (*ptr++) {
-	  case '\'':
-	    /*
-	     *  Skip string
-	     */
-	    while (*ptr  &&  *ptr != '\'') {
-	        if (*ptr == '\\') {
-		    ++ptr;
-		}
-		if (*ptr) {
-		    ++ptr;
-		}
-	    }
-	    if (*ptr) {
-	        ++ptr;
-	    }
-	    break;
-	  case '?':
-	    ++num_param;
-	    break;
-	  default:
-	    break;
-	}
-    }
-    DBIc_NUM_PARAMS(imp_sth) = num_param;
+    DBIc_NUM_PARAMS(imp_sth) = CountParam(statement);
 
     /*
      *  Initialize our data
@@ -439,12 +414,7 @@ int dbd_st_prepare(SV* sth, imp_sth_t* imp_sth, char* statement, SV* attribs) {
     /*
      *  Allocate memory for parameters
      */
-    if (num_param) {
-        Newz(908, imp_sth->params, num_param, imp_sth_ph_t);
-    } else {
-        imp_sth->params = NULL;
-    }
-
+    imp_sth->params = AllocParam(DBIc_NUM_PARAMS(imp_sth));
     DBIc_IMPSET_on(imp_sth);
 
     return 1;
@@ -473,153 +443,11 @@ int dbd_st_internal_execute(SV* h, SV* statement, SV* attribs, int numParams,
 			    dbh_t svsock) {
     STRLEN slen;
     char* sbuf = SvPV(statement, slen);
-    char* salloc = NULL;
+    char* salloc = ParseParam(sbuf, &slen, params, numParams);
 
-    while (isspace(*sbuf)) {
-	++sbuf;
-	--slen;
-    }
-
-    if (numParams) {
-        int i, j;
-	char* valbuf;
-	STRLEN vallen;
-	int alen;
-	char* ptr;
-	imp_sth_ph_t* ph;
-
-        /*
-	 *  Count the number of bytes being allocated for the statement
-	 */
-	alen = slen;
-	for (i = 0, ph = params;  i < numParams;  i++, ph++) {
-	    if (!ph->value  ||  !SvOK(ph->value)) {
-		alen += 3;  /* Erase '?', insert 'NULL' */
-	    } else {
-	        if (!ph->type) {
-		    ph->type = SvNIOK(ph->value) ? SQL_INTEGER : SQL_VARCHAR;
-		}
-		valbuf = SvPV(ph->value, vallen);
-		alen += 2*vallen+1; /* Erase '?', insert (possibly quoted)
-				     * string.
-				     */
-	    }
-	}
-
-	/*
-	 *  Allocate memory
-	 */
-	New(908, salloc, alen+1, char);
-	ptr = salloc;
-
-	/*
-	 *  Now create the statement string; compare dbd_st_prepare
-	 */
-	i = 0;
-	j = 0;
-	while (j < slen) {
-	    switch(sbuf[j]) {
-	      case '\'':
-	        /*
-		 * Skip string
-		 */
-		*ptr++ = sbuf[j++];
-		while (j < slen  &&  sbuf[j] != '\'') {
-		    if (sbuf[j] == '\\') {
-		        *ptr++ = sbuf[j++];
-			if (j < slen) {
-			    *ptr++ = sbuf[j++];
-			}
-		    } else {
-		        *ptr++ = sbuf[j++];
-		    }
-		}
-	        if (j < slen) {
-		    *ptr++ = sbuf[j++];
-		}
-		break;
-	      case '?':
-	        /*
-		 * Insert parameter
-		 */
-	        j++;
-		if (i >= numParams) {
-		    do_error(h, JW_ERR_ILLEGAL_PARAM_NUM,
-			     "Insufficient number of parameters");
-		    return -2;
-		}
-		ph = params+i++;
-		if (!ph->value  ||  !SvOK(ph->value)) {
-		    *ptr++ = 'N';
-		    *ptr++ = 'U';
-		    *ptr++ = 'L';
-		    *ptr++ = 'L';
-		} else {
-		    int isNum = FALSE;
-		    int c;
-
-		    valbuf = SvPV(ph->value, vallen);		    
-		    if (valbuf) {
-		        switch (ph->type) {
-			  case SQL_NUMERIC:
-			  case SQL_DECIMAL:
-			  case SQL_INTEGER:
-			  case SQL_SMALLINT:
-			  case SQL_FLOAT:
-			  case SQL_REAL:
-			  case SQL_DOUBLE:
-			    /* case SQL_BIGINT:     These are commented out */
-			    /* case SQL_TINYINT:    in DBI's dbi_sql.h      */
-			    isNum = TRUE;
-			    break;
-			  case SQL_CHAR:
-			  case SQL_VARCHAR:
-			    /* case SQL_DATE:       These are commented out */
-			    /* case SQL_TIME:       in DBI's dbi_sql.h      */
-			    /* case SQL_TIMESTAMP:                          */
-			    /* case LONGVARCHAR:                            */
-			    /* case BINARY:                                 */
-			    /* case VARBINARY:                              */
-			    /* case LONGVARBINARY                           */
-			    isNum = FALSE;
-			    break;
-			  default:
-			    isNum = FALSE;
-			    break;
-			}
-			if (!isNum) {
-			    *ptr++ = '\'';
-			}
-			while (vallen--) {
-			    switch ((c = *valbuf++)) {
-			      case '\0':
-				  *ptr++ = '\\';
-				  *ptr++ = '0';
-				  break;
-			      case '\'':
-			      case '\\':
-				  *ptr++ = '\\';
-				  /* No break! */
-			      default:
-				  *ptr++ = c;
-				  break;
-			    }
-			}
-			if (!isNum) {
-			    *ptr++ = '\'';
-			}
-		    }
-		}
-		break;
-	      default:
-	        *ptr++ = sbuf[j++];
-		break;
-	    }
-	}
-	slen = ptr - salloc;
-	*ptr++ = '\0';
-	sbuf = salloc;
-	if (dbis->debug >= 2) {
+    if (salloc) {
+        sbuf = salloc;
+        if (dbis->debug >= 2) {
 	    fprintf(DBILOGFP, "      Binding parameters: %s\n", sbuf);
 	}
     }
@@ -905,19 +733,8 @@ void dbd_st_destroy(SV* sth, imp_sth_t* imp_sth) {
     /*
      *  Free values allocated by dbd_bind_ph
      */
-    if (imp_sth->params) {
-        int i, num_param;
-	num_param = DBIc_NUM_PARAMS(imp_sth);
-	for (i = 0;  i < num_param;  i++) {
-	    imp_sth_ph_t* ph = &imp_sth->params[i];
-	    if (ph->value) {
-	        (void) SvREFCNT_dec(ph->value);
-		ph->value = NULL;
-	    }
-	}
-	Safefree(imp_sth->params);
-	imp_sth->params = NULL;
-    }
+    FreeParam(imp_sth->params, DBIc_NUM_PARAMS(imp_sth));
+    imp_sth->params = NULL;
 
     /*
      *  Free cached array attributes
@@ -1400,7 +1217,6 @@ int dbd_st_rows(SV* sth, imp_sth_t* imp_sth) {
 int dbd_bind_ph (SV *sth, imp_sth_t *imp_sth, SV *param, SV *value,
 		 IV sql_type, SV *attribs, int is_inout, IV maxlen) {
     int paramNum = SvIV(param);
-    imp_sth_ph_t* ph;
 
     if (paramNum <= 0  ||  paramNum > DBIc_NUM_PARAMS(imp_sth)) {
         do_error(sth, JW_ERR_ILLEGAL_PARAM_NUM,
@@ -1414,13 +1230,5 @@ int dbd_bind_ph (SV *sth, imp_sth_t *imp_sth, SV *param, SV *value,
 	return FALSE;
     }
 
-    ph = &imp_sth->params[paramNum - 1];
-    if (ph->value) {
-        (void) SvREFCNT_dec(ph->value);
-    }
-    (void) SvREFCNT_inc(ph->value = value);
-    if (sql_type) {
-        ph->type = sql_type;
-    }
-    return TRUE;
+    return BindParam(&imp_sth->params[paramNum - 1], value, sql_type);
 }

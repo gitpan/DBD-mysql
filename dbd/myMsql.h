@@ -88,6 +88,7 @@ int MyConnect(dbh_t*, char*, char*, char*);
 #else
 
 #include <mysql.h>  /* installed during the installation of mysql itself  */
+
 typedef MYSQL* dbh_t;
 typedef MYSQL_RES* result_t;
 typedef MYSQL_ROW row_t;

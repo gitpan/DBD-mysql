@@ -1,8 +1,12 @@
-#!/usr/local/bin/perl -w
+# -*- perl -*-
 
 use strict;
 require ExtUtils::MakeMaker;
 require Config;
+use lib "..";
+require "Makefile.lib";
+
+_MY::Config::Init(0);
 
 my $DRIVER = "~DRIVER~";
 
@@ -22,20 +26,16 @@ sub MY::postamble {
     my $pa = "\n";
     my $ref;
     foreach $ref (@_MY::Config::Files::~DRIVER~,
-		  ["../nodbd/constants.c", "constants.c"],
 		  ["../dbd/myMsql.c", "myMsql.c"],
 		  ["../nodbd/nodbd.xs.in", "~DRIVER~.xs"],
-		  ["../nodbd/pmsql.in", "pmsql"],
+		  ["../nodbd/pmsql.in", "pmsql", 1],
 		  ["../nodbd/typemap", "typemap"],
 		  ["../tests/lib.pl", "t/lib.pl"],
 		  ["../tests/msql1.t", "t/msql1.t"],
 		  ["../tests/msql2.t", "t/msql2.t"],
 		  ["../tests/akmisc.t", "t/akmisc.t"]) {
-	my($from, $to) = @$ref;
-	$pa .= sprintf("%s: %s Makefile.PL\n"
-		       . "\tperl ../xtract %s %s %s %s %s %s\n\n",
-		       $to, $from, $from, $to, "~DRIVER~", "~DBD_DRIVER~",
-		       "~NODBD_VERSION~", "~DBD_VERSION~");
+	$pa .= _MY::Config::XtractF($ref, "~DRIVER~", "~DBD_DRIVER~",
+				    "../xtract");
     }
     $pa;
 }

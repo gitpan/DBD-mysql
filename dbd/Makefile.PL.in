@@ -1,8 +1,13 @@
-#!/usr/local/bin/perl -sw
+# -*- perl -*-
 
 use strict;
 require ExtUtils::MakeMaker;
 require Config;
+require DBI::DBD;
+use lib "..";
+require "Makefile.lib";
+
+_MY::Config::Init(0);
 
 sub config () {
     my $dbd_driver = "~DBD_DRIVER~";
@@ -26,6 +31,8 @@ ExtUtils::MakeMaker::WriteMakefile(
 
 
 sub MY::postamble {
+    my $self = shift;
+
     my $pa = "\n";
     my $ref;
     foreach $ref
@@ -45,11 +52,34 @@ sub MY::postamble {
 	 ["../tests/50chopblanks.t", "t/50chopblanks.t"],
 	 ["../tests/50commit.t", "t/50commit.t"],
 	 ["../tests/ak-dbd.t", "t/ak-dbd.t"]) {
-	my($from, $to) = @$ref;
-	$pa .= sprintf("%s: %s Makefile.PL\n"
-		       . "\tperl ../xtract %s %s %s %s %s %s\n\n",
-		       $to, $from, $from, $to, "~DRIVER~", "~DBD_DRIVER~",
-		       "~NODBD_VERSION~", "~DBD_VERSION~");
+	$pa .= _MY::Config::XtractF($ref, "~DRIVER~", "~DBD_DRIVER~",
+				    "../xtract");
     }
-    $pa = $pa . "\ndbd.xs: ~DBD_DRIVER~.xsi\n\n" . DBI::DBD::dbd_postamble();
+    $pa = $pa . "\ndbd.xs: ~DBD_DRIVER~.xsi\n\n";
+
+    # we must be careful of quotes for Win32 here.
+    my ($dir, $dbiDir);
+    foreach $dir ($self->{INSTALLSITEARCH}, @INC) {
+	if (-f "$dir/auto/DBI/Driver.xst") {
+	    $dbiDir = $dir;
+	    last;
+	}
+    }
+    if (!$dbiDir) {
+	die "Unable to detect location of 'Driver.xst'.\n";
+    }
+
+    $pa .= '
+DBI_DRIVER_XST_DIR=' . $dbiDir . '/auto/DBI
+DBI_DRIVER_XST=$(DBI_DRIVER_XST_DIR)/Driver.xst
+
+$(BASEEXT).xs: $(BASEEXT).xsi
+
+$(BASEEXT).c: $(BASEEXT).xsi
+
+$(BASEEXT).xsi: $(DBI_DRIVER_XST)
+	perl -p -e "s/\~DRIVER\~/$(BASEEXT)/g" < $(DBI_DRIVER_XST) > $(BASEEXT).xsi
+';
+
+    $pa;
 }

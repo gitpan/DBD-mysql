@@ -116,6 +116,8 @@ struct imp_dbh_st {
 };
 
 
+
+
 /*
  *  The bind_param method internally uses this structure for storing
  *  parameters.
@@ -124,6 +126,7 @@ typedef struct imp_sth_ph_st {
     SV* value;
     int type;
 } imp_sth_ph_t;
+
 
 
 /*
@@ -178,6 +181,7 @@ struct imp_sth_st {
 #define dbd_describe		mysql_describe
 #define dbd_bind_ph		mysql_bind_ph
 #define dbd_st_internal_execute mysql_st_internal_execute
+#define mymsql_constant         mysql_constant
 #else
 #define dbd_init		msql_init
 #define dbd_db_login		msql_db_login
@@ -200,6 +204,7 @@ struct imp_sth_st {
 #define dbd_describe		msql_describe
 #define dbd_bind_ph		msql_bind_ph
 #define dbd_st_internal_execute msql_st_internal_execute
+#define mymsql_constant         msql_constant
 #endif
 
 #include <dbd_xsh.h>

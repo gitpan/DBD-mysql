@@ -4,7 +4,7 @@
 #include <myMsql.h>
 
 
-double mymsql_constant(char* name, char* arg) {
+static double mymsql_constant(char* name, char* arg) {
     errno = 0;
     switch (*name) {
     case 'A':

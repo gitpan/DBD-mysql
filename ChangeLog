@@ -1,3 +1,19 @@
+Wed Nov 19 19:50:29 1997  Jochen Wiedmann  <joe@ispsoft.de> (1.1821)
+
+	* dbd/dbd.pm.in: Added AUTOLOAD for constants like
+	  DBD::mysql::FIELD_TYPE_STRING or DBD::mSQL::CHAR_TYPE.
+
+	* xtract, dbd/Makefile.PL.in nodbd/Makefile.PL.in: Removed
+	  first line in case users perl is different from
+	  /usr/local/bin/perl.
+
+	* All Makefiles: Added chmod for xtracted files.
+
+	* Added bindparam.h for reuse in DBD::pNET.
+
+	* Makefile.lib: Some (hopefully) upward compatible modifications
+	  for integration into the MySQL distribution.
+	
 Sat Nov  1 17:04:27 1997  Jochen Wiedmann  <joe@ispsoft.de> (1.1820)
 
 	* xtract: Added "#xtract <driver>" ... "#endxtract".

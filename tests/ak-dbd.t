@@ -60,6 +60,29 @@ while (Testing()) {
 	or ErrMsg("Cannot connect: $DBI::errstr.\n");
 
     #
+    #   Verify whether constants work
+    #
+    if ($mdriver eq 'mysql') {
+	Test($state  or  (&DBD::mysql::FIELD_TYPE_STRING() != 254))
+	    or ErrMsgF("Wrong value for FIELD_TYPE_STRING:"
+		       . " Expected 254, got %s",
+		       &DBD::mysql::FIELD_TYPE_STRING());
+	Test($state  or  (&DBD::mysql::FIELD_TYPE_SHORT() != 2))
+	    or ErrMsgF("Wrong value for FIELD_TYPE_SHORT:"
+		       . " Expected 2, got %s",
+		       &DBD::mysql::FIELD_TYPE_SHORT());
+    } elsif ($driver eq 'mSQL') {
+	Test($state  or  (&DBD::mSQL::CHAR_TYPE() != 2))
+	    or ErrMsgF("Wrong value for CHAR_TYPE:"
+		       . " Expected 2, got %s",
+		       &DBD::mSQL::CHAR_TYPE());
+	Test($state  or  (&DBD::mysql::INT_TYPE() != 1))
+	    or ErrMsgF("Wrong value for INT_TYPE:"
+		       . " Expected 1, got %s",
+		       &DBD::mysql::INT_TYPE());
+    }
+
+    #
     #   Find a possible new table name
     #
     Test($state or $test_table = FindNewTable($dbh)) or !$verbose
