@@ -2,7 +2,7 @@
 
 package Bundle::Msql;
 
-$VERSION = '1.1825';
+$VERSION = '1.19_01';
 
 1;
 

@@ -12,7 +12,7 @@
 #
 require DBI;
 $mdriver = "";
-foreach $file ("lib.pl", "t/lib.pl") {
+foreach $file ("lib.pl", "t/lib.pl", "DBD-~DBD_DRIVER~/t/lib.pl") {
     do $file; if ($@) { print STDERR "Error while executing lib.pl: $@\n";
 			   exit 10;
 		      }
@@ -35,6 +35,7 @@ sub ServerError() {
 	"\tpermissions, then retry.\n");
     exit 10;
 }
+
 
 #
 #   Main loop; leave this untouched, put tests into the loop
