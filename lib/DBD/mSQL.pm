@@ -16,7 +16,7 @@ use DynaLoader();
 use Carp ();
 @ISA = qw(DynaLoader);
 
-$VERSION = '2.007';
+$VERSION = '2.009';
 
 bootstrap DBD::mSQL $VERSION;
 
@@ -352,9 +352,25 @@ of attributes. You access these by using, for example,
   my $numFields = $sth->{'NUM_OF_FIELDS'};
 
 Note, that most attributes are valid only after a successfull I<execute>.
-An C<undef> value will returned in that case.
+An C<undef> value will returned in that case. The most important exception
+is the C<mysql_use_result> attribute: This forces the driver to use
+mysql_use_result rather than mysql_store_result. The former is faster
+and less memory consuming, but tends to block other processes. (That's why
+mysql_store_result is the default.)
 
-Column dependant attributes, for example I<NAME>, the column names,
+To set the C<mysql_use_result> attribute, use either of the following:
+
+  my $sth = $dbh->prepare("QUERY", { "mysql_use_result" => 1});
+
+or
+
+  my $sth = $dbh->prepare("QUERY");
+  $sth->{"mysql_use_result"} = 1;
+
+Of course it doesn't make sense to set this attribute before calling the
+C<execute> method.
+
+Column dependent attributes, for example I<NAME>, the column names,
 are returned as a reference to an array. The array indices are
 corresponding to the indices of the arrays returned by I<fetchrow>
 and similar methods. For example the following code will print a

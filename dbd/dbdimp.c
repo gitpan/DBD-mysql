@@ -398,6 +398,7 @@ SV* dbd_db_FETCH_attrib(SV* dbh, imp_dbh_t* imp_dbh, SV* keysv) {
 int dbd_st_prepare(SV* sth, imp_sth_t* imp_sth, char* statement, SV* attribs) {
     int i;
 
+
     /*
      *  Count the number of parameters
      */
@@ -409,9 +410,27 @@ int dbd_st_prepare(SV* sth, imp_sth_t* imp_sth, char* statement, SV* attribs) {
     imp_sth->done_desc = 0;
     imp_sth->cda = NULL;
     imp_sth->currow = 0;
+#xtract Mysql
+    imp_sth->use_mysql_use_result = 0;
+#endxtract
     for (i = 0;  i < AV_ATTRIB_LAST;  i++) {
 	imp_sth->av_attr[i] = Nullav;
     }
+
+#xtract Mysql
+    /*
+     *  Check attributes
+     */
+    if (attribs  &&  SvTYPE(attribs) == SVt_RV) {
+        SV* sv = SvRV(attribs);
+	if (SvTYPE(sv) == SVt_PVHV) {
+	    SV** svp = hv_fetch((HV*) sv, "mysql_use_result", 16, FALSE);
+	    if (svp) {
+	        imp_sth->use_mysql_use_result = SvTRUE(*svp);
+	    }
+	}
+    }
+#endxtract
 
     /*
      *  Allocate memory for parameters
@@ -442,7 +461,7 @@ int dbd_st_prepare(SV* sth, imp_sth_t* imp_sth, char* statement, SV* attribs) {
 
 int dbd_st_internal_execute(SV* h, SV* statement, SV* attribs, int numParams,
 			    imp_sth_ph_t* params, result_t* cdaPtr,
-			    dbh_t svsock) {
+			    dbh_t svsock, int use_mysql_use_result) {
     STRLEN slen;
     char* sbuf = SvPV(statement, slen);
     char* salloc = ParseParam(sbuf, &slen, params, numParams);
@@ -499,10 +518,12 @@ int dbd_st_internal_execute(SV* h, SV* statement, SV* attribs, int numParams,
 	Safefree(salloc);
 
 	/** Store the result from the Query */
-	if (!(*cdaPtr = MyStoreResult(svsock))) {
 #xtract Mysql
+	if (!(*cdaPtr = (use_mysql_use_result ?
+		 mysql_use_result(svsock) : mysql_store_result(svsock)))) {
 	    return mysql_affected_rows(svsock);
 #xtract Msql
+	if (!(*cdaPtr = MyStoreResult(svsock))) {
 	    return -1;
 #endxtract
 	}
@@ -551,11 +572,13 @@ int dbd_st_execute(SV* sth, imp_sth_t* imp_sth) {
     }
 
     statement = hv_fetch((HV*) SvRV(sth), "Statement", 9, FALSE);
-    if ((imp_sth->row_num = dbd_st_internal_execute(sth, *statement, NULL,
-						    DBIc_NUM_PARAMS(imp_sth),
-						    imp_sth->params,
-						    &imp_sth->cda,
-						    imp_dbh->svsock))
+    if ((imp_sth->row_num =
+	     dbd_st_internal_execute(sth, *statement, NULL,
+				     DBIc_NUM_PARAMS(imp_sth),
+				     imp_sth->params,
+				     &imp_sth->cda,
+				     imp_dbh->svsock,
+				     imp_sth->use_mysql_use_result))
 	!= -2) {
 	if (!imp_sth->cda) {
 #xtract Mysql
@@ -779,6 +802,12 @@ int dbd_st_STORE_attrib(SV* sth, imp_sth_t* imp_sth, SV* keysv, SV* valuesv) {
 		"    -> dbd_st_STORE_attrib for %08lx, key %s\n",
 		(u_long) sth, key);
     }
+
+#xtract Mysql
+    if (strEQ(key, "mysql_use_result")) {
+        imp_sth->use_mysql_use_result = SvTRUE(valuesv);
+    }
+#endxtract
 
     if (dbis->debug >= 2) {
         fprintf(DBILOGFP,
@@ -1120,6 +1149,8 @@ SV* dbd_st_FETCH_attrib(SV* sth, imp_sth_t* imp_sth, SV* keysv) {
       case 'm':
 	if (strEQ(key, "max_length")) {
 	    retsv = ST_FETCH_AV(AV_ATTRIB_MAX_LENGTH);
+	} else if (strEQ(key, "mysql_use_result")) {
+	    retsv = boolSV(imp_sth->use_mysql_use_result);
 	}
 	break;
 #endxtract

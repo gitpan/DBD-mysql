@@ -1,3 +1,10 @@
+1997-12-31  Jochen Wiedmann  <joe@ispsoft.de> (1.1823)
+
+	* Added support for mysql_use_result, requested by Jesse
+	  Eversole <jee@marketdriven.com>.
+	* nodbd/typemap: Replaced sv_isa with sv_derived_from so that
+	  subclassing works, reported by Gisle Aas <gisle@aas.no>.
+	
 1997-12-11  Jochen Wiedmann  <joe@ispsoft.de> (1.1822)
 
 	* dbd/myMsql.c: DSN's like DBI:mysql:test;hostname=$host;port=$port

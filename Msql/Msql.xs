@@ -5,6 +5,9 @@
 #include "XSUB.h"
 #include <myMsql.h>
 
+#include "../nodbd/constants.h"
+
+
 #ifndef IS_PRI_KEY
 #define IS_PRI_KEY(a) IS_UNIQUE(a)
 #endif
@@ -180,6 +183,7 @@ fetchinternal(handle, key)
   int	off = 0;
   int	numfields;
   field_t	curField;
+  RETVAL = Nullsv;
 
   readRESULT;
   switch (*key){
@@ -250,6 +254,10 @@ fetchinternal(handle, key)
 	MYPERL_FETCH_INTERNAL(av_push(av,(SV*)newSViv((IV) curField->type)););
     }
     break;
+  }
+
+  if (!RETVAL) {
+    XSRETURN_UNDEF;
   }
 }
    OUTPUT:
@@ -448,13 +456,12 @@ info(handle)
 
 double
 constant(name,arg)
-	char *		name
-	char *		arg
-      CODE:
-        extern double mymsql_constant _((char*, char*));
-        RETVAL = mymsql_constant(name, arg);
-      OUTPUT:
-        RETVAL
+    char *		name
+    char *		arg
+  CODE:
+    RETVAL = mymsql_constant(name, arg);
+  OUTPUT:
+    RETVAL
 
 
 char *
@@ -466,7 +473,7 @@ errmsg(handle=NULL)
    dbh_t sock;
 #ifdef DBD_MYSQL
    SV** svp;
-   if (ST(0) && sv_isa(ST(0), "Mysql"))
+   if (ST(0) && sv_derived_from(ST(0), "Mysql"))
        handle = SvRV(ST(0));
    else
        croak("handle is not of type Mysql.\n");
@@ -492,7 +499,7 @@ errno(handle=NULL)
    dbh_t sock;
 #if defined(DBD_MYSQL)  &&  defined(mysql_errno)
    SV** svp;
-   if (ST(0) && sv_isa(ST(0), "Mysql"))
+   if (ST(0) && sv_derived_from(ST(0), "Mysql"))
        handle = SvRV(ST(0));
    else
        croak("handle is not of type Mysql.\n");
@@ -541,7 +548,7 @@ getserverinfo(handle=NULL)
    dbh_t sock;
 #ifdef DBD_MYSQL
    SV** svp;
-   if (ST(0) && sv_isa(ST(0), "Mysql"))
+   if (ST(0) && sv_derived_from(ST(0), "Mysql"))
        handle = SvRV(ST(0));
    else
        croak("handle is not of type Mysql.\n");

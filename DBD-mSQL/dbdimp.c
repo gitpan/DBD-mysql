@@ -27,7 +27,7 @@
 
 #include "dbdimp.h"
 
-#include "bindparam.c"
+#include "bindparam.h"
 
 
 DBISTATE_DECLARE;
@@ -117,21 +117,23 @@ int dbd_db_login(SV* dbh, imp_dbh_t* imp_dbh, char* dbname, char* user,
 		 char* password) {
     char* copy = NULL;
     char* host = NULL;
+    char* ptr;
 
     if (dbis->debug >= 2)
-        fprintf(DBILOGFP, "imp_dbh->connect: db = %s, uid = %s, pwd = %s\n",
+        fprintf(DBILOGFP, "imp_dbh->connect: dsn = %s, uid = %s, pwd = %s\n",
 	       dbname ? dbname : "NULL",
 	       user ? user : "NULL",
 	       password ? password : "NULL");
 
     /*
-     *  dbname may be "db:host"
+     *  dbname may be "db:host" or "db;host"
      */
-    if (strchr(dbname, ':')) {
-        New(0, copy, strlen(dbname)+1, char);
+    if ((ptr = strchr(dbname, ':'))  ||  (ptr = strchr(dbname, ';'))) {
+        int len = ptr-dbname;
+	copy = (char*) malloc(strlen(dbname)+1);
 	strcpy(copy, dbname);
 	dbname = copy;
-	host = strchr(copy, ':');
+	host = dbname + len;
 	*host++ = '\0';
     }
 
@@ -140,7 +142,7 @@ int dbd_db_login(SV* dbh, imp_dbh_t* imp_dbh, char* dbname, char* user,
      */
     if (!dbd_db_connect(&imp_dbh->svsock, host, user, password)) {
 	DO_ERROR(dbh, JW_ERR_CONNECT, imp_dbh->svsock);
-	Safefree(copy);
+	if (copy) free(copy);
 	return FALSE;
     }
 
@@ -148,13 +150,13 @@ int dbd_db_login(SV* dbh, imp_dbh_t* imp_dbh, char* dbname, char* user,
      *  Connected, now try to login
      */
     if (MySelectDb(imp_dbh->svsock, dbname)) {
-        Safefree(copy);
+        if (copy) free(copy);
 	DO_ERROR(dbh, JW_ERR_SELECT_DB, imp_dbh->svsock);
 	MyClose(imp_dbh->svsock);
 	return FALSE;
     }
 
-    Safefree(copy);
+    if (copy) free(copy);
 
     /*
      *  Tell DBI, that dbh->disconnect should be called for this handle
@@ -391,6 +393,7 @@ SV* dbd_db_FETCH_attrib(SV* dbh, imp_dbh_t* imp_dbh, SV* keysv) {
 int dbd_st_prepare(SV* sth, imp_sth_t* imp_sth, char* statement, SV* attribs) {
     int i;
 
+
     /*
      *  Count the number of parameters
      */
@@ -405,6 +408,7 @@ int dbd_st_prepare(SV* sth, imp_sth_t* imp_sth, char* statement, SV* attribs) {
     for (i = 0;  i < AV_ATTRIB_LAST;  i++) {
 	imp_sth->av_attr[i] = Nullav;
     }
+
 
     /*
      *  Allocate memory for parameters
@@ -435,7 +439,7 @@ int dbd_st_prepare(SV* sth, imp_sth_t* imp_sth, char* statement, SV* attribs) {
 
 int dbd_st_internal_execute(SV* h, SV* statement, SV* attribs, int numParams,
 			    imp_sth_ph_t* params, result_t* cdaPtr,
-			    dbh_t svsock) {
+			    dbh_t svsock, int use_mysql_use_result) {
     STRLEN slen;
     char* sbuf = SvPV(statement, slen);
     char* salloc = ParseParam(sbuf, &slen, params, numParams);
@@ -540,11 +544,13 @@ int dbd_st_execute(SV* sth, imp_sth_t* imp_sth) {
     }
 
     statement = hv_fetch((HV*) SvRV(sth), "Statement", 9, FALSE);
-    if ((imp_sth->row_num = dbd_st_internal_execute(sth, *statement, NULL,
-						    DBIc_NUM_PARAMS(imp_sth),
-						    imp_sth->params,
-						    &imp_sth->cda,
-						    imp_dbh->svsock))
+    if ((imp_sth->row_num =
+	     dbd_st_internal_execute(sth, *statement, NULL,
+				     DBIc_NUM_PARAMS(imp_sth),
+				     imp_sth->params,
+				     &imp_sth->cda,
+				     imp_dbh->svsock,
+				     imp_sth->use_mysql_use_result))
 	!= -2) {
 	if (!imp_sth->cda) {
 	} else {
@@ -749,6 +755,7 @@ int dbd_st_STORE_attrib(SV* sth, imp_sth_t* imp_sth, SV* keysv, SV* valuesv) {
 		"    -> dbd_st_STORE_attrib for %08lx, key %s\n",
 		(u_long) sth, key);
     }
+
 
     if (dbis->debug >= 2) {
         fprintf(DBILOGFP,

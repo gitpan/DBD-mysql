@@ -152,6 +152,9 @@ struct imp_sth_st {
     int   insertid;       /* ID of auto insert                      */
     imp_sth_ph_t* params; /* Pointer to parameter array             */
     AV* av_attr[AV_ATTRIB_LAST];/*  For caching array attributes        */
+    int   use_mysql_use_result;  /*  TRUE if execute should use     */
+                          /* mysql_use_result rather than           */
+                          /* mysql_store_result */
 };
 
 
@@ -213,5 +216,5 @@ SV	*dbd_db_fieldlist _((result_t res));
 
 void    dbd_preparse _((imp_sth_t *imp_sth, SV *statement));
 int dbd_st_internal_execute(SV*, SV*, SV*, int, imp_sth_ph_t*, result_t*,
-			    dbh_t);
+			    dbh_t, int);
 

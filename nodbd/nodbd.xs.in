@@ -473,7 +473,7 @@ errmsg(handle=NULL)
    dbh_t sock;
 #ifdef DBD_MYSQL
    SV** svp;
-   if (ST(0) && sv_isa(ST(0), "Mysql"))
+   if (ST(0) && sv_derived_from(ST(0), "Mysql"))
        handle = SvRV(ST(0));
    else
        croak("handle is not of type Mysql.\n");
@@ -499,7 +499,7 @@ errno(handle=NULL)
    dbh_t sock;
 #if defined(DBD_MYSQL)  &&  defined(mysql_errno)
    SV** svp;
-   if (ST(0) && sv_isa(ST(0), "Mysql"))
+   if (ST(0) && sv_derived_from(ST(0), "Mysql"))
        handle = SvRV(ST(0));
    else
        croak("handle is not of type Mysql.\n");
@@ -548,7 +548,7 @@ getserverinfo(handle=NULL)
    dbh_t sock;
 #ifdef DBD_MYSQL
    SV** svp;
-   if (ST(0) && sv_isa(ST(0), "Mysql"))
+   if (ST(0) && sv_derived_from(ST(0), "Mysql"))
        handle = SvRV(ST(0));
    else
        croak("handle is not of type Mysql.\n");

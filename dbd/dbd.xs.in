@@ -217,7 +217,7 @@ do(dbh, statement, attr=Nullsv, ...)
 	}
     }
     retval = dbd_st_internal_execute(dbh, statement, attr, numParams,
-				     params, &cda, imp_dbh->svsock);
+				     params, &cda, imp_dbh->svsock, 0);
     Safefree(params);
     if (cda) {
 	MyFreeResult(cda);

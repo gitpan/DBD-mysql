@@ -6,13 +6,13 @@ my_sth_t		T_STH
 
 INPUT
 T_DBH
-	if (sv_isa($arg, (char*) Package))
+	if (sv_derived_from($arg, (char*) Package))
 	    $var = (HV*)SvRV($arg);
 	else
 	    croak(\"$var is not of type %s\", Package)
 
 T_STH
-	if (sv_isa($arg, (char*) StPackage))
+	if (sv_derived_from($arg, (char*) StPackage))
 	    $var = (HV*)SvRV($arg);
 	else
 	    croak(\"$var is not of type %s\", StPackage)

@@ -19,8 +19,8 @@ sub postamble {
 
 package _MY::Config;
 
-$_MY::Config::VERSION = "1.1822";
-$_MY::Config::DBD_VERSION = "2.008";
+$_MY::Config::VERSION = "1.1823";
+$_MY::Config::DBD_VERSION = "2.009";
 
 $_MY::Config::X_Msql = undef;
 $_MY::Config::X_Mysql = undef;
@@ -550,7 +550,7 @@ sub CreatePostamble ($) {
     foreach $ref (@msqlFiles) {
 	$pa .= XtractF($ref, "Msql", "mSQL");
     }
-    $pa;
+    $pa . "\nMakefile: Makefile.lib\n\n";
 }
 
 sub Xtract($$$) {
@@ -570,7 +570,7 @@ sub XtractF($$$$) {
     if (!$path) {
 	$path = "xtract";
     }
-    sprintf("%s: %s Makefile.PL\n"
+    sprintf("%s: %s Makefile\n"
 	    . "\t%s %s %s %s %s %s %s %s\n\tchmod %s %s\n",
 	    $ref->[1], $ref->[0], $^X, $path,
 	    $ref->[0], $ref->[1], $driver, $dbdDriver,
