@@ -25,7 +25,7 @@ use DBI;
 use strict;
 $dbdriver = "";
 {   my $file;
-    foreach $file ("lib.pl", "t/lib.pl", "DBD-~~dbd_driver~~/t/lib.pl") {
+    foreach $file ("lib.pl", "t/lib.pl", "DBD-~DBD_DRIVER~/t/lib.pl") {
 	do $file; if ($@) { print STDERR "Error while executing lib.pl: $@\n";
 			    exit 10;
 			}
@@ -155,13 +155,8 @@ while (Testing()) {
          or ErrMsg("Cannot select: $dbh->errstr.\n");
 
     # This should fail with error message: We "forgot" execute.
-    {
-	my $pe = $sth->{'PrintError'};
-	$sth->{'PrintError'} = 0;
-	Test($state or !$sth->fetchrow)
-	    or ErrMsg("Missing error report from fetchrow.\n");
-	$sth->{'PrintError'} = $pe;
-    }
+    Test($state or !$sth->fetchrow)
+         or ErrMsg("Missing error report from fetchrow.\n");
 
     Test($state or $sth->execute)
          or ErrMsg("execute SELECT failed: $dbh->errstr.\n");
@@ -334,9 +329,6 @@ while (Testing()) {
 	Test($state or $sth->{insertid} =~ /\d+/)
 	    or printf("insertid generated incorrect result: %s\n",
 		      $sth->insertid);
-	Test($state or $dbh->{insertid} =~ /\d+/)
-	    or printf("insertid generated incorrect result: %s\n",
-		      $dbh->insertid);
 	Test($state or $sth->finish)
 	    or printf("Error while finishing query: %s\n", $sth->errstr);
 	Test($state or $dbh->do("DROP TABLE $table"));
@@ -344,4 +336,3 @@ while (Testing()) {
 	    or ErrMsg("disconnect failed: $dbh->errstr.\n");
     }
 }
-

@@ -8,6 +8,9 @@ To install the package you usually just type
     make test          # optional
     make install
 
+See WIN32 INSTALLATION below for additional steps under Win32. If you
+have any problems in the test stage, see KNOWN PROBLEMS below.
+
 During the first step you will be asked some questions. First of all,
 you have to decide, which database engines you want to be supported:
 MySQL or mSQL (any or both of mSQL1 and mSQL2).
@@ -46,10 +49,72 @@ this can have a number of possible reasons:
 
 	DBI_DSN="DBI:mSQL:test:hostname=localhost:port=3333"
 
+
+WIN32 INSTALLATION
+==================
+
+I have never attempted to install DBD::mSQL under Win32, so this is only
+for MySQL. If anyone succeeds, please let me know what you did.
+
+I recommend using the MyODBC source package for installing DBD::mysql
+under Win32. The following steps have been required for me:
+
+  - Extract sources into C:\my
+  - Change directory to C:\my\myodbc\myodbc
+  - Create the libraries with
+
+	nmake /f myodbc.mak
+
+  - Copied the following to C:\my\myodbc\lib_release:
+
+	C:\my\myodbc\lib\Release\lib.lib
+	C:\my\myodbc\mysys\Release\mysys.lib
+	C:\my\myodbc\strings\Release\strings.lib
+
+  - Copied the following to C:\my\myodbc\include:
+
+	C:\my\myodbc\lib\errmsg.h
+
+  - Extracted Msql-Mysql-modules-1.2005 into C:\src\site_perl
+  - Changed directory to C:\src\site_perl\Msql-Mysql-modules-1.2005
+  - Continued the usual way:
+
+	perl Makefile.PL
+	nmake
+	nmake install
+
+See the first section of KNOWN PROBLEMS below.
+
+
 KNOWN PROBLEMS
 ==============
 
-1.) If the MySQL binaries are compiled with gcc or egcs (as the precompiled
+1.) If linking fails under Win32 because of a missing symbol
+pthread_cond_init, apply the following patch to dbd/dbdimp.c:
+
+	*** dbd/dbdimp.c.orig	Wed Sep 23 14:39:33 1998
+	--- dbd/dbdimp.c	Fri Oct 02 10:37:16 1998
+	***************
+	*** 1708,1712 ****
+	--- 1709,1720 ----
+	      }
+	      return TRUE;
+	  }
+	+ 
+	+ #if !defined(_UNIX_)  &&  defined(WIN32)
+	+ int pthread_cond_init()
+	+ {
+	+   return 0;
+	+ }
+	+ #endif
+	  
+	  #endif
+
+(I could make this part of the source distribution, but I think this is an
+ugly hack and hopefully Monty will fix the missing symbol in the next
+release of MyODBC.)
+
+2.) If the MySQL binaries are compiled with gcc or egcs (as the precompiled
 binaries are), but your Perl is using another compiler, it is likely that
 you receive an error message like the following when running "make test":
 
@@ -88,7 +153,7 @@ b) A simple workaround is to include libgcc.a manually. Do a "make clean"
 	gcc -v
 
 
-2.) By default mSQL is installed to allow local access only. This can break
+3.) By default mSQL is installed to allow local access only. This can break
 the test scripts akmisc.t, msql1.t and msql2.t. You might notice a message
 like
 
@@ -106,7 +171,7 @@ your msql.conf file to "True". If the value was set intentionally,
 you might restore the old value after the tests ran ok.
 
 
-3.) Recent versions of mSQL have a bug that appears in the test script
+4.) Recent versions of mSQL have a bug that appears in the test script
 t/40bindparam.t:
 
 > Date: Tue, 14 Jul 1998 00:59:07 +0200 (CEST)

@@ -15,7 +15,7 @@ use vars qw($mdriver $dbdriver $childPid $test_dsn $test_user $test_password);
 #
 #   Driver names; EDIT THIS!
 #
-$mdriver = '~~dbd_driver~~';
+$mdriver = '~DBD_DRIVER~';
 $dbdriver = $mdriver; # $dbdriver is usually just the same as $mdriver.
                       # The exception is DBD::pNET where we have to
                       # to separate between local driver (pNET) and
@@ -25,9 +25,9 @@ $dbdriver = $mdriver; # $dbdriver is usually just the same as $mdriver.
 #
 #   DSN being used; do not edit this, edit "$dbdriver.dbtest" instead
 #
-$test_dsn      = $ENV{'DBI_DSN'}   ||  "~~test_dsn~~";
-$test_user     = $ENV{'DBI_USER'}  ||  "~~test_user~~";
-$test_password = $ENV{'DBI_PASS'}  ||  "~~test_pass~~";
+$test_dsn      = $ENV{'DBI_DSN'}   ||  "~test_dsn~";
+$test_user     = $ENV{'DBI_USER'}  ||  "~test_user~";
+$test_password = $ENV{'DBI_PASS'}  ||  "~test_pass~";
 
 
 $::COL_NULLABLE = 1;

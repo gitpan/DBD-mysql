@@ -9,10 +9,10 @@
 # are configured wrong in this respect. But you're welcome to test it
 # out.
 
-my $host = shift @ARGV || $ENV{'DBI_HOST'} || "~~test_host~~";
-my $user = shift @ARGV || $ENV{'DBI_USER'} || "~~test_user~~";
-my $password = shift @ARGV || $ENV{'DBI_PASS'} || "~~test_pass~~";
-my $dbname = shift @ARGV || $ENV{'DBI_DB'} || "~~test_db~~";
+my $host = shift @ARGV || $ENV{'DBI_HOST'} || "~test_host~";
+my $user = shift @ARGV || $ENV{'DBI_USER'} || "~test_user~";
+my $password = shift @ARGV || $ENV{'DBI_PASS'} || "~test_pass~";
+my $dbname = shift @ARGV || $ENV{'DBI_DB'} || "~test_db~";
 
 # That's the standard perl way tostart a testscript. It announces that
 # that many tests are to follow. And it does so before anything can go
@@ -465,9 +465,9 @@ foreach (qw/table name type is_not_null is_pri_key length/) {
 # mSQL: return value as an object reference, we should not core dump
 # In mysql a query always return an object!
 
+$sth = $dbh->query("insert into $firsttable values (\047x\047,2,\047y\047)");
 {
     local($Mysql::QUIET) = 1;
-    $sth = $dbh->query("insert into $firsttable values (\047x\047,2,\047y\047)");
     if (!defined($sth->fetchrow))
     {
 	print "ok 42\n";

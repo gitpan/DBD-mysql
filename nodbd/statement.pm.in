@@ -1,13 +1,13 @@
 # -*- perl -*-
 
-package ~~nodbd_driver~~::Statement;
+package ~DRIVER~::Statement;
 
-@~~nodbd_driver~~::Statement::ISA = qw(DBI::st);
+@~DRIVER~::Statement::ISA = qw(DBI::st);
 
 use strict;
 use vars qw($OPTIMIZE $VERSION $AUTOLOAD);
 
-$VERSION = '~~nodbd_version~~';
+$VERSION = '~NODBD_VERSION~';
 
 $OPTIMIZE = 0; # controls, which optimization we default to
 
@@ -55,11 +55,11 @@ sub arrAttr ($$) {
 }
 sub table ($) { shift->arrAttr('table') }
 sub name ($) { shift->arrAttr('NAME') }
-~#if#~ ('~~dbd_driver~~' eq 'mysql')
+#xtract Mysql
 sub type ($) { shift->arrAttr('mysql_type') }
-~#else#~
+#xtract Msql
 sub type ($) { shift->arrAttr('msql_type') }
-~#endif#~
+#endxtract
 sub isnotnull ($) { shift->arrAttr('is_not_null') }
 sub isprikey ($) { shift->arrAttr('is_pri_key') }
 sub isnum ($) { shift->arrAttr('is_num') }
@@ -69,9 +69,9 @@ sub length ($) { shift->arrAttr('length') }
 sub maxlength  {
     my $sth = shift;
     my $result;
-~#if#~ ('~~dbd_driver~~' eq 'mysql')
+#xtract Mysql
     $result = $sth->fetchinternal('maxlength');
-~#else#~
+#xtract Msql
     if (!($result = $sth->{'maxlength'})) {
 	$result = [];
 	my ($l);
@@ -98,16 +98,16 @@ sub maxlength  {
 	}
 	$sth->{MAXLENGTH} = $result;
     }
-~#endif#~
+#endxtract
     return wantarray ? @$result : $result;
 }
 
 sub listindices {
     my($sth) = shift;
     my(@result,$i);
-~#if#~ ('~~dbd_driver~~' eq 'mysql')
+#xtract Mysql
     return ();
-~#else#~
+#xtract Msql
     if (!&Msql::IDX_TYPE()) {
 	return ();
     }
@@ -116,7 +116,7 @@ sub listindices {
 	push @result, $sth->name->[$i];
     }
     @result;
-~#endif#~
+#endxtract
 }
 
 sub AUTOLOAD {
@@ -159,15 +159,15 @@ sub as_string {
     }
     for (0..$sth->numfields-1) {
 	$l=CORE::length($sth->name->[$_]);
-~#if#~ ('~~dbd_driver~~' eq 'mysql')
+#xtract Mysql
 	if ($l < $sth->maxlength->[$_]) {
 	    $l= $sth->maxlength->[$_];
 	}
-~#else#~
+#xtract Msql
 	if ($sth->optimize  &&  $l < $sth->maxlength->[$_]) {
 	    $l= $sth->maxlength->[$_];
 	}
-~#endif#~
+#endxtract
 	if (!$sth->isnotnull  &&  $l < 4) {
 	    $l = 4;
 	}
@@ -186,7 +186,7 @@ sub as_string {
 	    $col = $row[$i];
 	    $j = @prow;
 	    $pcol = defined $col ? unctrl($col) : "NULL";
-~#if#~ ('~~dbd_driver~~' ne 'mysql')
+#xtract Msql
 	    # New in 2.0: a string is longer than it should be
 	    if (defined &Msql::TEXT_TYPE  &&
 		$sth->optimize &&
@@ -195,7 +195,7 @@ sub as_string {
 		my $l = CORE::length($col);
 		substr($pcol,$sth->length->[$j])="...($l)";
 	    }
-~#endif#~
+#endxtract
 	    push(@prow, $pcol);
 	}
 	$result .= sprintf $sprintf, @prow;

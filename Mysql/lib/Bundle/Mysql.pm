@@ -2,7 +2,7 @@
 
 package Bundle::Mysql;
 
-$VERSION = '1.21_02';
+$VERSION = '1.2005';
 
 1;
 
@@ -21,8 +21,6 @@ C<perl -MCPAN -e 'install Bundle::Mysql'>
 DBI
 
 Data::ShowTable
-
-ExtUtils::PerlPP
 
 Mysql
 
