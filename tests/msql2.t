@@ -1,39 +1,36 @@
 #!/usr/bin/perl -w
 
-use strict;
-use vars qw($mdriver);
-
-my($file);
-foreach $file ("lib.pl", "t/lib.pl", "~DRIVER~/t/lib.pl") {
-    if (-f $file) {
-	do $file;
-	last;
+BEGIN {
+    do ((-f "lib.pl") ? "lib.pl" : "t/lib.pl");
+    if ($mdriver ne "mSQL" && $mdriver ne "mSQL1") {
+	print "1..0\n"; exit 0;
     }
+    $| = 1;
+    eval "use Msql";
+    my $db = Msql->connect();
+    if (Msql->getserverinfo lt 2) {
+	print "1..0\n";
+	exit;
+    }
+    print "1..37\n";
 }
-if (!$mdriver || ($mdriver ne "mSQL" && $mdriver ne "mSQL1")) {
-    print "1..0\n"; exit 0;
-}
-$| = 1;
-eval "use ~DRIVER~";
-my $db = ~DRIVER~->connect("", "test");
-if ($db->getserverinfo lt 2) {
-    print "1..0\n";
-    exit;
-}
-print "1..37\n";
+END {print "not ok 1\n" unless $loaded;}
 
+use strict;
+use vars qw($loaded);
+$loaded = 1;
 print "ok 1\n";
 
 {
     my($q,$what,@t,$i,$j);
-    my $db = ~DRIVER~->connect("","test");
+    my $db = Msql->connect("","test");
     $t[0] = create(
 		   $db,
 		   "TABLE00",
 		   "( id char(4) not null, longish text(30) )");
     $t[1] = create(
 		   $db,
-		   "TABLE01",
+		   "TABLE00",
 		   "( id char(4) not null, longish text(600) )");
     if (grep /^$t[0]$/, $db->listtables) {
 	print "ok 2\n";
@@ -45,7 +42,7 @@ print "ok 1\n";
 	    $q = qq{insert into $t[$j] values \('00$i',\'}.bytometer(2**$i).qq{\'\)};
 	    my $ok = 3 + $i*2 + $j;
 	    my $ret = $db->query($q);
-	    if ($ret) {
+	    if ($ret == 1) {
 		print "ok $ok\n";
 	    } else {
 		print "not ok $ok: 'insert' returned [$ret], expected 1\n";
@@ -89,11 +86,10 @@ print "ok 1\n";
 sub create {
     my($db,$tablename,$createexpression) = @_;
     my($query) = "create table $tablename $createexpression";
-    local($~DRIVER~::QUIET) = 1;
+    local($Msql::QUIET) = 1;
     my $limit = 0;
     while (! $db->query($query)){
-	die "Cannot create table: query [$query] message ["
-	    . $db->errmsg() . "]\n" if $limit++ > 1000;
+	die "Cannot create table: query [$query] message [$Msql::db_errstr]\n" if $limit++ > 1000;
 	$tablename++;
 	$query = "create table $tablename $createexpression";
     }
@@ -103,11 +99,10 @@ sub create {
 sub cre_index {
     my($db,$indexname,$createexpression,$uniq) = @_;
     my($query) = "create $uniq index $indexname $createexpression";
-    local($~DRIVER~::QUIET) = 1;
+    local($Msql::QUIET) = 1;
     my $limit = 0;
     while (! $db->query($query)){
-	die "Cannot create index: query [$query] message ["
-	    . ~DRIVER~->errmsg() . "]\n" if $limit++ > 1000;
+	die "Cannot create index: query [$query] message [$Msql::db_errstr]\n" if $limit++ > 1000;
 	$indexname++;
 	$query = "create $uniq index $indexname $createexpression";
     }

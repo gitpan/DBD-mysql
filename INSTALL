@@ -6,13 +6,9 @@ To install the package you usually just type
     make install
 
 During the first step you will be asked some questions. First of all,
-you have to decide, which database engines you want to be supported:
-MySQL or mSQL (any or both of mSQL1 and mSQL2).
-
-If you install the mSQL driver, but not for both of mSQL1 or mSQL2,
-the perl modules will be named DBD::mSQL and Msql. If you install
-both of mSQL1 and mSQL2, the drivers will be named DBD::mSQL and
-Msql (mSQL2) or DBD::mSQL1 and Msql1, respectively.
+you have to decide, which database engines you want to be supported
+by entering one of the numbers 1 (Mysql only), 2 (mSQL only) or 3
+(both).
 
 Once this is done, for any DBMS you'll be asked in which directory the
 respective API libraries and headerfiles are installed. You can avoid
@@ -48,3 +44,4 @@ with in this document.
 
 Enjoy,
 Andreas & Jochen
+

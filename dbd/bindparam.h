@@ -244,8 +244,7 @@ int BindParam(imp_sth_ph_t* ph, SV* value, IV sql_type) {
     if (ph->value) {
         (void) SvREFCNT_dec(ph->value);
     }
-    ph->value = value;
-    (void) SvREFCNT_inc(value);
+    (void) SvREFCNT_inc(ph->value = value);
     if (sql_type) {
         ph->type = sql_type;
     }

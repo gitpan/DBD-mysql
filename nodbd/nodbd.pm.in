@@ -1,22 +1,22 @@
 # -*- perl -*-
 
 package ~DRIVER~;
+BEGIN { require 5.002 }
+# use vars qw($db_errstr); # 5.003
+$db_errstr = $db_errstr = '';
 
-BEGIN { require 5.004 };
-
-require Carp;
-require DynaLoader;
-require Exporter;
-require DBI;
 require ~DRIVER~::Statement;
-require DBD::~DBD_DRIVER~;
-
-use vars qw($QUIET @ISA @EXPORT @EXPORT_OK $VERSION $db_errstr);
-
-$db_errstr = '';
-$QUIET  = 0;
-@ISA    = qw(DBI); # Inherits Exporter and DynaLoader via DBI
+$QUIET  = $QUIET  = '';
+@ISA    = @ISA    = '';
+@EXPORT = @EXPORT = '';
 $VERSION = '~NODBD_VERSION~';
+
+$QUIET = 0;
+
+use Carp ();
+use DynaLoader ();
+use Exporter ();
+@ISA = ('Exporter', 'DynaLoader');
 
 # @EXPORT is a relict from old times...
 @EXPORT = qw(
@@ -36,167 +36,23 @@ $VERSION = '~NODBD_VERSION~';
 		SYSVAR_TYPE
 	       );
 
-my($FETCH_map) = {
-    'HOST' => '_host',
-    'DATABASE' => 'database'
-};
+sub host     { return shift->{'HOST'} }
+sub sock     { return shift->{'SOCK'} }
+sub sockfd   { return shift->{'SOCKFD'} }
+sub database { return shift->{'DATABASE'} }
 
-sub FETCH ($$) {
-    my($self, $key) = @_;
-    if ($key eq 'COMPATIBILITY') {
-	return $self->{'COMPATIBILITY'};
-    }
-    if (exists($FETCH_map->{$key})) {
-	$key = $FETCH_map->{$key};
-    }
-    my($dbh) = $self->{'dbh'};
-    my($attr) = $dbh->{'private_DBD_~DBD_DRIVER~_attr'};
-    if (exists($attr->{$key})) {
-	$attr->{$key};
-    } else {
-	$dbh->{$key};
-    }
-}
-
-sub STORE ($$$) {
-    my($self, $key, $val) = @_;
-    if ($key eq 'COMPATIBILITY') {
-	$self->{'COMPATIBILITY'} = $val;
-    } else {
-	$self->{'dbh'}->{$key} = $val;
-    }
-}
-
-sub connect ($;$$$$) {
-    my($class, $host, $db, $user, $password) = @_;
-    my($self) = { 'host' => ($host || ''),
-		  'user' => $user,
-		  'password' => $password,
-		  'db' => $db,
-	          'driver' => '~DBD_DRIVER~',
-	          'COMPATIBILITY' => 1 };
-    bless($self, $class);
-    $self->{'drh'} = DBI->install_driver($self->{'driver'});
-    if ($db) {
-	my($dsn) = "DBI:~DBD_DRIVER~:database=$db;host=$host";
-	if (!($self->{'dbh'} = $class->SUPER::connect($dsn, $user, $password))) {
-	    $db_errstr = $DBI::errstr;
-	    return undef;
-	}
-	$dbh->{'CompatMode'} = 1;
-	$dbh->{'PrintError'} = !$~DRIVER~::QUIET;
-    }
-    $self;
-}
-
-sub selectdb ($$) {
-    my($self, $db) = @_;
-    my($dsn) = "DBI:~DBD_DRIVER~:database=$db:host=" . $self->{'host'};
-    my($dbh) = DBI->connect($dsn, $self->{'user'}, $self->{'password'});
-    if (!$dbh) {
-	$db_errstr = $self->{'errstr'} = $DBI::errstr;
-	$self->{'errno'} = $DBI::err;
-	undef;
-    } else {
-	$self->{'dbh'} = $dbh;
-	$self->{'db'} = $db;
-	$self;
-    }
-}
-
-sub listdbs ($) {
-    my($self) = shift;
-    $self->{'drh'}->func($self->{'host'}, '_ListDBs');
-}
-
-sub listtables ($) {
-    my($self) = shift;
-    $self->{'dbh'}->func('_ListTables');
-}
-
-sub quote ($$) { my($self) = shift; $self->{'dbh'}->quote(@_); }
-
-sub errmsg ($) {
-    my($self) = shift;
-    if (!ref($self)) {
-	$DBI::errstr || $db_errstr;
-    } elsif ($self->{'dbh'}) {
-	$self->{'dbh'}->errstr();
-    } else {
-	$self->{'drh'}->errstr();
-    }
-}
-
-sub errno ($) {
-    if ($self->{'dbh'}) {
-	$self->{'dbh'}->err();
-    } else {
-	$self->{'drh'}->err();
-    }
-}
-
-sub listfields ($$) {
-    my($self, $table) = @_;
-    $self->query("LISTFIELDS $table");
-}
-
-sub query ($$) {
-    my($self, $statement) = @_;
-    my($sth) = $self->{'dbh'}->prepare($statement);
-    my($result);
-    $sth->{'PrintError'} = !$~DRIVER~::QUIET;
-    if ($sth  &&  !($result = $sth->execute())) {
-	return undef;
-    }
-#xtract Msql
-    if (!$sth->{'NUM_OF_FIELDS'}) {
-	return $result;
-    }
-#xtract Msql1
-    if (!$sth->{'NUM_OF_FIELDS'}) {
-	return $result;
-    }
+sub quote	{
+    my $self = shift;
+    my $str = shift;
+    return 'NULL' unless defined $str;
+    my $trunc = shift;
+    substr($str,$trunc) = '' if defined $trunc and $trunc > 0 and length($str) > $trunc;
+    $str =~ s/([\\\'])/\\$1/g;
+#xtract Mysql
+    $str =~ s/\0/\\0/g;
 #endxtract
-    $sth->{'CompatMode'} = 1;
-    $sth;
+    "'$str'";
 }
-
-sub shutdown ($) {
-    my($self) = shift;
-    if ($self->{'dbh'}) {
-	$self->{'dbh'}->admin('shutdown', 'admin');
-    } else {
-	$self->{'drh'}->func('shutdown', $self->{'host'}, $self->{'user'},
-			     $self->{'password'}, 'admin');
-    }
-}
-
-sub createdb ($$) {
-    my($self, $db) = @_;
-    if ($self->{'dbh'}) {
-	$self->{'dbh'}->admin('createdb', $db, 'admin');
-    } else {
-	$self->{'drh'}->func('createdb', $db, $self->{'host'},
-			     $self->{'user'}, $self->{'password'}, 'admin');
-    }
-}
-
-sub dropdb ($$) {
-    my($self, $db) = @_;
-    if ($self->{'dbh'}) {
-	$self->{'dbh'}->admin('dropdb', $db, 'admin');
-    } else {
-	$self->{'drh'}->func('dropdb', $db, $self->{'host'},
-			     $self->{'user'}, $self->{'password'}, 'admin');
-    }
-}
-
-sub host     ($) { shift->{'host'} }
-sub database ($) { shift->{'db'} }
-sub info ($) { shift->{'dbh'}->{'info'} }
-sub sock ($) { shift->{'dbh'}->{'sock'} }
-sub sockfd ($) { shift->{'dbh'}->{'sockfd'} }
-
 
 sub AUTOLOAD {
     my $meth = $AUTOLOAD;
@@ -211,7 +67,7 @@ sub AUTOLOAD {
 
 
     TRY: {
-	my $val = DBD::~DBD_DRIVER~::constant($meth, @_ ? $_[0] : 0);
+	my $val = constant($meth, @_ ? $_[0] : 0);
 	if ($! == 0) {
 	    eval "sub $AUTOLOAD { $val }";
 	    return $val;
@@ -235,51 +91,11 @@ sub AUTOLOAD {
 	}
     }
 
-  Carp::croak("$AUTOLOAD: Not defined in $class and not"
-	      . " autoloadable (last try $meth)");
+  Carp::croak "$AUTOLOAD: Not defined in $class and not"
+      . " autoloadable (last try $meth)";
 }
 
-#xtract Msql
-
-sub unixtimetodate($$) {
-    my($class, $clock) = @_;
-    DBD::mSQL->unixtimetodate($clock);
-}
-sub unixtimetotime($$) {
-    my($class, $clock) = @_;
-    DBD::mSQL->unixtimetotime($clock);
-}
-sub datetounixtime($$) {
-    my($class, $clock) = @_;
-    DBD::mSQL->datetounixtime($clock);
-}
-sub timetounixtime($$) {
-    my($class, $clock) = @_;
-    DBD::mSQL->timetounixtime($clock);
-}
-sub getsequenceinfo($$) {
-    my($self, $table) = @_;
-    $self->{'dbh'}->func($table, 'getsequenceinfo');
-}
-
-#endxtract
-
-sub gethostinfo ($) { shift->{'dbh'}->{'hostinfo'} }
-sub getprotoinfo ($) { shift->{'dbh'}->{'protoinfo'} }
-sub getserverinfo ($) { shift->{'dbh'}->{'serverinfo'} }
-sub getserverstats ($) { shift->{'dbh'}->{'stats'} }
-
-
-~DRIVER~->init_rootclass();
-
-package ~DRIVER~::dr;
-@~DRIVER~::dr::ISA = qw(DBI::dr);
-
-package ~DRIVER~::db;
-@~DRIVER~::db::ISA = qw(DBI::db);
-
-package ~DRIVER~::st;
-@~DRIVER~::st::ISA = qw(~DRIVER~::Statement);
+bootstrap ~DRIVER~ $VERSION;
 
 1;
 __END__
@@ -291,7 +107,8 @@ Msql / Mysql - Perl interfaces to the mSQL and mysql databases
 =head1 SYNOPSIS
 
   use Msql;
-
+	
+  $dbh = Msql->connect;
   $dbh = Msql->connect($host);
   $dbh = Msql->connect($host, $database);
 
@@ -301,13 +118,7 @@ Msql / Mysql - Perl interfaces to the mSQL and mysql databases
 
   $dbh = Mysql->connect(undef, $database, $user, $password);
   $dbh = Mysql->connect($host, $database, $user, $password);
-
-      or
-
-  $dbh = Msql1->connect($host);
-  $dbh = Msql1->connect($host, $database);
-
-
+	
   $dbh->selectdb($database);
 	
   @arr = $dbh->listdbs;
@@ -336,13 +147,6 @@ Msql / Mysql - Perl interfaces to the mSQL and mysql databases
   $rc = $dbh->createdb($database);
   $rc = $dbh->dropdb($database);
 
-=head1 OBSOLETE SOFTWARE
-
-As of Msql-Mysql-modules 1.19_10 M(y)sqlPerl is no longer a separate module.
-Instead it is emulated using the DBI drivers. You are strongly encouraged
-to implement new code with DBI directly. See L<COMPATIBILITY NOTES>
-below.
-
 =head1 DESCRIPTION
 
 This package is designed as close as possible to its C API
@@ -350,11 +154,8 @@ counterpart. The manual that comes with mSQL or MySQL describes most things
 you need. Due to popular demand it was decided though, that this interface
 does not use StudlyCaps (see below).
 
-As of March 1998, the Msql and Mysql modules are obsoleted by the
-DBI drivers DBD::mSQL and DBD::mysql, respectively. You are strongly
-encouraged to implement new code with the DBI drivers. In fact,
-Msql and Mysql are currently implemented as emulations on top of
-the DBI drivers.
+The version you have selected is an adaption still under development,
+please consult the file "Changes" in your distribution.
 
 Internally you are dealing with the two classes C<Msql> and
 C<Msql::Statement> or C<Mysql> and C<Mysql::Statement>, respectively.
@@ -363,19 +164,15 @@ it through a statement handle returned by a query or a listfields
 statement. The only class you name explicitly is Msql or Mysql. They
 offer you the connect command:
 
+  $dbh = Msql->connect;
   $dbh = Msql->connect($host);
   $dbh = Msql->connect($host, $database);
 
     or
 
+  $dbh = Mysql->connect(undef, undef, $user, $password);
   $dbh = Mysql->connect($host, undef, $user, $password);
   $dbh = Mysql->connect($host, $database, $user, $password);
-
-    or
-
-  $dbh = Msql1->connect($host);
-  $dbh = Msql1->connect($host, $database);
-
 
 This connects you with the desired host/database. With no argument or
 with an empty string as the first argument it connects to the UNIX
@@ -458,21 +255,22 @@ close the connection, choose to do one of the following:
 
 Both drivers, Msql and Mysql implement a method -E<gt>errmsg(), which
 returns a textual error message. Mysql additionally supports a method
--E<gt>errno returning the corresponding error number.
+-E<gt>errno returning the corresponding error number. Note that Msql's
+I<errmsg> is a static method, thus it is legal to fetch
 
-Usually you do fetch error messages with
+    Msql->errmsg();
 
-    $errmsg = $dbh->errmsg();
+Mysql doesn't support this, fetching the error message is only valid
+via
 
-In situations where a $dbh is not available (for example when
-connect() failed) you may instead do a
+    $dbh->errmsg();
 
-    $errmsg = Msql->errmsg();
-        or
-    $errmsg = Mysql->errmsg();
-        or
-    $errmsg = Msql1->errmsg();
-
+I recommend, that even Msql users restrict themselves to the latter
+for portability reasons. There are also global variables $Msql::db_errstr
+and $Mysql::db_errstr, which always hold the last error message. The former
+is reset with the next executed command, the latter not. Usually
+there's no need for accessing the global variables, with one exception:
+If the I<connect> method fails, you need them.
 
 =head2 The C<-w> switch
 
@@ -485,11 +283,9 @@ If you want to know in greater detail what's going on, set the
 environment variables that are described in David's manual. David's
 debugging aid is excellent, there's nothing to be added.
 
-By default errors are printed as warnings. You can suppress this
-behaviour by using the PrintError attribute of the respective handles:
-
-    $dbh->{'dbh'}->{'PrintError'} = 0;
-
+If you want to use the C<-w> switch but do not want to see the error
+messages from the msql daemon, you can set the variables $Msql::QUIET
+or $Mysql::QUIET to some true value, and they will be supressed.
 
 =head2 -E<gt>quote($str [, $length])
 
@@ -520,7 +316,14 @@ Now lets reconsider the above methods with regard to metadata.
 
 =head2 Database Handle
 
-As said above you get a database handle with the connect() method.
+As said above you get a database handle with
+
+  $dbh = Msql->connect($host, $database);
+
+    or
+
+  $dbh = Mysql->connect($host, $database);
+
 The database handle knows about the socket, the host, and the database
 it is connected to.
 
@@ -757,62 +560,9 @@ MySQL is a libmysqlclient.a library written by Michael Widenius
 This was originally inspired by MySQL.
 
 
-=head1 COMPATIBILITY NOTES
+=head1 AUTHOR
 
-M(y)sql used to be a separate module written in C. This is no longer
-the case, instead the old modules are emulated by their corresponding
-DBI drivers. I did my best to remove any incompatibilities, but the
-following problems are known to remain:
-
-=over 4
-
-=item Static methods
-
-For whatever reason, mSQL implements some functions independent from
-the respective database connection that really depend on it. This
-made it possible to implement
-
-    Msql->errmsg
-
-or
-
-    Msql->getserverinfo
-
-as static methods. This is no longer the case, it never was for
-MysqlPerl. Instead you have to use
-
-    $dbh->errmsg
-
-or
-
-    $dbh->getserverinfo
-
-=item $M(Y)SQL::QUIET
-
-This variable used to turn off the printing of error messages. Unfortunately
-DBI uses a completely different mechanism for that: The C<PrintError>
-attribute of the database and/or statement handles. We try to emulate
-the old behaviour by setting the C<PrintError> attribute to the current
-value of $M(Y)SQL::QUIET when a handle is created, that is when
-M(y)sql->connect or $dbh->query() are called.
-
-You can overwrite this by using something like
-
-    $dbh->{'dbh'}->{'PrintError'} = 1;
-
-or
-
-    $sth->{'PrintError'} = 0;
-
-=back
-
-
-=head1 AUTHORS
-
-Andreas Koenig C<koenig@franz.ww.TU-Berlin.DE> wrote the original
-MsqlPerl. Jochen Wiedmann C<joe@ispsoft.de> wrote the M(y)sqlPerl
-emulation using DBI.
-
+andreas koenig C<koenig@franz.ww.TU-Berlin.DE>
 
 =head1 SEE ALSO
 
