@@ -475,7 +475,13 @@ int MyConnect(dbh_t *sock, char* unixSocket, char* host, char* port,
 
 #ifdef DBD_MYSQL
     {
+#ifdef MYSQL_USE_CLIENT_FOUND_ROWS
+        unsigned int client_flag = CLIENT_FOUND_ROWS;
+#else
+	unsigned int client_flag = 0;
+#endif
 	mysql_init(*sock);
+
 	if (imp_dbh) {
 	    SV* sv = DBIc_IMP_DATA(imp_dbh);
 	    if (sv  &&  SvROK(sv)) {
@@ -485,24 +491,47 @@ int MyConnect(dbh_t *sock, char* unixSocket, char* host, char* port,
 
 		if ((svp = hv_fetch(hv, "mysql_compression", 17, FALSE))  &&
 		    *svp  &&  SvTRUE(*svp)) {
+		    if (dbis->debug >= 2)
+		        PerlIO_printf(DBILOGFP,
+				      "imp_dbh->MyConnect: Enabling" \
+				      " compression.\n");
 		    mysql_options(*sock, MYSQL_OPT_COMPRESS, NULL);
 		}
 		if ((svp = hv_fetch(hv, "mysql_read_default_file", 23,
 				    FALSE))  &&
 		    *svp  &&  SvTRUE(*svp)) {
-		  mysql_options(*sock, MYSQL_READ_DEFAULT_FILE,
-				SvPV(*svp, lna));
+		    char* df = SvPV(*svp, lna);
+		    if (dbis->debug >= 2)
+		        PerlIO_printf(DBILOGFP,
+				      "imp_dbh->MyConnect: Reading" \
+				      " default file %s.\n", df);
+		    mysql_options(*sock, MYSQL_READ_DEFAULT_FILE, df);
 		}
 		if ((svp = hv_fetch(hv, "mysql_read_default_group", 24,
 				    FALSE))  &&
 		    *svp  &&  SvTRUE(*svp)) {
-		    mysql_options(*sock, MYSQL_READ_DEFAULT_GROUP,
-				  SvPV(*svp, lna));
+		    char* gr = SvPV(*svp, lna);
+		    if (dbis->debug >= 2)
+		        PerlIO_printf(DBILOGFP,
+				      "imp_dbh->MyConnect: Using" \
+				      " default group %s.\n", gr);
+		    mysql_options(*sock, MYSQL_READ_DEFAULT_GROUP, gr);
+		}
+		if ((svp = hv_fetch(hv, "mysql_client_found_rows", 23,
+				    FALSE))  &&  *svp) {
+		    if (SvTRUE(*svp)) {
+		        client_flag |= CLIENT_FOUND_ROWS;
+		    } else {
+		        client_flag &= ~CLIENT_FOUND_ROWS;
+		    }
 		}
 	    }
         }
+	if (dbis->debug >= 2)
+	  PerlIO_printf(DBILOGFP, "imp_dbh->MyConnect: client_flags = %d\n",
+			client_flag);
         return mysql_real_connect(*sock, host, user, password, dbname,
-				  portNr, unixSocket, 0) ?
+				  portNr, unixSocket, client_flag) ?
 	  TRUE : FALSE;
     }
 #else

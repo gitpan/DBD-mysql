@@ -19,8 +19,8 @@ use ExtUtils::PerlPP ();
 
 use vars qw($VERSION $DBD_VERSION $options);
 
-$VERSION = "1.2204";
-$DBD_VERSION = "2.0404";
+$VERSION = "1.2205";
+$DBD_VERSION = "2.0405";
 
 $options = { 'prompt' => 1 };
 
@@ -254,6 +254,7 @@ use vars qw($README_created);
 			     'msql1-test-host:s',
 			     'mysql-test-user:s', 'mysql-test-pass:s',
 			     'mysql-libdir=s', 'mysql-incdir=s',
+			     'mysql-use-client-found-rows',
 			     'msql-libdir=s', 'msql-incdir=s',
 			     'msql1-libdir=s', 'msql1-incdir=s',
 			     'help', 'prompt!');
@@ -281,6 +282,8 @@ Possible Options are:
   --mysql-test-user=user	host name to be used for running the
   --mysql-test-pass=password	DBD::mysql tests. Defaults to "test",
   --mysql-test-host=host	"", "" and "" (aka "localhost").
+  --mysql-use-client-found-rows By default enable
+                                \$dbh->{mysql_client_found_rows}
 
   --msql-test-db=db		Sets database and host name for running
   --msql-test-host=host		the DBD::mSQL tests. Defaults to "test"

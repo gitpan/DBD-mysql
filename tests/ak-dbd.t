@@ -37,6 +37,7 @@ $dbdriver = "";
 
 my $test_db = '';
 my $test_hostname = $ENV{DBI_HOST} || 'localhost';
+$| = 1;
 
 if ($test_dsn =~ /^DBI\:[^\:]+\:/) {
     $test_db = $';
@@ -346,6 +347,61 @@ while (Testing()) {
 	Test($state or $dbh->do("DROP TABLE $table"));
 	Test($state or $dbh->disconnect)
 	    or ErrMsg("disconnect failed: $dbh->errstr.\n");
+    }
+
+    #
+    # Try mysql_client_found_rows
+    #
+    if ($dbdriver eq 'mysql') {
+	my $table;
+	Test($state or
+	     ($dbh = DBI->connect("$test_dsn;mysql_client_found_rows=0",
+				  $test_user, $test_password)))
+	    or ErrMsgF("connect failed: %s.\n", $DBI::errstr);
+	Test($state or ($table = FindNewTable($dbh)));
+	Test($state or $dbh->do("CREATE TABLE $table ("
+				. " object_id integer,"
+				. " object_title VARCHAR(64))"))
+	    or printf("Error while creating table: %s\n", $dbh->errstr());
+	Test($state or $dbh->do("INSERT INTO $table VALUES (?, ?)", undef,
+				162, ""))
+	    or printf("Failed to insert: %s\n", $dbh->errstr());
+	my $rc;
+	my $query = "UPDATE $table SET object_title = ? WHERE object_id = 162";
+	Test($state or
+	     ($rc = $dbh->do($query, undef, "test")))
+	    or printf("Failed to update: %s\n", $dbh->errstr());
+	Test($state or $rc == 1)
+	    or printf("Expected 1st Update to return 1 without"
+		      . " mysql_client_found_rows, got $rc\n");
+	Test($state or
+	     ($rc = $dbh->do($query, undef, "test")))
+	    or printf("Failed to update: %s\n", $dbh->errstr());
+	Test($state or $rc == 0)
+	    or printf("Expected 2nd Update to return 0 without"
+		      . " mysql_client_found_rows, got $rc\n");
+	Test($state or $dbh->disconnect())
+	    or printf("Error while disconnecting: %s\n", $dbh->errstr());
+
+	Test($state or
+	     ($dbh = DBI->connect("$test_dsn;mysql_client_found_rows=1",
+				  $test_user, $test_password)))
+            or ErrMsgF("reconnect failed: %s.\n", $DBI::errstr);
+	Test($state or
+	     ($rc = $dbh->do($query, undef, "")))
+	    or printf("Failed to update: %s\n", $dbh->errstr());
+	Test($state or ($rc = $dbh->do($query, undef, "test")))
+	    or printf("Failed to reupdate: %s\n", $dbh->errstr());
+	Test($state or $rc == 1)
+	    or printf("Expected 1st Update to return 1 with"
+		      . " mysql_client_found_rows, got $rc\n");
+	Test($state or ($rc = $dbh->do($query, undef, "test")))
+	    or printf("Failed to reupdate: %s\n", $dbh->errstr());
+	Test($state or $rc == 1)
+	    or printf("Expected 2nd Update to return 1 with"
+		      . " mysql_client_found_rows, got $rc\n");
+	Test($state or $dbh->disconnect())
+	    or printf("Error while disconnecting: %s\n", $dbh->errstr());
     }
 }
 

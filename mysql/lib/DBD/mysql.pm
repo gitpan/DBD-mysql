@@ -119,7 +119,7 @@ sub connect {
     };
 
     DBD::mysql->_OdbcParse($dsn, $privateAttrHash,
-				  ['database', 'host', 'port']);
+				    ['database', 'host', 'port']);
 
     if (!defined($this = DBI::_new_dbh($drh, {}, $privateAttrHash))) {
 	return undef;
@@ -422,17 +422,25 @@ This doesn't work for mSQL 2: You have to create an alternative config
 file and load it using the msql_configfile attribute, see below.
 
 
-=item msql_configfile
+=item mysql_client_found_rows
 
-By default mSQL 2 loads its port settings and similar things from the
-file InstDir/msql.conf. This option allows you to specify another
-attribute, as in
+Enables (TRUE value) or disables (FALSE value) the flag CLIENT_FOUND_ROWS
+while connecting to the MySQL server. This has a somewhat funny effect:
+Without mysql_client_found_rows, if you perform a query like
 
-    DBI->connect("DBI:mSQL:test;msql_configfile=msql_test.conf");
+  UPDATE $table SET id = 1 WHERE id = 1
 
-If the filename is not absolute, mSQL will search in certain other
-locations, see the documentation of the msqlLoadConfigFile() function
-in the mSQL manual for details.
+then the MySQL engine will always return 0, because no rows have changed.
+With mysql_client_found_rows however, it will return the number of rows
+that have an id 1, as some people are expecting. (At least for compatibility
+to other engines.)
+
+By default this flag is disabled. However, you can enable it by default,
+when installing the Msql-Mysql-modules with
+
+  perl Makefile.PL --config --mysql-use-client-found-rows
+  make
+  make install
 
 =item mysql_compression
 
@@ -482,6 +490,7 @@ used for connecting to the server. This is done, for example, with
 
 Usually there's no need for this option, unless you are using another
 location for the socket than that built into the client.
+
 
 =back
 

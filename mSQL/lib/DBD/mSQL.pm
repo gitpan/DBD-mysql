@@ -119,7 +119,7 @@ sub connect {
     };
 
     DBD::mSQL->_OdbcParse($dsn, $privateAttrHash,
-				  ['database', 'host', 'port']);
+				    ['database', 'host', 'port']);
 
     if (!defined($this = DBI::_new_dbh($drh, {}, $privateAttrHash))) {
 	return undef;
@@ -434,54 +434,6 @@ If the filename is not absolute, mSQL will search in certain other
 locations, see the documentation of the msqlLoadConfigFile() function
 in the mSQL manual for details.
 
-=item mysql_compression
-
-As of MySQL 3.22.3, a new feature is supported: If your DSN contains
-the option "mysql_compression=1", then the communication between client
-and server will be compressed.
-
-=item mysql_read_default_file
-
-=item mysql_read_default_group
-
-These options can be used to read a config file like /etc/my.cnf or
-~/.my.cnf. By default MySQL's C client library doesn't use any config
-files unlike the client programs (mysql, mysqladmin, ...) that do, but
-outside of the C client library. Thus you need to explicitly request
-reading a config file, as in
-
-    $dsn = "DBI:mysql:test;mysql_read_default_file=/home/joe/my.cnf";
-    $dbh = DBI->connect($dsn, $user, $password)
-
-The option mysql_read_default_group can be used to specify the default
-group in the config file: Usually this is the I<client> group, but
-see the following example:
-
-    [perl]
-    host=perlhost
-
-    [client]
-    host=localhost
-
-If you read this config file, then you'll be typically connected to
-I<localhost>. However, by using
-
-    $dsn = "DBI:mysql:test;mysql_read_default_group=perl;"
-        . "mysql_read_default_file=/home/joe/my.cnf";
-    $dbh = DBI->connect($dsn, $user, $password);
-
-you'll be connected to I<perlhost>. See the (missing :-) documentation
-of the C function mysql_options() for details.
-
-=item mysql_socket
-
-As of MySQL 3.21.15, it is possible to choose the Unix socket that is
-used for connecting to the server. This is done, for example, with
-
-    mysql_socket=/dev/mysql
-
-Usually there's no need for this option, unless you are using another
-location for the socket than that built into the client.
 
 =back
 

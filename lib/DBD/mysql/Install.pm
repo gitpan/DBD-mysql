@@ -358,6 +358,9 @@ sub Initialize ($$) {
     }
     $sysliblist .= " -lm";
     my $defines = "-DDBD_MYSQL";
+    if ($options->{'mysql-use-client-found-rows'}) {
+	$defines .= " -DMYSQL_USE_CLIENT_FOUND_ROWS";
+    }
     my $linkwith = "";
     if ($Config::Config{'osname'} eq 'sco_sv'  ||
 	$Config::Config{'osname'} eq 'svr4'  ||

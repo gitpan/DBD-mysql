@@ -12,11 +12,6 @@
 */
 
 
-#if defined(POORIFY)
-#include "poorify.h"
-#endif
-
-
 #include "dbdimp.h"
 #include "../dbd/constants.h"
 
