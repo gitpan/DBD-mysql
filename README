@@ -976,53 +976,25 @@ KNOWN PROBLEMS
             this is an ugly hack and hopefully Monty will fix the missing
             symbol in the next release of MyODBC.)
 
-    5.)     Recent versions of mSQL have a bug that appears in the test script
-            t/40bindparam.t:
+    5.)     mSQL 2.0.4 had a bug, that caused the test t/40bindparam.t to fail.
+            This bug is fixed in later versions, 2.0.6 and higher.
 
-              > Date: Tue, 14 Jul 1998 00:59:07 +0200 (CEST)
-              > From: Barry Lagerweij <barry@euromedia.nl>
-              > To: weder@arch.ethz.ch
-              > Cc: msql-jdbc@list.imaginary.com, support@hughes.com.au
-              > Subject: [MSQL-JDBC]: mSQL 2.0.4.1 ORDER BY bug
-              > 
-              > Hello Andreas,
-              > 
-              > I read your message concerning the mSQL ORDER BY bug, since I suffered
-              > from the same problems.
-              > 
-              > I dived into the source, and came up with a solution: in avl_tree.c, the
-              > copy/compare functions do not take the first (aka NULL) byte into account.
-              > mSQL 2.0.4.1 supports NULL values, but these are not handled correctly in
-              > the index functions. The following patch corrects this :
-              > 
-              > ----------------cut here----------------
-              > 
-              > *** avl_tree.c.orig     Mon Jul 13 14:22:31 1998
-              > --- avl_tree.c  Mon Jul 13 15:37:59 1998
-              > ***************
-              > *** 218,223 ****
-              > --- 218,224 ----
-              >                 *dst;
-              >         avltree *tree;
-              >   {
-              > +       *dst++ = *src++;
-              >         switch(tree->sblk->keyType)
-              >         {
-              >                 case AVL_INT:
-              > ***************
-              > *** 529,534 ****
-              > --- 530,538 ----
-              >                 *v2;
-              >         avltree *tree;
-              >   {
-              > +       int     i;
-              > +
-              > +       if ((i = (*v1++ - *v2++)) != 0) return(i);
-              >         switch(tree->sblk->keyType)
-              >         {
-              >                 case AVL_INT:
-              > 
-              > -------------cut here------------------
+    6.)     From time to time compiling DBD::mSQL fails with messages like
+
+              In file included from ../dbd/myMsql.h:55,
+                               from ../dbd/dbdimp.h:32,
+                               from dbdimp.c:29:
+              /usr/local/Hughes/include/common/portability.h:74:
+                redefinition of `u_int'
+              /usr/include/sys/types.h:52: `u_int' previously declared here
+              /usr/local/Hughes/include/common/portability.h:78: redefinition of
+                `ssize_t'
+              /usr/include/sys/types.h:116: `ssize_t' previously declared here
+              *** Error code 1
+
+            A workaroud is using
+
+                    perl Makefile.PL --config DEFINE="-DHAVE_SSIZE_T  -DHAVE_U_INT"
 
 KNOWN BUGS
     The *port* part of the first argument to the connect call is implemented

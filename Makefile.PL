@@ -18,8 +18,8 @@ use lib "lib";
 
 use vars qw($VERSION $DBD_VERSION $options);
 
-$VERSION = "1.2200";
-$DBD_VERSION = "2.0400";
+$VERSION = "1.2201";
+$DBD_VERSION = "2.0401";
 
 $options = { 'prompt' => 1 };
 

@@ -4,6 +4,8 @@
 require 5.003;
 use strict;
 
+$| = 1;
+
 # Variables we're going to use
 my(
    $class,
@@ -301,7 +303,7 @@ while (Testing()) {
 	# perlfunc and search for 'my EXPR') Don't forget to scope other
 	# variables too, that you won't need outside the block
 	my($sth1,$sth2,@row1,$count);
-	
+
 	Test($state or ($sth1 = $dbh->query("select * from $firsttable")),
 	     undef, 'Checking second sth')
 	    or print("Query had some problem:"
@@ -309,7 +311,7 @@ while (Testing()) {
 	Test($state or ($sth2 = $dbh->query("select * from $secondtable")))
 	    or print("Query had some problem:"
 		     . " $$errstrRef\n");
-	
+
 	# You have seen this above, so NO COMMENT :)
 	$count=0;
 	if (!$state) {
@@ -321,11 +323,11 @@ while (Testing()) {
 	    or printf("Mismatch with two statement handles,"
 		      . " expected %d, got %d rows.\n",
 		      2, $count);
-	
+
 	# When we undef this handle, the memory associated with it is
 	# freed
 	Test($state or undef ($sth2) or 1);
-	
+
 	if (!$state) {
 	    $count=0;
 	    while (@row1 = $sth1->fetchrow){
@@ -347,15 +349,13 @@ while (Testing()) {
 	# The use of the -w switch is really a good idea in general, but
 	# if you want the -w switch but do NOT want to see mysql's error
 	# messages, you can turn them off using $mysql::QUIET
-	
+
 	# In reality we would say "or die ...", but in this case we forgot it:
 	if (!$state) {
 	    local($Mysql::QUIET) = 1;  # Doesn't hurt to set both ... :-)
 	    local($Msql::QUIET) = 1;
 	    local($Msql1::QUIET) = 1;
-	    
-	    $sth = $dbh->query("select * from $firsttable where"
-			       . " him = 'Thomas')");
+	    $sth = $dbh->query("select * from $firsttable where him = 'Thomas')");
 	}
 
 	# $mysql::db_errstr should contain the word "error" now

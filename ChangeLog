@@ -1,3 +1,8 @@
+1999-07-08  Jochen Wiedmann  <joe@ispsoft.de> (1.2201)
+
+	* lib/DBD/mSQL/Install.pm (Initialize): Fixed an ugly bug, that
+	  caused unusable Config.pm files.
+
 1999-03-09  Jochen Wiedmann  <joe@ispsoft.de>
 
 	* lib/DBD/mysql/Install.pm (CheckForLibGcc): No longer linking

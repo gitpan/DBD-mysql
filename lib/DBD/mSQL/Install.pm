@@ -124,7 +124,7 @@ sub Initialize {
     if (exists($options->{'msql-libdir'})) {
 	$options->{'msql-libdir'};
     } else {
-	$libdir = $self->SearchLibs
+	($libdir) = $self->SearchLibs
 	    ($options, \@gooddirs, \@msqldirs, ["lib/libmsql.a"]);
     }
 
