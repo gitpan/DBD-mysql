@@ -17,7 +17,7 @@ use vars qw($QUIET @ISA @EXPORT @EXPORT_OK $VERSION $db_errstr);
 $db_errstr = '';
 $QUIET  = 0;
 @ISA    = qw(DBI); # Inherits Exporter and DynaLoader via DBI
-$VERSION = '1.2004';
+$VERSION = '1.21_02';
 
 # @EXPORT is a relict from old times...
 @EXPORT = qw(
@@ -37,7 +37,7 @@ $VERSION = '1.2004';
 		SYSVAR_TYPE
 	       );
 
-my($FETCH_map) = {
+my $FETCH_map = {
     'HOST' => '_host',
     'DATABASE' => 'database'
 };
@@ -63,16 +63,6 @@ sub STORE ($$$) {
     }
 }
 
-sub DESTROY {
-    my $self = shift;
-    my $dbh = $self->{'dbh'};
-    if ($dbh) {
-	local $SIG{'__WARN__'} = sub { };
-	$dbh->disconnect();
-    }
-}
-
-
 sub connect ($;$$$$) {
     my($class, $host, $db, $user, $password) = @_;
     my($self) = { 'host' => ($host || ''),
@@ -95,6 +85,15 @@ sub connect ($;$$$$) {
 	$dbh->{'PrintError'} = !$Msql::QUIET;
     }
     $self;
+}
+
+sub DESTROY {
+    my $self = shift;
+    my $dbh = $self->{'dbh'};
+    if ($dbh) {
+	local $SIG{__WARN__} = sub { };
+	$dbh->disconnect();
+    }
 }
 
 sub selectdb ($$) {
@@ -125,7 +124,7 @@ sub listtables ($) {
 sub quote ($$) {
     my($self) = shift;
     my $obj = (ref($self) && $self->{'dbh'}) ?
-	$self->{'dbh'} : 'DBD::mSQL::db';
+	$self->{'dbh'} : 'DBD::~DBD_DRIVER~::db';
     $obj->quote(shift);
 }
 
@@ -832,7 +831,6 @@ be supported for a long time. But it's a dead end. I expect in the
 medium term, that the DBI efforts result in a richer module family
 with better support and more functionality. Alligator maintains an
 interesting page on the DBI development:
-
-    http://www.arcana.co.uk/technologia/perl/DBI
+http://www.arcana.co.uk/technologia/perl/DBI
 
 =cut

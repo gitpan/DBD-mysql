@@ -127,13 +127,9 @@ typedef MYSQL_FIELD* field_t;
 #define MyFieldSeek(r, i) mysql_field_seek(r, i)
 #define MyDataSeek(r, i) mysql_data_seek(r, i)
 
-#if MYSQL_VERSION_ID >= 32117
-#define MyReconnect(s, h) (mysql_errno(s) == CR_SERVER_GONE_ERROR)
-#else
 extern int MysqlReconnect(SV*);
 #define MyReconnect(s, h) (mysql_errno(s) == CR_SERVER_GONE_ERROR \
 			   &&  MysqlReconnect(h))
-#endif
 
 #if !defined(IS_UNIQUE_KEY)
 #define IS_UNIQUE_KEY(n) ((n) & (UNIQUE_KEY_FLAG | PRI_KEY_FLAG))
@@ -145,6 +141,6 @@ extern int MysqlReconnect(SV*);
 #endif
 
 
-int MyConnect(dbh_t*, char*, char*, char*, char*, char*, char*, imp_dbh_t*);
+int MyConnect(dbh_t*, char*, char*, char*, char*, char*, imp_dbh_t*);
 
 #endif

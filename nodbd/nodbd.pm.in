@@ -1,6 +1,6 @@
 # -*- perl -*-
 
-package ~DRIVER~;
+package ~~nodbd_driver~~;
 
 use 5.004;
 use strict;
@@ -9,15 +9,15 @@ require Carp;
 require DynaLoader;
 require Exporter;
 require DBI;
-require ~DRIVER~::Statement;
-require DBD::~DBD_DRIVER~;
+require ~~nodbd_driver~~::Statement;
+require DBD::~~dbd_driver~~;
 
 use vars qw($QUIET @ISA @EXPORT @EXPORT_OK $VERSION $db_errstr);
 
 $db_errstr = '';
 $QUIET  = 0;
 @ISA    = qw(DBI); # Inherits Exporter and DynaLoader via DBI
-$VERSION = '~NODBD_VERSION~';
+$VERSION = '~~nodbd_version~~';
 
 # @EXPORT is a relict from old times...
 @EXPORT = qw(
@@ -37,7 +37,7 @@ $VERSION = '~NODBD_VERSION~';
 		SYSVAR_TYPE
 	       );
 
-my($FETCH_map) = {
+my $FETCH_map = {
     'HOST' => '_host',
     'DATABASE' => 'database'
 };
@@ -63,28 +63,18 @@ sub STORE ($$$) {
     }
 }
 
-sub DESTROY {
-    my $self = shift;
-    my $dbh = $self->{'dbh'};
-    if ($dbh) {
-	local $SIG{'__WARN__'} = sub { };
-	$dbh->disconnect();
-    }
-}
-
-
 sub connect ($;$$$$) {
     my($class, $host, $db, $user, $password) = @_;
     my($self) = { 'host' => ($host || ''),
 		  'user' => $user,
 		  'password' => $password,
 		  'db' => $db,
-	          'driver' => '~DBD_DRIVER~',
+	          'driver' => '~~dbd_driver~~',
 	          'COMPATIBILITY' => 1 };
     bless($self, $class);
     $self->{'drh'} = DBI->install_driver($self->{'driver'});
     if ($db) {
-	my $dsn = "DBI:~DBD_DRIVER~:database=$db;host=$host";
+	my $dsn = "DBI:~~dbd_driver~~:database=$db;host=$host";
 	my $dbh = $class->SUPER::connect($dsn, $user, $password);
 	if (!$dbh) {
 	    $db_errstr = $DBI::errstr;
@@ -92,14 +82,23 @@ sub connect ($;$$$$) {
 	}
 	$self->{'dbh'} = $dbh;
 	$dbh->{'CompatMode'} = 1;
-	$dbh->{'PrintError'} = !$~DRIVER~::QUIET;
+	$dbh->{'PrintError'} = !$~~nodbd_driver~~::QUIET;
     }
     $self;
 }
 
+sub DESTROY {
+    my $self = shift;
+    my $dbh = $self->{'dbh'};
+    if ($dbh) {
+	local $SIG{__WARN__} = sub { };
+	$dbh->disconnect();
+    }
+}
+
 sub selectdb ($$) {
     my($self, $db) = @_;
-    my($dsn) = "DBI:~DBD_DRIVER~:database=$db:host=" . $self->{'host'};
+    my($dsn) = "DBI:~~dbd_driver~~:database=$db:host=" . $self->{'host'};
     my($dbh) = DBI->connect($dsn, $self->{'user'}, $self->{'password'});
     if (!$dbh) {
 	$db_errstr = $self->{'errstr'} = $DBI::errstr;
@@ -158,19 +157,15 @@ sub query ($$) {
     my($self, $statement) = @_;
     my($sth) = $self->{'dbh'}->prepare($statement);
     my($result);
-    $sth->{'PrintError'} = !$~DRIVER~::QUIET;
+    $sth->{'PrintError'} = !$~~nodbd_driver~~::QUIET;
     if ($sth  &&  !($result = $sth->execute())) {
 	return undef;
     }
-#xtract Msql
+~#if#~ ('~~dbd_driver~~' ne 'mysql')
     if (!$sth->{'NUM_OF_FIELDS'}) {
 	return $result;
     }
-#xtract Msql1
-    if (!$sth->{'NUM_OF_FIELDS'}) {
-	return $result;
-    }
-#endxtract
+~#endif#~
     $sth->{'CompatMode'} = 1;
     bless($sth, ref($self) . "::Statement");
     $sth;
@@ -214,7 +209,7 @@ sub sockfd ($) { shift->{'dbh'}->{'sockfd'} }
 
 
 sub AUTOLOAD {
-    my $meth = $~DRIVER~::AUTOLOAD;
+    my $meth = $~~nodbd_driver~~::AUTOLOAD;
     my $converted = 0;
 
     my $class;
@@ -227,9 +222,9 @@ sub AUTOLOAD {
 
 
     TRY: {
-	my $val = DBD::~DBD_DRIVER~::constant($meth, @_ ? $_[0] : 0);
+	my $val = DBD::~~dbd_driver~~::constant($meth, @_ ? $_[0] : 0);
 	if ($! == 0) {
-	    eval "sub $~DRIVER~::AUTOLOAD { $val }";
+	    eval "sub $~~nodbd_driver~~::AUTOLOAD { $val }";
 	    return $val;
 	}
 
@@ -252,11 +247,11 @@ sub AUTOLOAD {
 	}
     }
 
-  Carp::croak("$~DRIVER~::AUTOLOAD: Not defined in $class and not"
+  Carp::croak("$~~nodbd_driver~~::AUTOLOAD: Not defined in $class and not"
 	      . " autoloadable (last try $meth)");
 }
 
-#xtract Msql
+~#if#~ ('~~dbd_driver~~' ne 'mysql')
 
 sub unixtimetodate($$) {
     my($class, $clock) = @_;
@@ -279,7 +274,7 @@ sub getsequenceinfo($$) {
     $self->{'dbh'}->func($table, 'getsequenceinfo');
 }
 
-#endxtract
+~#endif#~
 
 sub gethostinfo ($) { shift->{'dbh'}->{'hostinfo'} }
 sub getprotoinfo ($) { shift->{'dbh'}->{'protoinfo'} }
@@ -287,16 +282,16 @@ sub getserverinfo ($) { shift->{'dbh'}->{'serverinfo'} }
 sub getserverstats ($) { shift->{'dbh'}->{'stats'} }
 
 
-~DRIVER~->init_rootclass();
+~~nodbd_driver~~->init_rootclass();
 
-package ~DRIVER~::dr;
-@~DRIVER~::dr::ISA = qw(DBI::dr);
+package ~~nodbd_driver~~::dr;
+@~~nodbd_driver~~::dr::ISA = qw(DBI::dr);
 
-package ~DRIVER~::db;
-@~DRIVER~::db::ISA = qw(DBI::db);
+package ~~nodbd_driver~~::db;
+@~~nodbd_driver~~::db::ISA = qw(DBI::db);
 
-package ~DRIVER~::st;
-@~DRIVER~::st::ISA = qw(~DRIVER~::Statement);
+package ~~nodbd_driver~~::st;
+@~~nodbd_driver~~::st::ISA = qw(~~nodbd_driver~~::Statement);
 
 1;
 __END__
@@ -840,7 +835,6 @@ be supported for a long time. But it's a dead end. I expect in the
 medium term, that the DBI efforts result in a richer module family
 with better support and more functionality. Alligator maintains an
 interesting page on the DBI development:
-
-    http://www.arcana.co.uk/technologia/perl/DBI
+http://www.arcana.co.uk/technologia/perl/DBI
 
 =cut

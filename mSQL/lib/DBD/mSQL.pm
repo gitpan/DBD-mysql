@@ -16,7 +16,7 @@ use DynaLoader();
 use Carp ();
 @ISA = qw(DynaLoader);
 
-$VERSION = '2.0204';
+$VERSION = '2.03_02';
 
 bootstrap DBD::mSQL $VERSION;
 
@@ -59,7 +59,7 @@ sub _OdbcParse($$$) {
 	if ($val =~ /([^=]*)=(.*)/) {
 	    $var = $1;
 	    $val = $2;
-	    if ($var eq 'hostname') {
+	    if ($var eq 'hostname'  ||  $var eq 'host') {
 		$hash->{'host'} = $val;
 	    } elsif ($var eq 'db'  ||  $var eq 'dbname') {
 		$hash->{'database'} = $val;
@@ -261,6 +261,31 @@ sub _SelectDB ($$) {
     die "_SelectDB is removed from this module; use DBI->connect instead.";
 }
 
+{
+    my $names = ['TABLE_QUALIFIER', 'TABLE_OWNER', 'TABLE_NAME',
+		 'TABLE_TYPE', 'REMARKS'];
+
+    sub table_info ($) {
+	my $dbh = shift;
+	my @tables = map { [ undef, undef, $_, 'TABLE', undef ]
+			 } $dbh->func('_ListTables');
+	my $dbh2;
+	if (!($dbh2 = $dbh->{'~dbd_driver~_sponge_dbh'})) {
+	    $dbh2 = $dbh->{'~dbd_driver~_sponge_dbh'} =
+		DBI->connect("DBI:Sponge:");
+	    if (!$dbh2) {
+	        DBI::set_err($dbh, 1, $DBI::errstr);
+		return undef;
+	    }
+	}
+	my $sth = $dbh2->prepare("LISTTABLES", { 'rows' => \@tables,
+						 'NAMES' => $names });
+	if (!$sth) {
+	    DBI::set_err($sth, $dbh2->err(), $dbh2->errstr());
+	}
+	$sth;
+    }
+}
 
 package DBD::mSQL::st; # ====== STATEMENT ======
 use strict;
@@ -302,7 +327,8 @@ Interface (DBI)
         or
 
     $driver = "mysql";
-    $dsn = "DBI:$driver:database=$database;$options";
+    $dsn = "DBI:$driver:database=$database;host=$hostname;port=$port";
+    if ($compression) { $dsn .= ";mysql_compression=1"; }
 
     $dbh = DBI->connect($dsn, $user, $password);
 
@@ -331,6 +357,19 @@ Interface (DBI)
     $rc = $dbh->func('reload', 'admin');
 
 
+=head1 EXPERIMENTAL SOFTWARE
+
+This package contains experimental software and should *not* be used
+in a production environment. We are following the Linux convention and
+treat the "even" releases (1.18xx as of this writing, perhaps 1.20xx,
+1.22xx, ... in the future) as stable. Only bug or portability fixes
+will go into these releases.
+
+The "odd" releases (1.19xx as of this writing, perhaps 1.21xx, 1.23xx
+in the future) will be used for testing new features or other serious
+code changes.
+
+
 =head1 DESCRIPTION
 
 <DBD::mysql> and <DBD::mSQL> are the Perl5 Database Interface drivers for
@@ -348,26 +387,22 @@ of the I<Msql-Mysql-modules> package.
 
     $driver = "mSQL";  #  or "mSQL1"
     $dsn = "DBI:$driver:$database";
-    $dsn = "DBI:$driver:database=$database;$options";
+    $dsn = "DBI:$driver:database=$database;host=$hostname";
+    $dsn = "DBI:$driver:database=$database;host=$hostname;port=$port";
 
     $dbh = DBI->connect($dsn, undef, undef);
 
         or
 
     $dsn = "DBI:mysql:$database";
-    $dsn = "DBI:mysql:database=$database;$options";
+    $dsn = "DBI:mysql:database=$database;host=$hostname";
+    $dsn = "DBI:mysql:database=$database;host=$hostname;port=$port";
+
+    if ($compression) { $dsn .= ";mysql_compression=1"; }
 
     $dbh = DBI->connect($dsn, $user, $password);
 
 A C<database> must always be specified.
-
-Possible options are, separated by semicolon:
-
-=over 8
-
-=item host
-
-=item port
 
 The hostname, if not specified or specified as '', will default to an
 mysql or mSQL daemon running on the local machine on the default port
@@ -376,25 +411,11 @@ for the UNIX socket.
 Should the mysql or mSQL daemon be running on a non-standard port number,
 you may explicitly state the port number to connect to in the C<hostname>
 argument, by concatenating the I<hostname> and I<port number> together
-separated by a colon ( C<:> ) character or by using the  C<port> argument.
-
-=item mysql_compression
+separated by a colon ( C<:> ) character.
 
 As of MySQL 3.22.3, a new feature is supported: If your DSN contains
 the option "mysql_compression=1", then the communication between client
 and server will be compressed.
-
-=item mysql_socket
-
-As of MySQL 3.21.15, it is possible to choose the Unix socket that is
-used for connecting to the server. This is done, for example, with
-
-    mysql_socket=/dev/mysql
-
-Usually there's no need for this option, unless you are using another
-location for the socket than that built into the client.
-
-=back
 
 =back
 
@@ -549,8 +570,11 @@ handles (read only):
 
     $infoString = $dbh->{'info'};
     $threadId = $dbh->{'thread_id'};
+    $insertId = $dbh->{'insertid'};
 
-These correspond to mysql_info() and mysql_tread_id(), respectively.
+These correspond to mysql_info(), mysql_thread_id() and mysql_insert_id(),
+respectively. Note that the latter depends on the query and becomes invalid
+when executing another query. You might prefer $sth->{'insertid'}.
 
 
 =head1 STATEMENT HANDLES
@@ -623,6 +647,9 @@ MySQL has the ability to choose unique key values automatically. If this
 happened, the new ID will be stored in this attribute. This attribute
 is not valid for DBD::mSQL.
 
+Note that you may also use $dbh->{'insertid'}, as long as you don't
+use other statement handles.
+
 =item is_blob
 
 Reference to an array of boolean values; TRUE indicates, that the
@@ -690,7 +717,7 @@ If you need the native column types, use I<mysql_type> or I<msql_type>,
 respectively. See below.
 
 
-=item mysql_type
+=item msql_type
 
 A reference to an array of mSQL's native column types, for example
 DBD::mSQL::INT_TYPE() or DBD::mSQL::CHAR_TYPE().
@@ -836,8 +863,8 @@ Msql-2.0.4 and 2.0.4.1 contain a bug that makes ORDER BY and hence
 the test script C<t/40bindparam> fail. To verify, if this is the
 case for you, do a
 
-      cd Msql
-      perl -w -I../blib/lib -I../blib/arch t/40bindparam.t
+	cd Msql
+	perl -w -I../blib/lib -I../blib/arch t/40bindparam.t
 
 If something is wrong, the script ought to print a number of id's and
 names. If the id's aren't in order, it is likely, that your mSQL has
@@ -869,7 +896,7 @@ current version and all credits and copyright notices are retained (
 the I<AUTHOR> and I<COPYRIGHT> sections ).  Requests for other
 distribution rights, including incorporation into commercial products,
 such as books, magazine articles or CD-ROMs should be made to
-Alligator Descartes <I<descarte@arcana.co.uk>>.
+Alligator Descartes <I<descarte@arcana.so.uk>>.
 
 
 =head1 MAILING LIST SUPPORT

@@ -7,7 +7,7 @@ package Msql::Statement;
 use strict;
 use vars qw($OPTIMIZE $VERSION $AUTOLOAD);
 
-$VERSION = '1.2004';
+$VERSION = '1.21_02';
 
 $OPTIMIZE = 0; # controls, which optimization we default to
 
