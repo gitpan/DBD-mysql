@@ -9,7 +9,7 @@ require Msql::Statement;
 $QUIET  = $QUIET  = '';
 @ISA    = @ISA    = '';
 @EXPORT = @EXPORT = '';
-$VERSION = '1.1826';
+$VERSION = '1.19_02';
 
 $QUIET = 0;
 

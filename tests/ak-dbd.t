@@ -25,7 +25,7 @@ use DBI;
 use strict;
 $dbdriver = "";
 {   my $file;
-    foreach $file ("lib.pl", "t/lib.pl") {
+    foreach $file ("lib.pl", "t/lib.pl", "DBD-~DBD_DRIVER~/t/lib.pl") {
 	do $file; if ($@) { print STDERR "Error while executing lib.pl: $@\n";
 			    exit 10;
 			}
@@ -63,23 +63,19 @@ while (Testing()) {
     #   Verify whether constants work
     #
     if ($mdriver eq 'mysql') {
-	Test($state  or  (&DBD::mysql::FIELD_TYPE_STRING() != 254))
-	    or ErrMsgF("Wrong value for FIELD_TYPE_STRING:"
-		       . " Expected 254, got %s",
-		       &DBD::mysql::FIELD_TYPE_STRING());
-	Test($state  or  (&DBD::mysql::FIELD_TYPE_SHORT() != 2))
-	    or ErrMsgF("Wrong value for FIELD_TYPE_SHORT:"
-		       . " Expected 2, got %s",
-		       &DBD::mysql::FIELD_TYPE_SHORT());
-    } elsif ($driver eq 'mSQL') {
-	Test($state  or  (&DBD::mSQL::CHAR_TYPE() != 2))
-	    or ErrMsgF("Wrong value for CHAR_TYPE:"
-		       . " Expected 2, got %s",
-		       &DBD::mSQL::CHAR_TYPE());
-	Test($state  or  (&DBD::mysql::INT_TYPE() != 1))
-	    or ErrMsgF("Wrong value for INT_TYPE:"
-		       . " Expected 1, got %s",
-		       &DBD::mysql::INT_TYPE());
+	my ($val);
+	Test($state  or  (($val = &DBD::mysql::FIELD_TYPE_STRING()) == 254))
+	    or ErrMsg("Wrong value for FIELD_TYPE_STRING:"
+		      . " Expected 254, got $val\n");
+	Test($state  or  (($val = &DBD::mysql::FIELD_TYPE_SHORT()) == 2))
+	    or ErrMsg("Wrong value for FIELD_TYPE_SHORT:"
+		      . " Expected 2, got $val\n");
+    } elsif ($mdriver eq 'mSQL') {
+	my ($val);
+	Test($state  or  (($val = &DBD::mSQL::CHAR_TYPE()) == 2))
+	    or ErrMsg("Wrong value for CHAR_TYPE: Expected 2, got $val\n");
+	Test($state  or  (($val = &DBD::mSQL::INT_TYPE()) == 1))
+	    or ErrMsg("Wrong value for INT_TYPE: Expected 1, got $val\n");
     }
 
     #
@@ -141,8 +137,9 @@ while (Testing()) {
     ### Get some meta-data for the table we've just created...
     if ($mdriver eq 'mysql' or $mdriver eq 'mSQL1' or $mdriver eq 'mSQL') {
 	my $ref;
-	Test($state or ($ref = $dbh->func($test_table, '_ListFields')))
-	    or ErrMsg("_ListFields failed: $dbh->errstr.\n");
+	Test($state or ($ref = $dbh->prepare("LISTFIELDS $test_table")))
+	    or ErrMsg("listfields failed: $dbh->errstr.\n");
+	Test($state or $ref->execute);
     }
 
     ### Insert a row into the test table.......
@@ -264,8 +261,13 @@ while (Testing()) {
     Test($state or $sth->execute)
 	or ErrMsg("execute failed: query $query, error $dbh->errstr.\n");
     if ($mdriver eq 'mysql'  ||  $mdriver eq 'mSQL'  ||  $mdriver eq 'mSQL1') {
+	my($warning);
+	$SIG{__WARN__} = sub { $warning = shift; };
 	Test($state or ($ref = $sth->func('_ListSelectedFields')))
 	    or ErrMsg("_ListSelectedFields failed, error $sth->errstr.\n");
+	Test($state or ($warning =~ /deprecated/))
+	    or ErrMsg("Expected warning from _ListSelectedFields");
+	$SIG{__WARN__} = 'DEFAULT';
     }
     Test($state or $sth->execute)
 	or ErrMsg("re-execute failed: query $query, error $dbh->errstr.\n");

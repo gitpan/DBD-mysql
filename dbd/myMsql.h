@@ -65,6 +65,7 @@ typedef m_field* field_t;
 #define MyDropDb(s, d) msqlDropDB(s, d)
 #define MyClose(s) msqlClose(s)
 #define MyError(s) msqlErrMsg
+#define MyErrno(s, m) (m)
 #define MyQuery(s, q, l) msqlQuery(s, q)
 #define MyStoreResult(s) msqlStoreResult()
 #define MyGetHostInfo(s) msqlGetHostInfo(s)
@@ -84,10 +85,12 @@ typedef m_field* field_t;
 #endif
 
 int MyConnect(dbh_t*, char*, char*, char*);
+#define MyReconnect(s, h) 0
 
 #else
 
 #include <mysql.h>  /* installed during the installation of mysql itself  */
+#include <errmsg.h>
 
 typedef MYSQL* dbh_t;
 typedef MYSQL_RES* result_t;
@@ -101,13 +104,19 @@ typedef MYSQL_FIELD* field_t;
 #define MyDropDb(s, d) mysql_drop_db(s, d)
 #define MyClose(s) mysql_close(s)
 #define MyError(s) mysql_error(s)
+#define MyErrno(s, m) mysql_errno(s)
 #define MyQuery(s, q, l) mysql_real_query(s, q, l)
 #define MyStoreResult(s) mysql_store_result(s)
 #define MyGetHostInfo(s) mysql_get_host_info(s)
 #define MyGetServerInfo(s) mysql_get_server_info(s)
 #define MyGetProtoInfo(s) mysql_get_proto_info(s)
 #define MyShutdown(s) mysql_shutdown(s)
+#ifdef REFRESH_GRANT
+#define MyReload(s) mysql_refresh(s, \
+				  REFRESH_GRANT|REFRESH_LOG|REFRESH_TABLES)
+#else
 #define MyReload(s) mysql_reload(s)
+#endif
 #define MyNumRows(r) mysql_num_rows(r)
 #define MyNumFields(r) mysql_num_fields(r)
 #define MyFetchRow(r) mysql_fetch_row(r)
@@ -117,6 +126,13 @@ typedef MYSQL_FIELD* field_t;
 #define MyDataSeek(r, i) mysql_data_seek(r, i)
 
 int MyConnect(dbh_t, char*, char*, char*);
+#if MYSQL_VERSION_ID >= 32117
+#define MyReconnect(s, h) (mysql_errno(s) == CR_SERVER_GONE_ERROR)
+#else
+extern int MysqlReconnect(SV*);
+#define MyReconnect(s, h) (mysql_errno(s) == CR_SERVER_GONE_ERROR \
+			   &&  MysqlReconnect(h))
+#endif
 
 #if !defined(IS_UNIQUE_KEY)
 #define IS_UNIQUE_KEY(n) ((n) & (UNIQUE_KEY_FLAG | PRI_KEY_FLAG))
