@@ -1,6 +1,6 @@
 #   Our beloved Emacs will give us -*- perl -*- mode :-)
 #
-#   $Id: dbd.pm.in,v 1.1.1.1.2.7 1999/05/23 11:46:56 joe Exp $
+#   $Id: dbd.pm.in,v 1.2 1999/07/13 08:18:55 joe Exp $
 #
 #   Copyright (c) 1994,1995,1996,1997 Alligator Descartes, Tim Bunce
 #
@@ -308,6 +308,7 @@ Interface (DBI)
     $rc = $dbh->func('shutdown', 'admin');
     $rc = $dbh->func('reload', 'admin');
 
+~#if#~ (int(~~dbd_version~~ * 100.0)) % 2
 
 =head1 EXPERIMENTAL SOFTWARE
 
@@ -321,6 +322,7 @@ The "odd" releases (1.19xx as of this writing, perhaps 1.21xx, 1.23xx
 in the future) will be used for testing new features or other serious
 code changes.
 
+~#endif#~
 
 =head1 DESCRIPTION
 

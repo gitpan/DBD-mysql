@@ -5,11 +5,9 @@ package Mysql::Statement;
 @Mysql::Statement::ISA = qw(DBI::st);
 
 use strict;
-use vars qw($OPTIMIZE $VERSION $AUTOLOAD);
+use vars qw($VERSION $AUTOLOAD);
 
-$VERSION = '1.2201';
-
-$OPTIMIZE = 0; # controls, which optimization we default to
+$VERSION = '1.2202';
 
 sub fetchrow ($) {
     my $self = shift;

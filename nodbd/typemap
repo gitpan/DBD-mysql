@@ -1,4 +1,4 @@
-# $Header: /home/joe/.cvs/Msql-Mysql-modules/nodbd/typemap,v 1.1.1.1.2.1 1998/12/22 15:01:36 joe Exp $ 
+# $Header: /home/joe/.cvs/Msql-Mysql-modules/nodbd/typemap,v 1.1.1.1 1999/07/13 08:14:45 joe Exp $ 
 
 TYPEMAP
 my_dbh_t		T_DBH

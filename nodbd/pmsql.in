@@ -1,6 +1,6 @@
 ~~startperl~~
 
-# $Id: pmsql.in,v 1.1.1.1.2.2 1999/02/20 14:51:46 joe Exp $
+# $Id: pmsql.in,v 1.1.1.1 1999/07/13 08:14:45 joe Exp $
 my $version = '~~nodbd_version~~';
 
 BEGIN {require 5.002;}

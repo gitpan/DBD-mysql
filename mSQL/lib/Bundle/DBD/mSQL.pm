@@ -2,7 +2,7 @@
 
 package Bundle::DBD::mSQL;
 
-$VERSION = '2.0401';
+$VERSION = '2.0402';
 
 1;
 

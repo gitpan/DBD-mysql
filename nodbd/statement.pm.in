@@ -5,11 +5,9 @@ package ~~nodbd_driver~~::Statement;
 @~~nodbd_driver~~::Statement::ISA = qw(DBI::st);
 
 use strict;
-use vars qw($OPTIMIZE $VERSION $AUTOLOAD);
+use vars qw($VERSION $AUTOLOAD);
 
 $VERSION = '~~nodbd_version~~';
-
-$OPTIMIZE = 0; # controls, which optimization we default to
 
 sub fetchrow ($) {
     my $self = shift;
@@ -145,11 +143,11 @@ sub unctrl {
 }
 
 ~#if#~ ('~~dbd_driver~~' ne 'mysql')
+use vars qw($OPTIMIZE);
+$OPTIMIZE = 0;
 sub optimize {
     my($self,$arg) = @_;
-    if (defined $arg) {
-	$OPTIMIZE = $arg;
-    }
+    $OPTIMIZE = $arg if defined $arg;
     $OPTIMIZE;
 }
 ~#endif#~

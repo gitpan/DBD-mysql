@@ -1,6 +1,6 @@
 #   Our beloved Emacs will give us -*- perl -*- mode :-)
 #
-#   $Id: dbd.pm.in,v 1.1.1.1.2.7 1999/05/23 11:46:56 joe Exp $
+#   $Id: dbd.pm.in,v 1.2 1999/07/13 08:18:55 joe Exp $
 #
 #   Copyright (c) 1994,1995,1996,1997 Alligator Descartes, Tim Bunce
 #
@@ -16,7 +16,7 @@ use DynaLoader();
 use Carp ();
 @ISA = qw(DynaLoader);
 
-$VERSION = '2.0401';
+$VERSION = '2.0402';
 
 bootstrap DBD::mysql $VERSION;
 
@@ -307,19 +307,6 @@ Interface (DBI)
     $rc = $dbh->func('dropdb', $database, 'admin');
     $rc = $dbh->func('shutdown', 'admin');
     $rc = $dbh->func('reload', 'admin');
-
-
-=head1 EXPERIMENTAL SOFTWARE
-
-This package contains experimental software and should *not* be used
-in a production environment. We are following the Linux convention and
-treat the "even" releases (1.18xx as of this writing, perhaps 1.20xx,
-1.22xx, ... in the future) as stable. Only bug or portability fixes
-will go into these releases.
-
-The "odd" releases (1.19xx as of this writing, perhaps 1.21xx, 1.23xx
-in the future) will be used for testing new features or other serious
-code changes.
 
 
 =head1 DESCRIPTION

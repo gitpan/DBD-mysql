@@ -11,8 +11,8 @@ my(
    $class,
    $errstrRef,
    $query,
-   $firsttable,
-   $secondtable,
+   $table1,
+   $table2,
    $dbh,
    $dbh2,
    $dbh3,
@@ -155,20 +155,20 @@ while (Testing()) {
     # No big deal.
 
     if (!$state) {
-	if (($firsttable = FindNewTable($dbh)) eq '') {
+	if (($table1 = FindNewTable($dbh)) eq '') {
 	    print "Cannot determine name of first test table: $$errstrRef.\n";
 	    exit 10;
 	}
-	if (($secondtable = FindNewTable($dbh)) eq '') {
+	if (($table2 = FindNewTable($dbh)) eq '') {
 	    print "Cannot determine name of second test table: $$errstrRef.\n";
 	    exit 10;
 	}
     } else {
-	$firsttable = '';  # Suppress warnings for undefined variables
-	$secondtable = '';
+	$table1 = '';  # Suppress warnings for undefined variables
+	$table2 = '';
     }
 
-    Test($state or ($query = TableDefinition($firsttable,
+    Test($state or ($query = TableDefinition($table1,
 				     ["she", "CHAR",  32, $COL_NULLABLE],
 				     ["him", "CHAR",  32, 0],
 				     ["who", "CHAR",  32, $COL_NULLABLE])))
@@ -177,7 +177,7 @@ while (Testing()) {
     Test($state or $dbh->query($query), undef, "Creating first test table")
 	or (print "Cannot create first table: $$errstrRef.\n", exit);
 
-    Test($state or ($query = TableDefinition($secondtable,
+    Test($state or ($query = TableDefinition($table2,
 				     ["she", "CHAR",  32, $COL_NULLABLE],
 				     ["him", "CHAR",  32, 0],
 				     ["who", "CHAR",  32, $COL_NULLABLE])))
@@ -193,16 +193,16 @@ while (Testing()) {
     # these tables are empty
 
     for $query (
-        "insert into $firsttable values ('Anna', 'Franz', 'Otto')",
-	"insert into $firsttable values ('Sabine', 'Thomas', 'Pauline')"  ,
-	"insert into $firsttable values ('Jane', 'Paul', 'Jah')"	      ,
-	"insert into $secondtable values ('Henry', 'Francis', 'James')"   ,
-	"insert into $secondtable values ('Cashrel', 'Beco', 'Lotic')"
+        "insert into $table1 values ('Anna', 'Franz', 'Otto')",
+	"insert into $table1 values ('Sabine', 'Thomas', 'Pauline')"  ,
+	"insert into $table1 values ('Jane', 'Paul', 'Jah')"	      ,
+	"insert into $table2 values ('Henry', 'Francis', 'James')"   ,
+	"insert into $table2 values ('Cashrel', 'Beco', 'Lotic')"
 		) {
 	Test($state or $dbh->query($query)) or test_error($dbh,0,$query);
     }
 
-    $query = "select * from $firsttable";
+    $query = "select * from $table1";
     Test($state or ($sth = $dbh->query($query)), undef, "First SELECT")
 	or test_error($dbh,0,$query);
     Test($state or ($sth->numrows == 3))
@@ -224,17 +224,17 @@ while (Testing()) {
 
     # There is the array reference $sth->table. We expect, that all three
     # fields in the array have the same value, as we only selected from
-    # $firsttable
-    Test($state or ($sth->table->[0] eq $firsttable), undef,
+    # $table1
+    Test($state or ($sth->table->[0] eq $table1), undef,
 	 'Checking $sth->table')
 	or printf("Wrong table name, expected %s, got %s.\n",
-		  $firsttable, $sth->table->[0]);
-    Test($state or ($sth->table->[1] eq $firsttable))
+		  $table1, $sth->table->[0]);
+    Test($state or ($sth->table->[1] eq $table1))
 	or printf("Wrong table name, expected %s, got %s.\n",
-			       $firsttable, $sth->table->[1]);
-    Test($state or ($sth->table->[2] eq $firsttable))
+			       $table1, $sth->table->[1]);
+    Test($state or ($sth->table->[2] eq $table1))
 	or printf("Wrong table name, expected %s, got %s.\n",
-		  $firsttable, $sth->table->[2]);
+		  $table1, $sth->table->[2]);
 
     # CHAR_TYPE, NUM_TYPE and REAL_TYPE are exported functions from
     # Msql. That is why you have to say 'use Msql'. The functions are
@@ -254,7 +254,7 @@ while (Testing()) {
 	 'Checking $sth->type')
 	or printf("Wrong result type, expected %d, got %d.\n",
 		  $expected, $sth->type->[0]);
-    
+
     # Now we count the rows ourselves, we don't trust anybody
     my $rowcnt=0;
     if (!$state) {
@@ -266,7 +266,7 @@ while (Testing()) {
 	or printf("Counted wrong number of rows, expected %d,"
 		  . " got %d.\n",
 		  $sth->numrows, $rowcnt);
-    
+
     # We haven't yet tested DataSeek, so lets count again
     if (!$state) {
 	$rowcnt=0;
@@ -281,7 +281,7 @@ while (Testing()) {
 		  $sth->numrows, $rowcnt);
 
     # let's see the second table
-    Test($state or ($sth = $dbh->query("select * from $secondtable")))
+    Test($state or ($sth = $dbh->query("select * from $table2")))
 	or test_error($dbh);
 
     # We set the second field "not null". Does the API know that?
@@ -289,12 +289,12 @@ while (Testing()) {
 	 'Checking $sth->is_not_null')
 	or printf("NOT NULL not recognized (%s).\n",
 		  join(" ", @{$sth->is_not_null}));
-    
+
     # Are we able to just reconnect with the *same* scalar ($dbh) playing
     # the role of the db-handle?
     Test($state or ($dbh = $class->connect($host,$dbname, $user, $password)))
 	or print("Error while reconnecting: $$errstrRef.\n");
-    
+
     # We may have an arbitrary number of statementhandles. Each
     # statementhandle consumes memory, so in reality we try to scope them
     # with my() within a block or we reuse them or we undef them.
@@ -304,11 +304,11 @@ while (Testing()) {
 	# variables too, that you won't need outside the block
 	my($sth1,$sth2,@row1,$count);
 
-	Test($state or ($sth1 = $dbh->query("select * from $firsttable")),
+	Test($state or ($sth1 = $dbh->query("select * from $table1")),
 	     undef, 'Checking second sth')
 	    or print("Query had some problem:"
 		     . " $$errstrRef\n");
-	Test($state or ($sth2 = $dbh->query("select * from $secondtable")))
+	Test($state or ($sth2 = $dbh->query("select * from $table2")))
 	    or print("Query had some problem:"
 		     . " $$errstrRef\n");
 
@@ -355,7 +355,8 @@ while (Testing()) {
 	    local($Mysql::QUIET) = 1;  # Doesn't hurt to set both ... :-)
 	    local($Msql::QUIET) = 1;
 	    local($Msql1::QUIET) = 1;
-	    $sth = $dbh->query("select * from $firsttable where him = 'Thomas')");
+
+	    $sth = $dbh->query("select * from $table1 where him = 'Thomas')");
 	}
 
 	# $mysql::db_errstr should contain the word "error" now
@@ -374,15 +375,15 @@ while (Testing()) {
     Test($state or $@)
 	or printf("Expected driver to die with error message.\n");
 
-    # Remember, we inserted a row into table $firsttable ('Sabine',
+    # Remember, we inserted a row into table $table1 ('Sabine',
     # 'Thomas', 'Pauline'). Let's see, if they are still there.
-    Test($state or ($sth = $dbh->query("select * from $firsttable"
+    Test($state or ($sth = $dbh->query("select * from $table1"
 				       . " where him = 'Thomas'")))
 	or print("Query had some problem: $$errstrRef.\n");
-    
+
     Test($state or (@row = $sth->fetchrow))
-	or print("$firsttable didn't find a matching row");
-    
+	or print("$table1 didn't find a matching row");
+
     Test($state or ($row[2] eq "Pauline"))
 	or print("Expected 'Pauline' being in the"
 			      . " second field.\n");
@@ -397,7 +398,7 @@ while (Testing()) {
 	}
 
 	# %fieldnum is now (she => 0, him => 1, who => 2)
-	     
+
 	# So we do not have to hard-code the zero for "she" here
 
 	Test($state or ($row[$fieldnum{"she"}] eq 'Sabine'))
@@ -415,7 +416,7 @@ while (Testing()) {
     Test($state or ($dbh2 = $class->connect($host,$dbname,$user,$password)), undef,
 	 'Reconnect')
 	or print("Error while reconnecting: $$errstrRef.\n");
-    
+
     # Some quick checks about the contents of the handle...
     Test($state or ($dbh2->database eq $dbname))
 	or printf("Error in database name, expected %s,"
@@ -431,11 +432,11 @@ while (Testing()) {
 
     # Is $dbh2 able to drop a table, while we are connected with $dbh?
     # Sure it can...
-    Test($state or $dbh2->query("drop table $secondtable"), undef,
+    Test($state or $dbh2->query("drop table $table2"), undef,
 	 'Second dbh')
 	or print("Error while dropping table with second handle:"
 			      . " $$errstrRef.\n");
-    
+
     {
 	# Does ListDBs find the test database? Sure...
 	my @array;
@@ -445,27 +446,27 @@ while (Testing()) {
 
 	Test($state or (grep( /^test$/, @array )), undef, 'ListDBs')
 	    or print("'test' database not in db list.\n");
-	
-	# Does ListTables now find our $firsttable?
+
+	# Does ListTables now find our $table1?
 	if (!$state) {
 	    @array = $dbh2->listtables;
 	}
-	Test($state or (grep( /^$firsttable$/, @array )))
-	    or printf("'$firsttable' not in table list.\n");
+	Test($state or (grep( /^$table1$/, @array )))
+	    or printf("'$table1' not in table list.\n");
     }
-    
+
     # The third connection within a single script. I promise, this will do...
     Test($state or ($dbh3 = Connect $class($host,$dbname,$user,$password)), undef,
 	 'Third connection')
 	or test_error($dbh3, $testNum);
-    
+
     Test($state or ($dbh3->host eq $host))
 	or printf("Wrong host name, expected %s, got %s.\n",
 			       $host, $dbh3->host);
     Test($state or ($dbh3->database eq $dbname))
 	or printf("Wrong database name, expected %s, got %s.\n",
 			       $dbname, $dbh3->database);
-    
+
     # For what it's worth, we have a tough job for the server here. First
     # we define two simple subroutines. The goal of these is to make the
     # create table statement independent of what happens on the server
@@ -473,20 +474,20 @@ while (Testing()) {
     # suggested name and retry. We return the incremented table name. With
     # this setting we can run the test script in parallel in many
     # processes.
-    
+
     # Then we insert some nonsense changing the dbhandle quickly
     if (!$state) {
 	my $C="AAAA"; 
 	my $N=1;
-	drop($dbh2,$firsttable);
-	$firsttable = create($dbh2,$firsttable,"( name char(40) not null,
+	drop($dbh2,$table1);
+	$table1 = create($dbh2,$table1,"( name char(40) not null,
             num int, country char(4), mytime real )");
 
 	for (1..5){
-	    $dbh2->query("insert into $firsttable values
+	    $dbh2->query("insert into $table1 values
 	        ('".$C++."',".$N++.",'".$C++."',".rand().")")
 		or test_error($dbh2);
-	    $dbh3->query("insert into $firsttable values
+	    $dbh3->query("insert into $table1 values
 	        ('".$C++."',".$N++.",'".$C++."',".rand().")")
 		or test_error($dbh2);
 	}
@@ -500,26 +501,26 @@ while (Testing()) {
     # statement. 'Course you never know, which part of the statement
     # failed--if something fails.
 
-    Test($state or (($i = $dbh2->query("select * from $firsttable")->numrows)
+    Test($state or (($i = $dbh2->query("select * from $table1")->numrows)
 		    == 10))
 	 or printf("Expected parallel query to produce %d rows,"
 		   . " got %d.\n", 10, $i);
-	 
+
     # Interesting the following test. Creating and dropping of tables via
     # two different database handles in quick alteration. There was really
     # a version of mSQL that messed up with this
 
     if (!$state) {
 	for (1..3){
-	    drop($dbh2,$firsttable);
-	    $secondtable = create($dbh3,$secondtable,"( name char(40) not null,
+	    drop($dbh2,$table1);
+	    $table2 = create($dbh3,$table2,"( name char(40) not null,
                  num int, country char(4), mytime real )");
-	    drop($dbh2,$secondtable);
-	    $firsttable = create($dbh3,$firsttable,"( name char(40) not null,
+	    drop($dbh2,$table2);
+	    $table1 = create($dbh3,$table1,"( name char(40) not null,
                 num int, country char(4), mytime real )");
 	}
     }
-    Test($state or drop($dbh2,$firsttable))
+    Test($state or drop($dbh2,$table1))
 	 or print("Error in create/drop alteration:"
 		  . " $$errstrRef\n");
 
@@ -537,7 +538,7 @@ while (Testing()) {
 
     # The following tests show, that NULL fields (introduced with
     # msql-1.0.6) are handled correctly:
-    Test($state or ($query = TableDefinition($firsttable,
+    Test($state or ($query = TableDefinition($table1,
 				     ["she", "CHAR",    14, 0],
 				     ["him", "INTEGER", 4,  $COL_NULLABLE],
 				     ["who", "CHAR",    1,  $COL_NULLABLE])))
@@ -546,9 +547,9 @@ while (Testing()) {
 
     # As you see, we don't insert a value for "him" and "who", so we can
     # test the undefinedness
-    $query = "insert into $firsttable (she) values ('jazz')";
+    $query = "insert into $table1 (she) values ('jazz')";
     Test($state or $dbh->query($query))  or  test_error($dbh, 0, $query);
-    $query = "select * from $firsttable";
+    $query = "select * from $table1";
     Test($state or ($sth = $dbh->query($query)))
 	 or test_error($dbh, 0, $query);
     Test($state or (@row = $sth->fetchrow()))
@@ -575,7 +576,7 @@ while (Testing()) {
 
     my $sth3;
     print "Verifying whether fetchrow returns TRUE for results.\n";
-    $query = "select him from $firsttable";
+    $query = "select him from $table1";
     Test($state or ($sth3 = $dbh->query($query)))
 	 or test_error($dbh, 0, $query);
 
@@ -606,8 +607,8 @@ while (Testing()) {
 
     {
 	local($Mysql::QUIET, $Msql::QUIET, $Msql1::QUIET) = (1, 1, 1);
-	
-	Test($state or (($sth) = $dbh->query("insert into $firsttable values"
+
+	Test($state or (($sth) = $dbh->query("insert into $table1 values"
 					     . " (\047x\047,2,\047y\047)")))
 	    or test_error($dbh);
 	use vars qw($ref);
@@ -639,9 +640,9 @@ while (Testing()) {
 
 	# So many people have problems using the ListFields method,
 	# so we finally provide a simple example.
-	Test($state or ($sth_query = $dbh->query("select * from $firsttable")))
+	Test($state or ($sth_query = $dbh->query("select * from $table1")))
 	    or test_error($dbh);
-	Test($state or ($sth_listf = $dbh->listfields($firsttable)))
+	Test($state or ($sth_listf = $dbh->listfields($table1)))
 	    or test_error($dbh);
 	for $method (qw/name table length type is_not_null is_pri_key/) {
 	    $ok = 1;
@@ -696,7 +697,7 @@ while (Testing()) {
 				   $hash{she});
     }
 
-    $query = "drop table $firsttable";
+    $query = "drop table $table1";
     Test($state or $dbh->query($query))
 	or test_error($dbh, 0, $query);
 
@@ -715,7 +716,7 @@ while (Testing()) {
     # The chr column has a size of 2 bytes, due to a bug in the
     # mSQL engine. This bug is checked for in msql1.t, so we don't
     # need to deal with it here.
-    $query = "create table $firsttable (ascii int, chr char(2))";
+    $query = "create table $table1 (ascii int, chr char(2))";
     Test($state or $dbh->query($query))
 	or test_error($dbh,0,$query);
 
@@ -724,7 +725,7 @@ while (Testing()) {
 	my $chr;
 	if (!$state) {
 	    $chr = $dbh->quote(chr($nchar));
-	    $query = "insert into $firsttable values ($nchar, $chr)";
+	    $query = "insert into $table1 values ($nchar, $chr)";
 	}
 	Test($state or $dbh->query($query))
 	    or ($query = unctrl($query),
@@ -732,7 +733,7 @@ while (Testing()) {
 				   . " err[$$errstrRef])\n"));
     }
 
-    Test($state or ($sth = $dbh->query("select * from $firsttable")))
+    Test($state or ($sth = $dbh->query("select * from $table1")))
 	or test_error($dbh);
     Test($state or ($sth->numrows() == 255))
 	or print("Expected control characters to produce"
@@ -756,7 +757,7 @@ while (Testing()) {
 			       . " %s <-> %s.\n", $hash{'ascii'},
 			       $hash{'chr'}, chr($hash{'ascii'}));
 
-    Test($state or ($sth = $dbh->query("drop table $firsttable")))
+    Test($state or ($sth = $dbh->query("drop table $table1")))
 	or test_error($dbh);
     if ($mdriver eq 'mysql') {
 	Test($state or ($sth->numfields == 0))
@@ -774,19 +775,19 @@ while (Testing()) {
 	if (!$state) {
 	    # create 8 tables
 	    for (1..8) {
-		push @created, create($dbh,$firsttable,q{(foo char(1))});
+		push @created, create($dbh, $table1, q{(foo char(1))});
 	    }
-	     
+
 	    # reference all 8 so they are cached
 	    for (@created) {
 		$dbh->listfields($_);
 	    }
-	     
+
 	    # reference a non existant table
 	    my $nonexist = "NONEXIST";
 	    $nonexist++ while grep /^$nonexist$/, $dbh->listtables;
 	    $dbh->listfields($nonexist);
-		  
+
 	    # reference the first table in the cache: 1.0.16 did not know
 	    # the contents
 	}
@@ -797,7 +798,7 @@ while (Testing()) {
 			      . " serious bug,\n"
 			      . "upgrade the server to something"
 			      . " > 1.0.16.\n");
-	      
+
 	if (!$state) {
 	    # drop the eight tables
 	    for (@created) {

@@ -5,7 +5,7 @@
 #  You may distribute this under the terms of either the GNU General Public
 #  License or the Artistic License, as specified in the Perl README file.
 #
-#  $Id: Makefile.PL,v 1.1.1.1.2.8.2.1 1999/05/23 19:08:26 joe Exp $
+#  $Id: Makefile.PL,v 1.1.1.1 1999/07/13 08:14:45 joe Exp $
 #
 BEGIN {require 5.004;}
 use strict;
@@ -18,8 +18,8 @@ use lib "lib";
 
 use vars qw($VERSION $DBD_VERSION $options);
 
-$VERSION = "1.2201";
-$DBD_VERSION = "2.0401";
+$VERSION = "1.2202";
+$DBD_VERSION = "2.0402";
 
 $options = { 'prompt' => 1 };
 

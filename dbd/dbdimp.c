@@ -17,7 +17,7 @@
  *           Fax: +49 7123 / 14892
  *
  *
- *  $Id: dbdimp.c,v 1.1.1.1.2.7.2.1 1999/05/23 19:08:28 joe Exp $
+ *  $Id: dbdimp.c,v 1.2 1999/07/22 09:17:27 joe Exp $
  */
 
 
@@ -401,8 +401,8 @@ void do_error(SV* h, int rc, char* what) {
     sv_setpv(errstr, what);
     DBIh_EVENT2(h, ERROR_event, DBIc_ERR(imp_xxh), errstr);
     if (dbis->debug >= 2)
-	fprintf(DBILOGFP, "%s error %d recorded: %s\n",
-		what, rc, SvPV(errstr,lna));
+	PerlIO_printf(DBILOGFP, "%s error %d recorded: %s\n",
+		      what, rc, SvPV(errstr,lna));
 }
 void do_warn(SV* h, int rc, char* what) {
     D_imp_xxh(h);
@@ -413,8 +413,8 @@ void do_warn(SV* h, int rc, char* what) {
     sv_setpv(errstr, what);
     DBIh_EVENT2(h, WARN_event, DBIc_ERR(imp_xxh), errstr);
     if (dbis->debug >= 2)
-	fprintf(DBILOGFP, "%s warning %d recorded: %s\n",
-		what, rc, SvPV(errstr,lna));
+	PerlIO_printf(DBILOGFP, "%s warning %d recorded: %s\n",
+		      what, rc, SvPV(errstr,lna));
     warn("%s", what);
 }
 #define doquietwarn(s)                                            \
@@ -466,12 +466,12 @@ int MyConnect(dbh_t *sock, char* unixSocket, char* host, char* port,
     if (password && !*password) password = NULL;
 
     if (dbis->debug >= 2)
-        fprintf(DBILOGFP,
-		"imp_dbh->MyConnect: host = %s, port = %d, uid = %s," \
-                " pwd = %s\n",
-		host ? host : "NULL", portNr,
-		user ? user : "NULL",
-		password ? password : "NULL");
+        PerlIO_printf(DBILOGFP,
+		      "imp_dbh->MyConnect: host = %s, port = %d, uid = %s," \
+		      " pwd = %s\n",
+		      host ? host : "NULL", portNr,
+		      user ? user : "NULL",
+		      password ? password : "NULL");
 
 #ifdef DBD_MYSQL
     {
@@ -607,7 +607,8 @@ static int _MyLogin(imp_dbh_t *imp_dbh) {
         *svp  &&  SvOK(*svp)) {
         char* cf = SvPV(*svp, lna);
         if (dbis->debug >= 2) {
-            fprintf(DBILOGFP, "imp_dbh->MyLogin: Loading config file %s\n",
+            PerlIO_printf(DBILOGFP,
+			  "imp_dbh->MyLogin: Loading config file %s\n",
                     cf);
         }
         if (msqlLoadConfigFile(cf) == -1) {
@@ -621,14 +622,14 @@ static int _MyLogin(imp_dbh_t *imp_dbh) {
 #endif
 
     if (dbis->debug >= 2)
-        fprintf(DBILOGFP,
-		"imp_dbh->MyLogin: dbname = %s, uid = %s, pwd = %s," \
-		"host = %s, port = %s\n",
-		dbname ? dbname : "NULL",
-		user ? user : "NULL",
-		password ? password : "NULL",
-		host ? host : "NULL",
-		port ? port : "NULL");
+        PerlIO_printf(DBILOGFP,
+		      "imp_dbh->MyLogin: dbname = %s, uid = %s, pwd = %s," \
+		      "host = %s, port = %s\n",
+		      dbname ? dbname : "NULL",
+		      user ? user : "NULL",
+		      password ? password : "NULL",
+		      host ? host : "NULL",
+		      port ? port : "NULL");
 
 #ifdef DBD_MYSQL
     imp_dbh->svsock = &imp_dbh->mysql;
@@ -664,10 +665,11 @@ int dbd_db_login(SV* dbh, imp_dbh_t* imp_dbh, char* dbname, char* user,
 #endif
 
     if (dbis->debug >= 2)
-        fprintf(DBILOGFP, "imp_dbh->connect: dsn = %s, uid = %s, pwd = %s\n",
-	       dbname ? dbname : "NULL",
-	       user ? user : "NULL",
-	       password ? password : "NULL");
+        PerlIO_printf(DBILOGFP,
+		      "imp_dbh->connect: dsn = %s, uid = %s, pwd = %s\n",
+		      dbname ? dbname : "NULL",
+		      user ? user : "NULL",
+		      password ? password : "NULL");
 
     if (!_MyLogin(imp_dbh)) {
 	DO_ERROR(dbh, MyErrno(imp_dbh->svsock, JW_ERR_CONNECT),
@@ -743,7 +745,8 @@ int dbd_db_disconnect(SV* dbh, imp_dbh_t* imp_dbh) {
     /* since most errors imply already disconnected.    */
     DBIc_ACTIVE_off(imp_dbh);
     if (dbis->debug >= 2)
-        fprintf(DBILOGFP, "imp_dbh->svsock: %lx\n", (long) &imp_dbh->svsock);
+        PerlIO_printf(DBILOGFP, "imp_dbh->svsock: %lx\n",
+		      (long) &imp_dbh->svsock);
     MyClose(imp_dbh->svsock );
 
     /* We don't free imp_dbh since a reference still exists    */
@@ -993,8 +996,8 @@ int dbd_st_prepare(SV* sth, imp_sth_t* imp_sth, char* statement, SV* attribs) {
         SV** svp = DBD_ATTRIB_GET_SVP(attribs, "mysql_use_result", 16);
         imp_sth->use_mysql_use_result = svp && SvTRUE(*svp);
 	if (dbis->debug >= 2)
-	    fprintf(DBILOGFP, "Setting mysql_use_result to %d\n",
-		    imp_sth->use_mysql_use_result);
+	    PerlIO_printf(DBILOGFP, "Setting mysql_use_result to %d\n",
+			  imp_sth->use_mysql_use_result);
     }
 #endif
     for (i = 0;  i < AV_ATTRIB_LAST;  i++) {
@@ -1038,7 +1041,7 @@ int dbd_st_internal_execute(SV* h, SV* statement, SV* attribs, int numParams,
     if (salloc) {
         sbuf = salloc;
         if (dbis->debug >= 2) {
-	    fprintf(DBILOGFP, "      Binding parameters: %s\n", sbuf);
+	    PerlIO_printf(DBILOGFP, "      Binding parameters: %s\n", sbuf);
 	}
     }
 
@@ -1186,7 +1189,8 @@ int dbd_st_execute(SV* sth, imp_sth_t* imp_sth) {
 #endif
 
     if (dbis->debug >= 2) {
-        fprintf(DBILOGFP, "    -> dbd_st_execute for %08lx\n", (u_long) sth);
+        PerlIO_printf(DBILOGFP,
+		      "    -> dbd_st_execute for %08lx\n", (u_long) sth);
     }
 
     if (!SvROK(sth)  ||  SvTYPE(SvRV(sth)) != SVt_PVHV) {
@@ -1229,8 +1233,8 @@ int dbd_st_execute(SV* sth, imp_sth_t* imp_sth) {
     }
 
     if (dbis->debug >= 2) {
-        fprintf(DBILOGFP, "    <- dbd_st_execute %d rows\n",
-		imp_sth->row_num);
+        PerlIO_printf(DBILOGFP, "    <- dbd_st_execute %d rows\n",
+		      imp_sth->row_num);
     }
 
     return imp_sth->row_num;
@@ -1289,8 +1293,9 @@ AV* dbd_st_fetch(SV* sth, imp_sth_t* imp_sth) {
 
     ChopBlanks = DBIc_is(imp_sth, DBIcf_ChopBlanks);
     if (dbis->debug >= 2) {
-        fprintf(DBILOGFP, "    -> dbd_st_fetch for %08lx, chopblanks %d\n",
-		(u_long) sth, ChopBlanks);
+        PerlIO_printf(DBILOGFP,
+		      "    -> dbd_st_fetch for %08lx, chopblanks %d\n",
+		      (u_long) sth, ChopBlanks);
     }
 
     if (!imp_sth->cda) {
@@ -1334,8 +1339,8 @@ AV* dbd_st_fetch(SV* sth, imp_sth_t* imp_sth) {
 	    }
 
 	    if (dbis->debug >= 2) {
-		fprintf(DBILOGFP, "      Storing row %d (%s) in %08lx\n",
-			i, col, (u_long) sv);
+		PerlIO_printf(DBILOGFP, "      Storing row %d (%s) in %08lx\n",
+			      i, col, (u_long) sv);
 	    }
 	    sv_setpvn(sv, col, len);
 	} else {
@@ -1344,7 +1349,7 @@ AV* dbd_st_fetch(SV* sth, imp_sth_t* imp_sth) {
     }
 
     if (dbis->debug >= 2) {
-        fprintf(DBILOGFP, "    <- dbd_st_fetch, %d cols\n", num_fields);
+        PerlIO_printf(DBILOGFP, "    <- dbd_st_fetch, %d cols\n", num_fields);
     }
     return av;
 }
@@ -1446,9 +1451,9 @@ int dbd_st_STORE_attrib(SV* sth, imp_sth_t* imp_sth, SV* keysv, SV* valuesv) {
     int result = FALSE;
 
     if (dbis->debug >= 2) {
-        fprintf(DBILOGFP,
-		"    -> dbd_st_STORE_attrib for %08lx, key %s\n",
-		(u_long) sth, key);
+        PerlIO_printf(DBILOGFP,
+		      "    -> dbd_st_STORE_attrib for %08lx, key %s\n",
+		      (u_long) sth, key);
     }
 
 #if defined(DBD_MYSQL)
@@ -1458,9 +1463,9 @@ int dbd_st_STORE_attrib(SV* sth, imp_sth_t* imp_sth, SV* keysv, SV* valuesv) {
 #endif
 
     if (dbis->debug >= 2) {
-        fprintf(DBILOGFP,
-		"    <- dbd_st_STORE_attrib for %08lx, result %d\n",
-		(u_long) sth, result);
+        PerlIO_printf(DBILOGFP,
+		      "    <- dbd_st_STORE_attrib for %08lx, result %d\n",
+		      (u_long) sth, result);
     }
 
     return result;
@@ -1637,9 +1642,9 @@ SV* dbd_st_FETCH_attrib(SV* sth, imp_sth_t* imp_sth, SV* keysv) {
     }
 
     if (dbis->debug >= 2) {
-        fprintf(DBILOGFP,
-		"    -> dbd_st_FETCH_attrib for %08lx, key %s\n",
-		(u_long) sth, key);
+        PerlIO_printf(DBILOGFP,
+		      "    -> dbd_st_FETCH_attrib for %08lx, key %s\n",
+		      (u_long) sth, key);
     }
 
     switch (*key) {

@@ -1,3 +1,12 @@
+1999-07-22  Jochen Wiedmann  <joe@ispsoft.de> (1.2202)
+
+	* dbd/dbd.pm.in: The hint for experimental software is now
+	  enabled or disabled automatically, thanks to ExtUtils::PerlPP.
+	* dbd/dbdimp.c: Changed fprintf to PerlIO_printf, required by
+	  DBI 1.14.
+	* nodbd/nodbd.pm.in (quote): Changed ~DBD_DRIVER~ to
+	  ~~dbd_driver~~, thanks to Maurice Aubrey <maurice@hevanet.com>.
+
 1999-07-08  Jochen Wiedmann  <joe@ispsoft.de> (1.2201)
 
 	* lib/DBD/mSQL/Install.pm (Initialize): Fixed an ugly bug, that
@@ -422,7 +431,7 @@ Fri Oct 24 01:29:08 1997  Jochen Wiedmann  <joe@ispsoft.de> (1.1816)
 	* lib/Msql/Statement.pm: Fixed use of Msql::TEXT_TYPE without
 	  checking whether we are running Msql 1.
 
-$Id: ChangeLog,v 1.1.1.1.2.11 1999/04/05 14:27:45 joe Exp $
+$Id: ChangeLog,v 1.3 1999/07/22 09:17:25 joe Exp $
 
 DBD::mysql for DBI - Written by Jochen Wiedmann <joe@ispsoft.de>
 
