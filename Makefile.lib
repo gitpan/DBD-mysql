@@ -19,8 +19,8 @@ sub postamble {
 
 package _MY::Config;
 
-$_MY::Config::VERSION = "1.19_01";
-$_MY::Config::DBD_VERSION = "2.01_01";
+$_MY::Config::VERSION = "1.1826";
+$_MY::Config::DBD_VERSION = "2.0092";
 
 $_MY::Config::X_Msql = undef;
 $_MY::Config::X_Mysql = undef;
@@ -184,57 +184,56 @@ sub CheckForLibGcc() {
     # with '-shared'. Unfortunately we need libgcc.a because of
     # some arithmetic functions.
     #
-    # We check this by looking into gcc's "specs" file. If there
-    # is a line saying
-    #
-    #    %{!shared:-lgcc}
-    #
-    # we assume a broken gcc.
+    # We try to fix this by always linking against libgcc.a. Unfortunately
+    # it's somewhat hard to find out the path of this file ...
     #
     if ($Config::Config{gccversion} eq '') {
 	return '';
     }
 
-    my $specs = `$Config::Config{cc} -v 2>&1`;
-    if ($specs !~ /Reading specs from (\S+)/) {
-	print("You don´t seem to be using gcc. There might be missing",
-	      " symbols in\n",
-	      "libmysqlclient.a, typically 'umoddi3' or something similar,",
-	      " if you have\n",
-	      "precompiled mysql binaries. If so, try to compile your own",
-	      " binaries, perhaps\n",
-	      "the '--without-server' option might help in the configure",
-	      " stage.\n\n");
-	return '';
-    }
+    my($libgccfile) = `$Config::Config{cc} -print-libgcc-file-name 2>&1`;
+    my($libgccdir);
+    if ($libgccfile =~ /^\S+$/) {
+	if ($libgccfile =~ /(.*)\/lib(\S+)\.a/) {
+	    $libgccdir = $1;
+	    $libgccfile = $2;
+	}
+    } else {
+	my($specs) = `$Config::Config{cc} -v 2>&1`;
+	if ($specs =~ /Reading specs from (\S+)/) {
+	    $specs = $1;
+	} else {
+	    printf(<<"MSG", $Config::Config{cc});
+Your Perl configuration says you are using gcc, but your compiler (%s) doesn't
+look like gcc. There might be missing symbols in libmysqlclient.a, typically
+'umoddi3' or something similar, if you have precompiled mysql binaries. If so,
+try to compile your own binaries, perhaps the '--without-server' option
+might help in the configure stage.
+MSG
+	    return '';
+	}
 
-    $specs = $1;
-    if (!open(FILE, "<$specs")) {
-	return;
-    }
-
-    my $line;
-    my $extralibs = '';
-    while (defined($line = <FILE>)) {
-	if ($line =~ /\%\{\!shared\:\-lgcc\}/) {
-	    my $libgccdir = $specs;
-	    $libgccdir =~ s/\/[^\/]+$//;
-	    print("\nYou're building on ", $Config::Config{'osname'},
-		  " with gcc.",
-		  " According to your specs file\n    $specs\n",
-		  "your gcc doesn't seem to link against libgcc.a when ",
-		  " building shared libraries.\n",
-		  "I assume that your libmysqlclient.a will need __moddi3",
-		  " and __divdi3,\n",
-		  "so lets be cautious and add a '-lgcc' to the linker",
-		  " flags.\n\n");
-	    $extralibs = "-L$libgccdir -lgcc";
-	    last;
+	$specs = $1;
+	if ($specs =~ /(.*)\//) {
+	    $libgccdir = $1;
+	    $libgccfile = "gcc";
+	} else {
+	    printf(<<"MSG", $Config::Config{cc});
+Your Perl configuration says you are using gcc (%s), but I cannot determine the
+path of your libgcc.a file. There might be missing symbols in
+libmysqlclient.a, typically 'umoddi3' or something similar, if you have
+precompiled mysql binaries. If so, try to compile your own binaries, perhaps
+the '--without-server' option might help in the configure stage.
+MSG
+	    return '';
 	}
     }
-    close(FILE);
 
-    return $extralibs;
+    if ($libgccdir) {
+        "-L$libgccdir -l$libgccfile";
+    } else {
+        $libgccfile;
+    }
 }
 
 
@@ -362,14 +361,9 @@ sub InitializeMsql {
     my $linkwith = "";
     if ( $Config::Config{osname} eq 'sco_sv' ) {
 	# Some extra libraries need added for SCO
-	print q{Yuk! I see that you are a SCO Unix system. We\'ll add -lc to the list of
-libraries to link with...
-};
 	$extralibs = "-lc";
     } elsif ( $Config::Config{osname} eq 'solaris' ) {
 	# We need to link with -R if we're on Solaris.......Brain-damaged....
-	print q{Oh dear. Solaris? Let's add some more flags into the linker stage...
-};
 	$linkwith = "-L$libdir -R$libdir";
     } elsif ( $Config::Config{osname} eq 'hpux' ) {
 	# We need to add +z to the list of CFLAGS if we're on HP-SUX, or -fPIC 
@@ -444,8 +438,7 @@ sub InitializeMysql {
 				      . "the subdir include/.");
     unshift(@gooddirs, $gooddir);
     my($libdir) = Search(\@gooddirs, \@mysqldirs,
-			 ["lib/mysql/libmysqlclient.a",
-			  "lib/libmysqlclient.a",
+			 ["lib/mysql/libmysqlclient.a", "lib/libmysqlclient.a",
 			  "client/libmysqlclient.a"],
 			 "Where is your mysql installed? Please tell me the"
 			 . " directory that contains\n"
@@ -456,14 +449,9 @@ sub InitializeMysql {
     my $linkwith = "";
     if ($Config::Config{osname} eq 'sco_sv') {
 	# Some extra libraries need added for SCO
-	print("\nYuk! I see that you are a SCO Unix system. We\'ll add -lc",
-	      " to the list of\n",
-	      "libraries to link with...\n\n");
 	$extralibs = "-lc";
     } elsif ($Config::Config{osname} eq 'solaris') {
 	# We need to link with -R if we're on Solaris.......Brain-damaged....
-	print("\nOh dear. Solaris? Let's add some more flags into the",
-	      " linker stage...\n\n");
 	$linkwith = "-L$libdir -R$libdir";
     } elsif ($Config::Config{osname} eq 'hpux') {
 	# We need to add +z to the list of CFLAGS if we're on HP-SUX, or -fPIC 
@@ -508,7 +496,7 @@ sub InitializeMysql {
     my $dir;
     foreach $dir (@INC) {
 	if (-f "$dir/auto/DBI/DBIXS.h") {
-	    $X{INC} = "-I$dir/auto/DBI " . $X{INC};
+	    $X{INC} .= " -I$dir/auto/DBI";
 	    last;
 	}
     }
@@ -554,7 +542,7 @@ sub CreatePostamble ($) {
     $pa . "\nMakefile: Makefile.lib\n\n";
 }
 
-sub Xtract($$$;$) {
+sub Xtract($$$) {
     my ($ref, $driver, $dbdDriver, $path) = @_;
     if (!$path) {
 	$path = "xtract";
@@ -566,15 +554,13 @@ sub Xtract($$$;$) {
     chmod $ref->[2] ? 0755 : 0644, $ref->[1];
 }
 
-sub XtractF($$$;$) {
+sub XtractF($$$$) {
     my ($ref, $driver, $dbdDriver, $path) = @_;
     if (!$path) {
 	$path = "xtract";
     }
-    sprintf("pm_to_blib: %s\n\n"
-	    . "%s: %s\n"
-	    . "\t%s %s %s %s %s %s %s %s\n\tchmod %s %s\n\n",
-	    $ref->[1],
+    sprintf("%s: %s Makefile\n"
+	    . "\t%s %s %s %s %s %s %s %s\n\tchmod %s %s\n",
 	    $ref->[1], $ref->[0], $^X, $path,
 	    $ref->[0], $ref->[1], $driver, $dbdDriver,
 	    $_MY::Config::VERSION, $_MY::Config::DBD_VERSION,

@@ -218,4 +218,3 @@ void    dbd_preparse _((imp_sth_t *imp_sth, SV *statement));
 int dbd_st_internal_execute(SV*, SV*, SV*, int, imp_sth_ph_t*, result_t*,
 			    dbh_t, int);
 
-extern int MysqlReconnect(SV*);
