@@ -408,10 +408,10 @@ print "ok 32\n";
 # Mysql-1.0.6) are handled correctly:
 
 if ($dbh->getserverinfo lt 2) { # Before version 2 we have the "primary key" syntax
-    $firsttable = create($dbh,$firsttable,"( she char(14) primary key,
+    $firsttable = create($dbh,$firsttable,"( she char(14) primary key NOT NULL,
 	him int, who char(1))") or test_error();
 } else {
-    $firsttable = create($dbh,$firsttable,"( she char(14),
+    $firsttable = create($dbh,$firsttable,"( she char(14) NOT NULL,
 	him int, who char(1))") or test_error();
     $dbh->query("create unique index she_index on $firsttable ( she )") or test_error();
 }

@@ -1,28 +1,13 @@
 The code in this package is
 
-Copyright (c) 1997 Jochen Wiedmann <joe@ispsoft.de>
-
-some older parts, in particular the Msql::Statement and Mysql::Statement
-modules are
-
 Copyright (c) 1994-1997 Andreas König <a.koenig@mind.de>
+
+parts, namely the DBD::mSQL and DBD::mysql modules are
+
+Copyright (c) 1997 Jochen Wiedmann <joe@ispsoft.de>
 
 and may be used, copied and redistributed under the same terms as perl
 (see the files README, Copying and Artistic in the perl distribution).
-
-
-*EXPERIMENTAL SOFTWARE*
------------------------
-
-This package contains experimental software and should *not* be used
-in a production environment. We are following the Linux convention and
-treat the "even" releases (1.18xx as of this writing, perhaps 1.20xx,
-1.22xx, ... in the future) as stable. Only bug or portability fixes
-will go into these releases.
-
-The "odd" releases (1.19xx as of this writing, perhaps 1.21xx, 1.23xx
-in the future) will be used for testing new features or other serious
-code changes.
 
 
 Where to get it
@@ -89,9 +74,8 @@ than DBD::mSQL and DBD::mysql.
 
 As of Msql-Mysql-modules 1.1815, we consider DBD::mSQL and DBD::mysql
 superior over MsqlPerl and MysqlPerl: They are sufficiently stable
-(there´s only one known problem in DBI itself and it's announced to
-be fixed in DBI 0.91) and definitely faster. Anyways, you have to decide
-on your own about the trade-offs.
+and definitely faster. Anyways, you have to decide on your own about
+the trade-offs.
 
 
 What you achieve with Msql.pm and Mysql.pm

@@ -28,7 +28,6 @@
  *  Header files we use
  */
 #include <DBIXS.h>  /* installed by the DBI module                        */
-
 #include "myMsql.h"
 
 
@@ -53,9 +52,7 @@ enum errMsgs {
     JW_ERR_NO_RESULT,
     JW_ERR_NOT_IMPLEMENTED,
     JW_ERR_ILLEGAL_PARAM_NUM,
-    JW_ERR_MEM,
-    JW_ERR_LIST_INDEX,
-    JW_ERR_SEQUENCE
+    JW_ERR_MEM
 };
 
 
@@ -187,29 +184,6 @@ struct imp_sth_st {
 #define dbd_bind_ph		mysql_bind_ph
 #define dbd_st_internal_execute mysql_st_internal_execute
 #define mymsql_constant         mysql_constant
-#elif defined(DBD_MSQL1)
-#define dbd_init		msql1_init
-#define dbd_db_login		msql1_db_login
-#define dbd_db_do		msql1_db_do
-#define dbd_db_commit		msql1_db_commit
-#define dbd_db_rollback		msql1_db_rollback
-#define dbd_db_disconnect	msql1_db_disconnect
-#define dbd_db_destroy		msql1_db_destroy
-#define dbd_db_STORE_attrib	msql1_db_STORE_attrib
-#define dbd_db_FETCH_attrib	msql1_db_FETCH_attrib
-#define dbd_st_prepare		msql1_st_prepare
-#define dbd_st_rows		msql1_st_rows
-#define dbd_st_execute		msql1_st_execute
-#define dbd_st_fetch		msql1_st_fetch
-#define dbd_st_finish		msql1_st_finish
-#define dbd_st_destroy		msql1_st_destroy
-#define dbd_st_blob_read	msql1_st_blob_read
-#define dbd_st_STORE_attrib	msql1_st_STORE_attrib
-#define dbd_st_FETCH_attrib	msql1_st_FETCH_attrib
-#define dbd_describe		msql1_describe
-#define dbd_bind_ph		msql1_bind_ph
-#define dbd_st_internal_execute msql1_st_internal_execute
-#define mymsql_constant         msql1_constant
 #else
 #define dbd_init		msql_init
 #define dbd_db_login		msql_db_login
@@ -243,4 +217,3 @@ void    dbd_preparse _((imp_sth_t *imp_sth, SV *statement));
 int dbd_st_internal_execute(SV*, SV*, SV*, int, imp_sth_ph_t*, result_t*,
 			    dbh_t, int);
 
-extern int MysqlReconnect(SV*);

@@ -6,8 +6,6 @@
 #   and modify/extend it.
 #
 
-$^W = 1;
-
 
 #
 #   Make -w happy
@@ -95,10 +93,10 @@ while (Testing()) {
 	   or DbiError($dbh->err, $dbh->errstr);
 
     # Does the driver remember the automatically detected type?
-    Test($state or $cursor->execute("3", "Jochen Wiedmann"))
+    Test($state or $cursor->execute("2", "Tim Bunce"))
 	   or DbiError($dbh->err, $dbh->errstr);
-    $numericVal = 2;
-    $charVal = "Tim Bunce";
+    $numericVal = 3;
+    $charVal = "Jochen Wiedmann";
     Test($state or $cursor->execute($numericVal, $charVal))
 	   or DbiError($dbh->err, $dbh->errstr);
 
@@ -122,7 +120,7 @@ while (Testing()) {
     Test($state or undef $cursor  ||  1);
 
     #
-    #   And now retreive the rows using bind_columns
+    #   And now retrieve the rows using bind_columns
     #
     Test($state or $cursor = $dbh->prepare("SELECT * FROM $table"
 					   . " ORDER BY id"))
@@ -135,29 +133,39 @@ while (Testing()) {
 	   or DbiError($dbh->err, $dbh->errstr);
 
     Test($state or ($ref = $cursor->fetch)  &&  $id == 1  &&
-	 $name eq 'Alligator Descartes')
-	or printf("Query returned id = %s, name = %s, ref = %s, %d\n",
-		  $id, $name, $ref, scalar(@$ref));
+		   $name eq 'Alligator Descartes')
+	   or DbiError($dbh->err, $dbh->errstr);
+    if (!$state && $verbose) {
+	print "Query returned id = $id, name = $name, ref = $ref, @$ref\n";
+    }
 
     Test($state or (($ref = $cursor->fetch)  &&  $id == 2  &&
 		    $name eq 'Tim Bunce'))
-	or printf("Query returned id = %s, name = %s, ref = %s, %d\n",
-		  $id, $name, $ref, scalar(@$ref));
+	   or DbiError($dbh->err, $dbh->errstr);
+    if (!$state && $verbose) {
+	print "Query returned id = $id, name = $name, ref = $ref, @$ref\n";
+    }
 
     Test($state or (($ref = $cursor->fetch)  &&  $id == 3  &&
 		    $name eq 'Jochen Wiedmann'))
-	or printf("Query returned id = %s, name = %s, ref = %s, %d\n",
-		  $id, $name, $ref, scalar(@$ref));
+	or DbiError($dbh->err, $dbh->errstr);
+    if (!$state && $verbose) {
+ 	print "Query returned id = $id, name = $name, ref = $ref, @$ref\n";
+    }
 
     Test($state or (($ref = $cursor->fetch)  &&  $id == 4  &&
 		    $name eq 'Andreas König'))
-	or printf("Query returned id = %s, name = %s, ref = %s, %d\n",
-		  $id, $name, $ref, scalar(@$ref));
+	or DbiError($dbh->err, $dbh->errstr);
+    if (!$state && $verbose) {
+ 	print "Query returned id = $id, name = $name, ref = $ref, @$ref\n";
+    }
  
     Test($state or (($ref = $cursor->fetch)  &&  $id == 5  &&
-		    !defined($name)))
-	or printf("Query returned id = %s, name = %s, ref = %s, %d\n",
-		  $id, $name, $ref, scalar(@$ref));
+ 		    !defined($name)))
+	   or DbiError($dbh->err, $dbh->errstr);
+    if (!$state && $verbose) {
+	print "Query returned id = $id, name = $name, ref = $ref, @$ref\n";
+    }
 
     Test($state or undef $cursor  or  1);
 
