@@ -17,7 +17,7 @@ $| = 1;
 $DBI::errstr = ''; # Make -w happy
 require DBI;
 $mdriver = "";
-foreach $file ("lib.pl", "t/lib.pl", "DBD-~~dbd_driver~~/t/lib.pl") {
+foreach $file ("lib.pl", "t/lib.pl", "DBD-~DBD_DRIVER~/t/lib.pl") {
     do $file; if ($@) { print STDERR "Error while executing lib.pl: $@\n";
 			   exit 10;
 		      }
@@ -104,25 +104,35 @@ while (Testing()) {
 		++$testdsn2;
 	    }
 
-	    if (!($result = $drh->func('createdb', $testdsn, 'admin'))
+	    $SIG{__WARN__} = $warningSub;
+	    $warning = '';
+	    if (!($result = $drh->func($testdsn, '_CreateDB'))
 		and  ($drh->errstr =~ /(access|permission) denied/i)) {
 		$accessDenied = 1;
 		$result = 1;
 	    }
+	    $SIG{__WARN__} = 'DEFAULT';
 	}
 
 	Test($state or $result)
-	    or print STDERR ("Error while executing createdb: "
+	    or print STDERR ("Error while executing _CreateDB: "
 			     . $drh->errstr);
+	Test($state or ($warning =~ /deprecated/))
+	    or print STDERR ("Expected warning, got '$warning'.\n");
 
 	Test($state or $accessDenied
 	     or InDsnList($testdsn, DBI->data_sources($mdriver)))
 	    or print STDERR ("New DB not in DSN list\n");
 
+	$SIG{__WARN__} = $warningSub;
+	$warning = '';
 	Test($state or $accessDenied
-	     or $drh->func('dropdb', $testdsn, 'admin'))
+	     or $drh->func($testdsn, '_DropDB'))
 	    or print STDERR ("Error while executing _DropDB: "
 			     . $drh->errstr);
+	Test($state or $accessDenied or ($warning =~ /deprecated/))
+	    or print STDERR ("Expected warning, got '$warning'\n");
+	$SIG{__WARN__} = 'DEFAULT';
 
 	Test($state or $accessDenied
 	     or !InDsnList($testdsn, DBI->data_sources($mdriver)))

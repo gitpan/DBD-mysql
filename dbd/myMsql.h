@@ -34,7 +34,7 @@
  *           Email: joe@ispsoft.de
  *           Fax: +49 7123 / 14892
  *
- *  $Id: myMsql.h,v 1.1.1.1.2.2 1999/01/25 02:38:41 joe Exp $
+ *  $Id: myMsql.h,v 1.2 1999/01/25 02:33:12 joe Exp $
  */
 
 #ifndef MYMSQL_H_INCLUDED

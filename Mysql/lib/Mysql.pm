@@ -17,7 +17,7 @@ use vars qw($QUIET @ISA @EXPORT @EXPORT_OK $VERSION $db_errstr);
 $db_errstr = '';
 $QUIET  = 0;
 @ISA    = qw(DBI); # Inherits Exporter and DynaLoader via DBI
-$VERSION = '1.21_15';
+$VERSION = '1.2017';
 
 # @EXPORT is a relict from old times...
 @EXPORT = qw(
@@ -37,7 +37,7 @@ $VERSION = '1.21_15';
 		SYSVAR_TYPE
 	       );
 
-my $FETCH_map = {
+my($FETCH_map) = {
     'HOST' => '_host',
     'DATABASE' => 'database'
 };
@@ -63,6 +63,16 @@ sub STORE ($$$) {
     }
 }
 
+sub DESTROY {
+    my $self = shift;
+    my $dbh = $self->{'dbh'};
+    if ($dbh) {
+	local $SIG{'__WARN__'} = sub { };
+	$dbh->disconnect();
+    }
+}
+
+
 sub connect ($;$$$$) {
     my($class, $host, $db, $user, $password) = @_;
     my($self) = { 'host' => ($host || ''),
@@ -87,15 +97,6 @@ sub connect ($;$$$$) {
     $self;
 }
 
-sub DESTROY {
-    my $self = shift;
-    my $dbh = $self->{'dbh'};
-    if ($dbh) {
-	local $SIG{__WARN__} = sub { };
-	$dbh->disconnect();
-    }
-}
-
 sub selectdb ($$) {
     my($self, $db) = @_;
     my($dsn) = "DBI:mysql:database=$db:host=" . $self->{'host'};
@@ -112,7 +113,7 @@ sub selectdb ($$) {
 }
 
 sub listdbs ($) {
-    my($self) = shift;
+    my $self = shift;
     my $drh = $self->{'drh'};
     my @dbs = $drh->func($self->{'host'}, '_ListDBs');
     $db_errstr = $drh->errstr();
@@ -127,7 +128,7 @@ sub listtables ($) {
 sub quote ($$) {
     my($self) = shift;
     my $obj = (ref($self) && $self->{'dbh'}) ?
-	$self->{'dbh'} : 'DBD::~DBD_DRIVER~::db';
+	$self->{'dbh'} : 'DBD::mysql::db';
     $obj->quote(shift);
 }
 
@@ -164,6 +165,7 @@ sub query ($$) {
 	$db_errstr = $dbh->errstr();
 	return undef;
     }
+
     $sth->{'PrintError'} = !$Mysql::QUIET;
     my $result = $sth->execute();
     if (!$result) {
@@ -171,7 +173,7 @@ sub query ($$) {
 	return undef;
     }
     $sth->{'CompatMode'} = 1;
-    bless($sth, ref($self) . "::Statement");
+    bless($sth, (ref($self) . "::Statement"));
     undef $db_errstr;
     $sth;
 }
@@ -822,6 +824,7 @@ be supported for a long time. But it's a dead end. I expect in the
 medium term, that the DBI efforts result in a richer module family
 with better support and more functionality. Alligator maintains an
 interesting page on the DBI development:
-http://www.arcana.co.uk/technologia/perl/DBI
+
+    http://www.arcana.co.uk/technologia/perl/DBI
 
 =cut

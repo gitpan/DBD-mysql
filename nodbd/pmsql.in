@@ -1,18 +1,23 @@
-~~startperl~~
+~startperl~
 
-# $Id: pmsql.in,v 1.1.1.1.2.1 1998/12/22 15:01:35 joe Exp $
-my $version = '~~nodbd_version~~';
+# $Id: pmsql.in,v 1.2 1999/01/05 22:30:59 joe Exp $
+my $version = '~NODBD_VERSION~';
 
 BEGIN {require 5.002;}
 # use strict;      # only for testing. Unfriendly for the user-eval()s
 # $^W = 1;         # too early for readline 0.8
-$driver = '~~nodbd_driver~~'; eval "use $driver ()";
+$driver = '~DRIVER~'; eval "use $driver ()";
 use Term::ReadLine;
 use Carp ();
 
+#xtract Msql
+my $msqlVersion = eval { &Msql::IDX_TYPE() } ? 2 : 1;
+#endxtract
+
+
 # term
 
-my $term = Term::ReadLine->new("$driverPerl Monitor");
+my $term = Term::ReadLine->new("$driver Monitor");
 
 # prompt
 
@@ -23,6 +28,7 @@ if ($term->ReadLine eq "Term::ReadLine::Gnu") {
     $attribs->{'completion_entry_function'} =
 	$attribs->{'list_completion_function'};
 } else {
+    $readline::rl_completion_function = # -w
     $readline::rl_completion_function = 'main::complete';
 }
 
@@ -32,7 +38,7 @@ $^W = 1;
 # typelabels
 
 my(%typelabel);
-~#if#~ ('~~dbd_driver~~' eq 'mysql')
+#xtract Mysql
 @typelabel{
     Mysql::FIELD_TYPE_BLOB(),
     Mysql::FIELD_TYPE_CHAR(),
@@ -72,7 +78,7 @@ my(%typelabel);
     time
     varstring
 );
-~#else#~
+#xtract Msql
 my (@typenames);
 for (qw/INT CHAR REAL IDENT IDX TEXT DATE UINT MONEY TIME SYSVAR/) {
     my $type = 'Msql::' . $_ . '_TYPE';
@@ -91,7 +97,7 @@ for (qw/INT CHAR REAL IDENT IDX TEXT DATE UINT MONEY TIME SYSVAR/) {
     time
     sys
 );
-~#endif#~
+#endxtract
 
 
 # host
@@ -107,8 +113,13 @@ if (@ARGV && $ARGV[0] eq "-h") {
 my $Less;
 {
     my @path = split ":", $ENV{PATH};
-    if (exists($ENV{P~~uc_dbd_driver~~_PAGER})) {
-	$Less = $ENV{P~~uc_dbd_driver~~_PAGER};
+#xtract Mysql
+    if (exists($ENV{PMYSQL_PAGER})) {
+	$Less = $ENV{PMYSQL_PAGER};
+#xtract Msql
+    if (exists($ENV{PMSQL_PAGER})) {
+	$Less = $ENV{PMYSQL_PAGER};
+#endxtract
     } else {
 	$Less = $ENV{PAGER} || find_exe("less",[@path]) ||
 	    find_exe("more",[@path]) || "";
@@ -144,11 +155,20 @@ $escape = $quote;
 	  . " Term::ReadLine::[Perl|GNU])";
     }
 
-~#if#~ ('~~dbd_driver~~' eq 'mysql')
+#xtract Mysql
     printf ("$prompt -- interactive Mysql monitor version $version\n");
-~#else#~
+#xtract Msql
+    my $probe_server;
+    if (Msql->connect($host)) {
+	$probe_server = "mSQL $msqlVersion detected\n";
+    } else {
+	$probe_server = "You seem to run a version of ";
+	$probe_server .= defined &Msql::IDX_TYPE ? "mSQL >= 2.0\n" :
+	                                           "mSQL < 2.0\n";
+    }
     printf ("$prompt -- interactive mSQL monitor version $version\n");
-~#endif#~
+    print $probe_server;
+#endxtract
     print "Readline support $rl_avail\n\n";
 }
 
@@ -168,10 +188,10 @@ my $Debug = 0; # 1 | 2 | 4;
 #
 
 my($indexarg, $indexdes);
-~#if#~ ('~~dbd_driver~~' eq 'mysql')
+#xtract Mysql
 $indexarg = "";
 $indexdes = " or tables";
-~#else#~
+#xtract Msql
 if (!defined &Msql::IDX_TYPE) {
     $indexarg = "";
     $indexdes = " or tables";
@@ -179,7 +199,7 @@ if (!defined &Msql::IDX_TYPE) {
     $indexarg = " [index]";
     $indexdes = ", tables or indices";
 }
-~#endif#~
+#endxtract
 
 while ( defined ($_ = $term->readline("$prompt> ")) ) {
 
@@ -511,17 +531,18 @@ sub relshow {
 		# relshow database table index
 		#
 
+#xtract Mysql
+		return "Too many arguments to relshow\n";
+#xtract Msql
 		return "Too many arguments to relshow\n"
-			unless $Dbh->getserverinfo ge 2;
-		#warn join ":", grep //, $sth->name;
-~#if#~ ('~~dbd_driver~~' ne 'mysql')
+			unless $msqlVersion >= 2;
 		if ($index eq "_seq") {
 		    my(@seq) = $Dbh->getsequenceinfo($table);
 		    push(@m, "Sequence Step  = $seq[0]\n"
 			     . "Sequence Value = $seq[1]\n");
 		    return join "", @m;
 		}
-~#endif#~
+#endxtract
 		grep(/^\Q$index\E$/, $sth->name)
 			or return join "", @m, qq{Index "$index" not found\n};
 		push @m, qq{Index      = $index\n};
@@ -548,18 +569,18 @@ sub relshow {
 
 	    my $fieldwidth = longest($sth->name,"Field") || 15;
 	    my ($keywidth, $keytitle);
-~#if#~ ('~~dbd_driver~~' eq 'mysql')
+#xtract Mysql
 	    $keywidth = 3;
 	    $keytitle = "Key";
-~#else#~
-	    if ($Dbh->getserverinfo lt 2) {
+#xtract Msql
+	    if ($msqlVersion < 2) {
 		$keywidth = 3;
 		$keytitle = "Key";
 	    } else {
 		$keywidth = 12;
 		$keytitle = "Unique Index";
 	    }
-~#endif#~
+#endxtract
 	    my $border = " +-".("-"x$fieldwidth)."-+-----------+--------+----------+-".("-"x$keywidth)."-+\n";
 	    push @m, $border;
 	    push @m, sprintf " | %-".$fieldwidth."s | Type      | Length | Not Null | %-".$keywidth."s |\n", "Field", $keytitle;
@@ -567,27 +588,27 @@ sub relshow {
 	    my $max = $sth->numfields;
 	    for ($i=0;$i<$max;$i++){
 		my $keyNO;
-~#if#~ ('~~dbd_driver~~' eq 'mysql')
+#xtract Mysql
 		$keyNO = "N";
-~#else#~
-		if ($Dbh->getserverinfo lt 2  ||
+#xtract Msql
+		if ($msqlVersion < 2  ||
 		    $sth->type->[$i] == &Msql::IDX_TYPE()) {
 		    $keyNO = "N";
 		} else {
 		    $keyNO = "N/A";
 		}
-~#endif#~
+#endxtract
 		push @m, sprintf " | %-".$fieldwidth."s | %-9s | %6s |    %-3s   | %-".$keywidth."s |\n",
 			$sth->name->[$i],
 			$typelabel{$sth->type->[$i]} || ("unknown-".$sth->type->[$i]),
 			($sth->length->[$i] || "N/A"),
-~#if#~ ('~~dbd_driver~~' eq 'mysql')
+#xtract Mysql
 		        $sth->is_not_null->[$i] ? " Y " : "N",
-~#else#~
+#xtract Msql
 		        $sth->is_not_null->[$i] ? " Y " :
 			  (defined &Msql::IDX_TYPE  &&
 			   $sth->type->[$i]!=Msql::IDX_TYPE()) ? " N " : "N/A",
-~#endif#~
+#endxtract
 			$sth->is_pri_key->[$i] ? "Y" : $keyNO;
 	    }
 	    push @m, "$border\n";

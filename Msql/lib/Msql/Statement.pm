@@ -1,15 +1,13 @@
 # -*- perl -*-
 
-package Mysql::Statement;
+package Msql::Statement;
 
-@Mysql::Statement::ISA = qw(DBI::st);
+@Msql::Statement::ISA = qw(DBI::st);
 
 use strict;
-use vars qw($OPTIMIZE $VERSION $AUTOLOAD);
+use vars qw($VERSION $AUTOLOAD);
 
-$VERSION = '1.21_15';
-
-$OPTIMIZE = 0; # controls, which optimization we default to
+$VERSION = '1.2017';
 
 sub fetchrow ($) {
     my $self = shift;
@@ -46,29 +44,25 @@ sub dataseek ($$) {
 
 sub numrows { my($self) = shift; $self->rows() }
 sub numfields { my($self) = shift; $self->{'NUM_OF_FIELDS'} }
+sub affectedrows { my($self) = shift; $self->{'affected_rows'} }
+sub insertid { my($self) = shift; $self->{'insertid'} }
 sub arrAttr ($$) {
     my($self, $attr) = @_;
-    my $arr = $self->{$attr};
+    my($arr) = $self->{$attr};
     wantarray ? @$arr : $arr
 }
-sub table ($) { shift->arrAttr('mysql_table') }
+sub table ($) { shift->arrAttr('table') }
 sub name ($) { shift->arrAttr('NAME') }
-*affectedrows = \&numrows;
-sub insertid { my($self) = shift; $self->{'mysql_insertid'} }
-sub type ($) { shift->arrAttr('mysql_type') }
-sub isnotnull ($) {
-    my $arr = [map {!$_} @{shift()->{'NULLABLE'}}];
-    wantarray ? @$arr : $arr;
-}
-sub isprikey ($) { shift->arrAttr('mysql_is_pri_key') }
-sub isnum ($) { shift->arrAttr('mysql_is_num') }
-sub isblob ($) { shift->arrAttr('mysql_is_blob') }
-sub length ($) { shift->arrAttr('PRECISION') }
+sub type ($) { shift->arrAttr('msql_type') }
+sub isnotnull ($) { shift->arrAttr('is_not_null') }
+sub isprikey ($) { shift->arrAttr('is_pri_key') }
+sub isnum ($) { shift->arrAttr('is_num') }
+sub isblob ($) { shift->arrAttr('is_blob') }
+sub length ($) { shift->arrAttr('length') }
 
 sub maxlength  {
     my $sth = shift;
     my $result;
-    if (!($result = $sth->{'mysql_maxlength'})) {
 	$result = [];
 	my ($l);
 	for (0..$sth->numfields-1) {
@@ -92,14 +86,20 @@ sub maxlength  {
 		}
 	    }
 	}
-    }
     return wantarray ? @$result : $result;
 }
 
 sub listindices {
     my($sth) = shift;
     my(@result,$i);
-    return ();
+    if (!&Msql::IDX_TYPE()) {
+	return ();
+    }
+    foreach $i (0..$sth->numfields-1) {
+	next unless $sth->type->[$i] == &Msql::IDX_TYPE;
+	push @result, $sth->name->[$i];
+    }
+    @result;
 }
 
 sub AUTOLOAD {
@@ -124,12 +124,15 @@ sub unctrl {
     $x;
 }
 
+use vars qw($OPTIMIZE); # controls, which optimization we default to
+$OPTIMIZE = 0;
 sub optimize {
     my($self,$arg) = @_;
     if (defined $arg) {
-	$OPTIMIZE = $arg;
+	$self->{'OPTIMIZE'} = $arg;
+    } else {
+	$self->{'OPTIMIZE'} ||= $OPTIMIZE;
     }
-    $OPTIMIZE;
 }
 
 sub as_string {
@@ -141,7 +144,7 @@ sub as_string {
     }
     for (0..$sth->numfields-1) {
 	$l=CORE::length($sth->name->[$_]);
-	if ($l < $sth->maxlength->[$_]) {
+	if ($sth->optimize  &&  $l < $sth->maxlength->[$_]) {
 	    $l= $sth->maxlength->[$_];
 	}
 	if (!$sth->isnotnull  &&  $l < 4) {
@@ -162,6 +165,14 @@ sub as_string {
 	    $col = $row[$i];
 	    $j = @prow;
 	    $pcol = defined $col ? unctrl($col) : "NULL";
+	    # New in 2.0: a string is longer than it should be
+	    if (defined &Msql::TEXT_TYPE  &&
+		$sth->optimize &&
+		$sth->type->[$j] == &Msql::TEXT_TYPE &&
+		CORE::length($pcol) > $sth->length->[$j] + 5) {
+		my $l = CORE::length($col);
+		substr($pcol,$sth->length->[$j])="...($l)";
+	    }
 	    push(@prow, $pcol);
 	}
 	$result .= sprintf $sprintf, @prow;

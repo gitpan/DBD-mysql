@@ -1,6 +1,6 @@
 #!/usr/local/bin/perl
 #
-#   $Id: 40listfields.t,v 1.1.1.1.2.1 1998/12/22 15:01:40 joe Exp $
+#   $Id: 40listfields.t,v 1.1.1.1 1998/12/22 14:29:52 joe Exp $
 #
 #   This is a test for statement attributes being present appropriately.
 #
@@ -131,18 +131,4 @@ while (Testing()) {
 	or !$verbose or printf("NUM_OF_FIELDS is %s, not zero.\n",
 			       $cursor->{'NUM_OF_FIELDS'});
     Test($state or (undef $cursor) or 1);
-
-    #
-    #  Test different flavours of quote. Need to work around a bug in
-    #  DBI 1.02 ...
-    #
-    my $quoted;
-    if (!$state) {
-	$quoted = eval { $dbh->quote(0, DBI::SQL_INTEGER()) };
-    }
-    Test($state or $@  or  $quoted eq 0);
-    if (!$state) {
-	$quoted = eval { $dbh->quote('abc', DBI::SQL_VARCHAR()) };
-    }
-    Test($state or $@ or $quoted eq q{'abc'});
 }
