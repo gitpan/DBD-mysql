@@ -1,45 +1,90 @@
-1998-05-14  Jochen Wiedmann  <joe@ispsoft.de> (1.1829)
-
-	* dbd/dbdimp.c: Fixed memory leak in FETCH_internal.
+1998-05-07  Jochen Wiedmann  <joe@ispsoft.de> (1.19_16)
 
 	* dbd/dbdimp.c: ChopBlanks no longer chops from the left side.
 
-1998-02-26  Jochen Wiedmann  <joe@ispsoft.de> (1.1828)
+	* dbd/dbdimp.c: Fixed memory leak in dbd_st_FETCH_internal.
 
-	* dbd/dbdimp.c: Added $dbh->{'info'} and $dbh->{'thread_id'}
-	  (mysql only)
-	* dbd/dbimon.in: Fixed bugs in export mode (Nem W. Schlecht
-	  <nem@abattoir.cc.ndsu.nodak.edu>)
-	* One more time fixing reconnect problems with Mysql and old
-	  client libraries (without mysql_real_connect it's just too
+1998-04-13  Jochen Wiedmann  <joe@ispsoft.de> (1.19_15)
+
+	* Added the DBD::mSQL1 and Msql1 drivers.
+
+	* Fixed minor icompatibilities with perl 5.005.
+
+	* nodbd/nodbd.pm.in (errmsg): Msql->errmsg() should
+	  now recognize error messages in $DBI::errstr (hopefully ...)
+
+1998-04-03  Jochen Wiedmann  <joe@ispsoft.de> (1.19_13)
+
+	* dbd/dbdimp.c: msqlGetProtoInfo returns an int, not a
+	  char* (Erik Bertelsen, erik@mediator.uni-c.dk)
+
+	* dbd/dbdimp.c: Fixed typo in _MyLogin: User was set to
+	  NULL when password had zero length. (Erik Bertelsen,
+	  erik@mediator.uni-c.dk)
+
+	* dbd/dbdimp.c: One more time fixing reconnect problems with Mysql
+	  and old client libraries (without mysql_real_connect it's just too
 	  ugly! :-(
 
-1998-02-06  Jochen Wiedmann  <joe@ispsoft.de> (1.1827)
+1998-03-15  Jochen Wiedmann  <joe@ispsoft.de> (1.19_11)
 
-	* Makefile.lib (InitializeMysql): Changed the order of the -I
-	  statements in $X{INC}. (This patch was already announced in
-	  1.1824, but it got lost. :-(
-	* tests/ak-dbd.t: Added a missing DROP table.
-	
-1998-01-31  Jochen Wiedmann  <joe@ispsoft.de> (1.1826)
+	* Makefile.PL: Fixed Bugs in _OdbcParse and version numbers.
+	* dbd/dbimon.in: Fixed bugs in export mode (Nem W. Schlecht
+	  <nem@abattoir.cc.ndsu.nodak.edu>)
 
-	* tests/mysql.dbtest: Now using "IS NULL" in SQL queries instead
-	  of "= NULL". (Required as of MySQL 3.21.22)
+1998-02-26  Jochen Wiedmann  <joe@ispsoft.de> (1.19_10)
+
+	* M(y)sqlPerl now emulated by DBI drivers.
+	* dbd/dbdimp.c: Added $dbh->{'info'} and $dbh->{'thread_id'}
+ 	  (mysql only)
+	* dbd/dbimon.in: Fixed minor bug in "rel db test"
+	* dbd/dbimon.in (Connect): Added noecho mode for entering
+	  passwords.
+	* dbd/myMsql.c: Fixed bugs in OdbcParse.
+
+1998-02-06  Jochen Wiedmann  <joe@ispsoft.de> (1.19_03)
+
+	* dbd/dbd.xs.in: Fixed $dbh->quote(undef) to return "NULL"
+	  and not 'undef'.
+	* Requires DBI 0.93. (I assume it still works with 0.91, but
+	  whoever reinstalls Msql-Mysql-modules can well reinstall
+	  DBI.)
+	* dbd/dbdimp.c: $sth->fetch* now inactivates the sth in case
+	  of errors or no more data; this follows the specification of
+	  the 'Active' attribute.
+	* Added a missing DROP TABLE in ak-dbd.t.
+	* Added ODBC style DSN's like DBI:mysql:database=test;host=localhost.
+
+1998-01-20  Jochen Wiedmann  <joe@ispsoft.de> (1.19_02)
+
+	* dbd/dbd.xs.in (quote): Fixed "int len" to "STRLEN len"; the
+	  Irix compiler refuses to compile this. (A little bit picky,
+	  a warning would really be sufficient here ...) My thanks to
+	  Simon Matthews <sam@peritas.com>.
+	* Added "LISTINDEX" handling.
 	* Makefile.lib: Now always linking against libgcc.a when using gcc
 	  and compiling for MySQL.
+	* tests/mysql.dbtest: Now using "IS NULL" in SQL queries instead
+	  of "= NULL". (Required as of mysql 3.21.22)
 
-1998-01-18  Jochen Wiedmann  <joe@ispsoft.de> (1.1825)
+1998-01-18  Jochen Wiedmann  <joe@ispsoft.de> (1.19_01)
 
 	* README: Added hint for not using msqlperl mailing lists
 	  except for MsqlPerl and MysqlPerl related things.
+	* Makefile.lib: Modified version number to contain underscores,
+	  so that CPAN considers 1.18xx as the correct version.
 	* dbd/dbimon.in: Leaving pager mode worked unreliable; fixed.
 	  Andreas Koenig <koenig@anna.mind.de>	
 	* tests/akmisc.t, tests/mysql.t, tests/mysql2.t: Minor modifications
 	  in the connect parameters for passing the test suite under
 	  Windows/NT.
 
-1998-01-12  Jochen Wiedmann  <joe@laptop.ispsoft.de> (1.1824)
+1998-01-07  Jochen Wiedmann  <joe@ispsoft.de> (1.1900)
 
+	* dbd/dbd.xs.in: Implemented $dbh->quote() in XS.
+	* dbd/dbd.xs.in: Added '_Admin' function.
+	* dbd/dbd.xs.in, dbd/dbdimp.c: Added automatic reconnect when
+	  mysql returns CR_SERVER_GONE_ERROR.
 	* Makefile.lib (InitializeMysql): Modified order of -I statements
 	  (Inside MySQL distribution it can happen that headers of recently
 	  installed DBI versions are used instead of the correct headers.)
@@ -50,10 +95,6 @@
 	  in dbh's.
 	* Makefile.lib (InitializeMsql): Fixed typo that made MSQL_HOME
 	  useless. (Ray Zimmermann, <rz10@cornell.edu>)
-	* dbd/dbd.xs.in: Fixed CreateDB and DropDB to use 'localhost'
-	  as default host.
-	* dbd/dbd.pm.in: Fixed CreateDB and DropDB docs.
-	  (Ray Zimmermann, <rz10@cornell.edu>)
 	* Makefile.lib (InitializeMysql): Fixed typo "lib/mysqlclient.a"
 	  to "lib/libmysqlclient.a". (Michael 'Monty' Widenius,
 	  <monty@tcx.se>)

@@ -2,34 +2,33 @@
 
 ######################### We start with some black magic to print on failure.
 
+use strict;
+use vars qw($loaded $mdriver);
+
 # Change 1..1 below to 1..last_test_to_print .
 # (It may become useful if the test is moved to ./t subdirectory.)
 
 my($host, $user, $password, $dbname);
 
-BEGIN {
-    $host = shift @ARGV || $ENV{'DBI_HOST'} || "";
-    $user = shift @ARGV || $ENV{'DBI_USER'} || "";
-    $password = shift @ARGV || $ENV{'DBI_PASS'} || "";
-    $dbname = shift @ARGV || $ENV{'DBI_DB'} || "test";
+$host = shift @ARGV || $ENV{'DBI_HOST'} || "";
+$user = shift @ARGV || $ENV{'DBI_USER'} || "";
+$password = shift @ARGV || $ENV{'DBI_PASS'} || "";
+$dbname = shift @ARGV || $ENV{'DBI_DB'} || "test";
 
-    $| = 1;
-    do ((-f "lib.pl") ? "lib.pl" : "t/lib.pl");
-    if ($mdriver ne "mysql") { print "1..0\n"; exit 0; }
-    eval { require Mysql };
-    my $db = Mysql->connect($host, $dbname, $user, $password);
-    if ($db->getserverinfo lt 2) {
-	print "1..0\n";
-	exit;
-    }
-    print "1..37\n";
+$| = 1;
+do ((-f "lib.pl") ? "lib.pl" : "t/lib.pl");
+if ($mdriver ne "mysql") { print "1..0\n"; exit 0; }
+eval { require Mysql };
+my $db = Mysql->connect($host, $dbname, $user, $password);
+if ($db->getserverinfo lt 2) {
+    print "1..0\n";
+    exit;
 }
+print "1..37\n";
 END {print "not ok 1\n" unless $loaded;}
 
 ######################### End of black magic.
 
-use strict;
-use vars qw($loaded);
 $loaded = 1;
 print "ok 1\n";
 
@@ -42,7 +41,7 @@ print "ok 1\n";
 		   "( id char(4) not null, longish tinyblob )");
     $t[1] = create(
 		   $db,
-		   "TABLE00",
+		   "TABLE01",
 		   "( id char(4) not null, longish blob )");
     if (grep /^$t[0]$/, $db->listtables) {
 	print "ok 2\n";
