@@ -1,11 +1,11 @@
 # -*- perl -*-
 
-package ~DRIVER~::Statement;
+package Msql::Statement;
 
 use strict;
 use vars qw($OPTIMIZE $VERSION $AUTOLOAD);
 
-$VERSION = '~NODBD_VERSION~';
+$VERSION = '1.1817';
 
 $OPTIMIZE = 0; # controls, which optimization we default to
 

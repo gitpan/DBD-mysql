@@ -50,3 +50,12 @@ tests/mysql.mtest	Core of testing mysql module
 tests/pNET.dbtest	Core of testing pNET database access (dummy)
 tests/pNET.mtest	Core of testing pNET database access
 tests/skeleton.test	Skeleton file for writing new tests
+xtract			Script to create files from dbd/ and nodbd/
+lib/Bundle/Mysql.pm     These are not really used and are included in the
+lib/Bundle/Msql.pm      distribution just to make the PAUSE scripts happy.
+lib/Mysql.pm
+lib/Mysql/Statement.pm
+lib/DBD/mysql.pm
+lib/DBD/mSQL.pm
+lib/Msql.pm
+lib/Msql/Statement.pm

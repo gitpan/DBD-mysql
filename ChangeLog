@@ -1,3 +1,14 @@
+Sat Oct 25 16:30:01 1997  Jochen Wiedmann  <joe@nt.ispsoft.de>
+
+	* Makefile.PL,dbd/Makefile.PL.in,nodbd/Makefile.PL.in: Added
+	  dependencies for files being created from dbd and nodbd
+	  directories via the "xtract" script.
+	* nodbd/pmsql.in,nodbd/statement.pm.in: Fixed minor problems with
+	  mSQL1; suggested by Andreas Koenig
+	* dbd/dbd.pm.in,tests/ak-dbd.t: Removed support and tests for the
+	  old connect methods.
+	* nodbd/statement.pm.in: Fixed bug in Msql::Statement::maxlength.
+
 Fri Oct 24 01:29:08 1997  Jochen Wiedmann  <joe@ispsoft.de>
 
 	* dbd/myMsql.c (MyConnect): Fixed use of mysql_real_connect

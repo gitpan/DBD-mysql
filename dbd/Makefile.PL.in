@@ -29,5 +29,15 @@ ExtUtils::MakeMaker::WriteMakefile(
 
 
 sub MY::postamble {
-    return "\ndbd.xs: ~DBD_DRIVER~.xsi\n\n" . DBI::DBD::dbd_postamble();
+    my $pa = "\n";
+    my $ref;
+    foreach $ref (@_MY::Config::Files::~DBD_DRIVER~) {
+	my($from, $to) = @$ref;
+	$from = "../$from";
+	$to =~ s/DBD-~DBD_DRIVER~\///;
+	$pa .= "$to: $from\n"
+	    . "\tperl ../xtract $from $to ~DRIVER~ ~DBD_DRIVER~"
+	    . " ~NODBD_VERSION~ ~DBD_VERSION~\n\n";
+    }
+    $pa = $pa . "\ndbd.xs: ~DBD_DRIVER~.xsi\n\n" . DBI::DBD::dbd_postamble();
 }

@@ -275,21 +275,6 @@ while (Testing()) {
     Test($state or $dbh->disconnect)
         or ErrMsg("disconnect failed: $dbh->errstr.\n");
 
-    # Are we backwards compatible with the DBD::mSQL testscript connect
-    # method that was valid up to version 0.66 or so?
-
-    # undocumented, will go away, transition variable
-    if ($mdriver eq 'mSQL'  ||  $mdriver eq 'mSQL1') {
-        $DBD::mSQL::QUIET = $DBD::mSQL::QUIET = 1;
-        $DBD::mysql::QUIET = $DBD::mysql::QUIET = 1;
-        # We fill in the username. Bad thing.
-        Test($state or ($dbh = DBI->connect($test_hostname, $test_db,
-                                            '', $mdriver)))
-            or ErrMsgF("connect failed: %s.\n", $DBI::errstr);
-	Test($state or $dbh->disconnect)
-	    or ErrMsg("disconnect failed: $dbh->errstr.\n");
-    }
-
     #
     #   Try mysql's insertid feature
     #

@@ -178,7 +178,7 @@ my $Debug = 0; # 1 | 2 | 4;
 #
 
 my($indexarg, $indexdes);
-if ($driver eq 'Mysql'  ||  !defined &Msql::IDX_TYPE()) {
+if ($driver eq 'Mysql'  ||  !defined &Msql::IDX_TYPE) {
     $indexarg = "";
     $indexdes = " or tables";
 } else {

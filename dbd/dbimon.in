@@ -233,14 +233,45 @@ sub Output ($) {
 	    }
 	}
     } else {
-	my $row_sub = sub ($) {
-	    $_[0] ? 0 : $sth->fetchrow_array;
-	};
+	my @rowCache;
+	my ($fillCache) = 0;
+	my ($useCache) = 0;
 	my ($numFields, $titles, $types, $widths);
 	eval {
 	    $titles = $sth->{'NAME'} || [];
 	    $types = $sth->{'format_type_name'} || \('char' x $numFields);
 	    $widths = $sth->{'format_default_size'} || [];
+	};
+	my $row_sub = sub ($) {
+	    if (shift) {
+		if ($fillCache) {
+		    $fillCache = 0;
+		    $useCache = 1;
+		    return 1;
+		}
+		if (!$widths  ||  @$widths != @$titles) {
+		    $fillCache = 1;
+		    return 1;
+		}
+		my $col;
+		foreach $col (@$widths) {
+		    if (!defined(@$widths)) {
+			$fillCache = 1;
+			return 1;
+		    }
+		}
+		return 0;
+	    }
+	    my $ref;
+	    if ($useCache) {
+		$ref = shift @rowCache;
+	    } else {
+		$ref = $sth->fetchrow_arrayref;
+		if ($ref  &&  $fillCache) {
+		    push(@rowCache, [@$ref]);
+		}
+	    }
+	    $ref ? @$ref : ();
 	};
         Data::ShowTable::ShowTable { 'titles' => $titles,
 				     'widths' => $widths,

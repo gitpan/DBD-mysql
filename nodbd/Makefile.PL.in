@@ -17,3 +17,18 @@ sub ~DRIVER~_config () {
 }
 
 ExtUtils::MakeMaker::WriteMakefile(CONFIGURE => \&~DRIVER~_config);
+
+sub MY::postamble {
+    my $pa = "\n";
+    my $ref;
+    foreach $ref (@_MY::Config::Files::~DBD_DRIVER~) {
+	my($from, $to) = @$ref;
+	$from = "../$from";
+	$to =~ s/~DRIVER~\///;
+	$pa .= "$to: $from\n"
+	    . "\tperl ../xtract $from $to ~DRIVER~ ~DBD_DRIVER~"
+	    . " ~NODBD_VERSION~ ~DBD_VERSION~\n\n";
+    }
+    $pa;
+}
+

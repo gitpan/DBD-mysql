@@ -7,7 +7,7 @@
 #   You may distribute under the terms of either the GNU General Public
 #   License or the Artistic License, as specified in the Perl README file.
 
-package DBD::~DBD_DRIVER~;
+package DBD::mysql;
 use strict;
 use vars qw(@ISA $VERSION $err $errstr $drh);
 
@@ -16,9 +16,9 @@ use DynaLoader();
 use Carp ();
 @ISA = qw(DynaLoader);
 
-$VERSION = '~DBD_VERSION~';
+$VERSION = '2.006';
 
-bootstrap DBD::~DBD_DRIVER~ $VERSION;
+bootstrap DBD::mysql $VERSION;
 
 
 $err = 0;	# holds error code   for DBI::err
@@ -32,11 +32,11 @@ sub driver{
     $class .= "::dr";
 
     # not a 'my' since we use it above to prevent multiple drivers
-    $drh = DBI::_new_drh($class, { 'Name' => '~DBD_DRIVER~',
+    $drh = DBI::_new_drh($class, { 'Name' => 'mysql',
 				   'Version' => $VERSION,
-				   'Err'    => \$DBD::~DBD_DRIVER~::err,
-				   'Errstr' => \$DBD::~DBD_DRIVER~::errstr,
-				   'Attribution' => 'DBD::~DBD_DRIVER~ by Jochen Wiedmann'
+				   'Err'    => \$DBD::mysql::err,
+				   'Errstr' => \$DBD::mysql::errstr,
+				   'Attribution' => 'DBD::mysql by Jochen Wiedmann'
 				 });
 
     $drh;
@@ -46,7 +46,7 @@ sub driver{
 
 
 
-package DBD::~DBD_DRIVER~::dr; # ====== DRIVER ======
+package DBD::mysql::dr; # ====== DRIVER ======
 use strict;
 
 sub connect {
@@ -69,7 +69,7 @@ sub connect {
 
     # Call msqlConnect func in mSQL.xs file
     # and populate internal handle data.
-    DBD::~DBD_DRIVER~::db::_login($this, $dsn, $username, $password)
+    DBD::mysql::db::_login($this, $dsn, $username, $password)
 	  or $this = undef;
     $this;
 }
@@ -79,23 +79,23 @@ sub data_sources {
     my(@dsn) = $self->func('', '_ListDBs');
     my($i);
     for ($i = 0;  $i < @dsn;  $i++) {
-	$dsn[$i] = "DBI:~DBD_DRIVER~:$dsn[$i]";
+	$dsn[$i] = "DBI:mysql:$dsn[$i]";
     }
     @dsn;
 }
 
 
-package DBD::~DBD_DRIVER~::db; # ====== DATABASE ======
+package DBD::mysql::db; # ====== DATABASE ======
 use strict;
 
-%DBD::~DBD_DRIVER~::db::db2ANSI = ("INT"   =>  "INTEGER",
+%DBD::mysql::db::db2ANSI = ("INT"   =>  "INTEGER",
 			   "CHAR"  =>  "CHAR",
 			   "REAL"  =>  "REAL",
 			   "IDENT" =>  "DECIMAL"
                           );
 
 ### ANSI datatype mapping to mSQL datatypes
-%DBD::~DBD_DRIVER~::db::ANSI2db = ("CHAR"          => "CHAR",
+%DBD::mysql::db::ANSI2db = ("CHAR"          => "CHAR",
 			   "VARCHAR"       => "CHAR",
 			   "LONGVARCHAR"   => "CHAR",
 			   "NUMERIC"       => "INTEGER",
@@ -125,7 +125,7 @@ sub prepare {
     });
 
     # Populate internal handle data.
-    if (!DBD::~DBD_DRIVER~::st::_prepare($sth, $statement)) {
+    if (!DBD::mysql::st::_prepare($sth, $statement)) {
 	$sth = undef;
     }
 
@@ -135,13 +135,13 @@ sub prepare {
 sub db2ANSI {
     my $self = shift;
     my $type = shift;
-    return $DBD::~DBD_DRIVER~::db::db2ANSI{"$type"};
+    return $DBD::mysql::db::db2ANSI{"$type"};
 }
 
 sub ANSI2db {
     my $self = shift;
     my $type = shift;
-    return $DBD::~DBD_DRIVER~::db::ANSI2db{"$type"};
+    return $DBD::mysql::db::ANSI2db{"$type"};
 }
 
 sub quote {
@@ -164,7 +164,7 @@ sub _ListFields($$) {
     $sth;
 }
 
-package DBD::~DBD_DRIVER~::st; # ====== STATEMENT ======
+package DBD::mysql::st; # ====== STATEMENT ======
 use strict;
 
 # Just a stub for backward compatibility; use is deprecated
