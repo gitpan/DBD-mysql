@@ -104,21 +104,16 @@ while (Testing()) {
 		++$testdsn2;
 	    }
 
-	    $SIG{__WARN__} = $warningSub;
-	    $warning = '';
-	    if (!($result = $drh->func($testdsn, '_CreateDB'))
+	    if (!($result = $drh->func('createdb', $testdsn, 'admin'))
 		and  ($drh->errstr =~ /(access|permission) denied/i)) {
 		$accessDenied = 1;
 		$result = 1;
 	    }
-	    $SIG{__WARN__} = 'DEFAULT';
 	}
 
 	Test($state or $result)
-	    or print STDERR ("Error while executing _CreateDB: "
+	    or print STDERR ("Error while executing createdb: "
 			     . $drh->errstr);
-	Test($state or ($warning =~ /deprecated/))
-	    or print STDERR ("Expected warning, got '$warning'.\n");
 
 	Test($state or $accessDenied
 	     or InDsnList($testdsn, DBI->data_sources($mdriver)))

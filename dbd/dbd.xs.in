@@ -202,7 +202,11 @@ _InsertID(dbh)
     SV *	dbh
   CODE:
     D_imp_dbh(dbh);
+    SV* sv = perl_get_sv("DBD::mysql::QUIET", FALSE);
     MYSQL *sock = (MYSQL*) imp_dbh->svsock;
+    if (!sv  ||  !SvTRUE(sv)) {  /* 1.21_07 */
+        warn("This method is deprecated. Use $dbh->{'mysql_insertid'}.");
+    }
     EXTEND( sp, 1 );
     RETVAL = mysql_insert_id(sock);
   OUTPUT:
@@ -229,7 +233,6 @@ _ListDBs(dbh)
 	}
 	MyFreeResult(res);
     }
-    MyClose(imp_dbh->svsock);
 
 
 void

@@ -1,3 +1,18 @@
+1998-11-08  Jochen Wiedmann  <joe@ispsoft.de> (1.21_07)
+
+	* _ListTables is now obsolete.
+	* _InsertID, affected_rows, IS_PRI_KEY, is_pri_key, IS_NOT_NULL,
+	  is_not_null, IS_KEY, is_key, IS_BLOB, is_blob, IS_NUM, is_num,
+	  LENGTH, length, MAXLENGTH, maxlength, NUMROWS, NUMFIELDS,
+	  RESULT, result, TABLE, table, format_max_size, format_default_size
+	  and format_type_name are now deprecated.
+	* _CreateDB, _DropDB, _ListFields, _ListSelectedFields and
+	  _NumRows have been removed.
+	* dbd/dbd.xs.in: $dbh->func('_ListDBs') was closing the socket.
+	  Thanks to Lars Kellogg-Stedman <lars@wolery.bu.edu>.
+	* dbd/dbd.pm.in: $drh->func('_ListDBs' was documented wrong.
+	  Thanks to Lars Kellogg-Stedman <lars@wolery.bu.edu>.
+
 1998-11-06  Jochen Wiedmann  <joe@ispsoft.de> (1.21_06)
 
 	* dbd/dbdimp.c: Changed isspace(c) to c == ' ' in ChopBlanks

@@ -168,6 +168,8 @@ struct imp_sth_st {
  *
  * These defines avoid name clashes for multiple statically linked DBD's	*/
 #ifdef DBD_MYSQL
+#define MyLogin			mysql_dr_login
+#define MyConnect		mysql_dr_connect
 #define dbd_init		mysql_dr_init
 #define dbd_db_login		mysql_db_login
 #define dbd_db_do		mysql_db_do
@@ -198,6 +200,8 @@ struct imp_sth_st {
 #define dbd_db_type_info_all    mysql_db_type_info_all
 #define dbd_db_quote            mysql_db_quote
 #elif defined(DBD_MSQL1)
+#define MyLogin			msql1_dr_login
+#define MyConnect		msql1_dr_connect
 #define dbd_init		msql1_dr_init
 #define dbd_db_login		msql1_db_login
 #define dbd_db_do		msql1_db_do
@@ -229,6 +233,8 @@ struct imp_sth_st {
 #define dbd_db_type_info_all    msql1_db_type_info_all
 #define dbd_db_quote            msql1_db_quote
 #else
+#define MyLogin			msql_dr_login
+#define MyConnect		msql_dr_connect
 #define dbd_init		msql_dr_init
 #define dbd_db_login		msql_db_login
 #define dbd_db_do		msql_db_do

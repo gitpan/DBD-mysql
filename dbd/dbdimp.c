@@ -412,7 +412,13 @@ void do_warn(SV* h, int rc, char* what) {
 		what, rc, SvPV(errstr,na));
     warn("%s", what);
 }
-
+#define doquietwarn(s)                                            \
+    {                                                             \
+        SV* sv = perl_get_sv("DBD::~dbd_driver~::QUIET", FALSE);  \
+        if (!sv  ||  !SvTRUE(sv)) {                               \
+	    warn s;                                               \
+	}                                                         \
+    }
 
 
 
@@ -602,9 +608,9 @@ static int _MyLogin(imp_dbh_t *imp_dbh) {
             croak("Failed to load config file %s", cf);
         }
     }
-    if (port != 0  &&  dowarn) {
-        warn("Port settings are meaningless with mSQL 2." \
-             " Use msql_configfile instead.\n");
+    if (port != 0) {
+        doquietwarn(("Port settings are meaningless with mSQL 2." \
+		     " Use msql_configfile instead."));  /* 1.21_07 */
     }
 #endif
 
@@ -1579,7 +1585,7 @@ SV* dbd_st_FETCH_internal(SV* sth, int what, result_t res, int cacheit) {
 		sv = newSViv((int) curField->length);
 		break;
 	      case AV_ATTRIB_PRECISION:
-		sv = newSViv((int) native2sql(curField->type)->precision);
+		sv = newSViv((int) curField->length);
 		break;
 #endif
 	      default:
@@ -1630,6 +1636,9 @@ SV* dbd_st_FETCH_attrib(SV* sth, imp_sth_t* imp_sth, SV* keysv) {
     STRLEN(kl);
     char* key = SvPV(keysv, kl);
     SV* retsv = Nullsv;
+    if (kl < 2) {
+        return Nullsv;
+    }
 
     if (dbis->debug >= 2) {
         fprintf(DBILOGFP,
@@ -1642,6 +1651,9 @@ SV* dbd_st_FETCH_attrib(SV* sth, imp_sth_t* imp_sth, SV* keysv) {
       case 'a':
 	if (strEQ(key, "affected_rows")) {
 	    D_imp_dbh_from_sth;
+	    /* 1.21_07 */ 
+	    doquietwarn(("$sth->{'affected_rows'} is deprecated," \
+			 " use $sth->rows()"));
 	    retsv = sv_2mortal(newSViv((IV)mysql_affected_rows(imp_dbh->svsock)));
 	}
 	break;
@@ -1651,16 +1663,31 @@ SV* dbd_st_FETCH_attrib(SV* sth, imp_sth_t* imp_sth, SV* keysv) {
 	 *  Deprecated, use lower case versions.
 	 */
 	if (strEQ(key, "IS_PRI_KEY")) {
+	    /* 1.21_07 */ 
+	    doquietwarn(("$sth->{'IS_PRI_KEY'} is deprecated," \
+			 " use $sth->{'~~lc_dbd_driver~~_is_pri_key'}"));
 	    retsv = ST_FETCH_AV(AV_ATTRIB_IS_PRI_KEY);
 	} else if (strEQ(key, "IS_NOT_NULL")) {
+	    /* 1.21_07 */ 
+	    doquietwarn(("$sth->{'IS_NOT_NULL'} is deprecated," \
+			 " use $sth->{'NULLABLE'}"));
 	    retsv = ST_FETCH_AV(AV_ATTRIB_IS_NOT_NULL);
 #if defined(DBD_MYSQL)
 	} else if (strEQ(key, "IS_KEY")) {
+	    /* 1.21_07 */
+	    doquietwarn(("$sth->{'IS_KEY'} is deprecated," \
+			 " use $sth->{'~~lc_dbd_driver~~_is_key'}"));
 	    retsv = ST_FETCH_AV(AV_ATTRIB_IS_KEY);
 	} else if (strEQ(key, "IS_BLOB")) {
+	    /* 1.21_07 */
+	    doquietwarn(("$sth->{'IS_BLOB'} is deprecated," \
+			 " use $sth->{'~~lc_dbd_driver~~_is_blob'}"));
 	    retsv = ST_FETCH_AV(AV_ATTRIB_IS_BLOB);
 #endif
 	} else if (strEQ(key, "IS_NUM")) {
+	    /* 1.21_07 */
+	    doquietwarn(("$sth->{'IS_NUM'} is deprecated," \
+			 " use $sth->{'~~lc_dbd_driver~~_is_num'}"));
 	    retsv = ST_FETCH_AV(AV_ATTRIB_IS_NUM);
 	}
 	break;
@@ -1669,15 +1696,23 @@ SV* dbd_st_FETCH_attrib(SV* sth, imp_sth_t* imp_sth, SV* keysv) {
 	 *  Deprecated, use lower case versions.
 	 */
 	if (strEQ(key, "LENGTH")) {
+	    /* 1.21_07 */
+#ifdef DBD_MYSQL
+	    doquietwarn(("$sth->{'LENGTH'} is deprecated," \
+			 " use $sth->{'~~lc_dbd_driver~~_length'}"));
+#else
+	    doquietwarn(("$sth->{'LENGTH'} is deprecated," \
+			 " use $sth->{'PRECISION'}"));
+#endif
 	    retsv = ST_FETCH_AV(AV_ATTRIB_LENGTH);
 	}
 	break;
 #if defined(DBD_MYSQL)
       case 'M':
-	/*
-	 *  Deprecated, use max_length
-	 */
 	if (strEQ(key, "MAXLENGTH")) {
+	    /* 1.21_07 */
+	    doquietwarn(("$sth->{'MAXLENGTH'} is deprecated," \
+			 " use $sth->{'~~lc_dbd_driver~~__maxlength'}"));
 	    retsv = ST_FETCH_AV(AV_ATTRIB_MAX_LENGTH);
 	}
 	break;
@@ -1688,8 +1723,13 @@ SV* dbd_st_FETCH_attrib(SV* sth, imp_sth_t* imp_sth, SV* keysv) {
 	} else if (strEQ(key, "NULLABLE")) {
 	    retsv = ST_FETCH_AV(AV_ATTRIB_NULLABLE);
 	} else if (strEQ(key, "NUMROWS")) {
+	    /* 1.21_07 */
+	    doquietwarn(("$sth->{'NUMROWS'} is deprecated, use $sth->rows"));
 	    retsv = sv_2mortal(newSViv((IV)imp_sth->row_num));
 	} else if (strEQ(key, "NUMFIELDS")) {
+	    /* 1.21_07 */
+	    doquietwarn(("$sth->{'NUMFIELDS'} is deprecated," \
+			  " use $sth->{'NUM_OF_FIELDS'"));
 	    retsv = sv_2mortal(newSViv((IV) DBIc_NUM_FIELDS(imp_sth)));
 	}
 	break;
@@ -1699,10 +1739,10 @@ SV* dbd_st_FETCH_attrib(SV* sth, imp_sth_t* imp_sth, SV* keysv) {
 	}
 	break;
       case 'R':
-	/*
-	 * Deprecated, use 'result'
-	 */
 	if (strEQ(key, "RESULT")) {
+	    /* 1.21_07 */
+	    doquietwarn(("$sth->{'RESULT'} is deprecated," \
+			 " use $sth->{'~~lc_dbd_driver~~_result'}"));
 	    retsv = sv_2mortal(newSViv((IV) imp_sth->cda));
 	}
 	break;
@@ -1714,80 +1754,183 @@ SV* dbd_st_FETCH_attrib(SV* sth, imp_sth_t* imp_sth, SV* keysv) {
       case 'T':
 	if (strEQ(key, "TYPE")) {
 	    retsv = ST_FETCH_AV(AV_ATTRIB_SQL_TYPE);
-	}
-	/*
-	 *  Deprecated, use lower case version.
-	 */
-	else if (strEQ(key, "TABLE")) {
+	} else if (strEQ(key, "TABLE")) {
+	    /* 1.21_07 */
+	    doquietwarn(("$sth->{'TABLE'} is deprecated," \
+			 " use $sth->{'~~lc_dbd_driver~~_table'}"));
 	    retsv = ST_FETCH_AV(AV_ATTRIB_TABLE);
 	}
 	break;
       case 'f':
 	if (strEQ(key, "format_max_size")) {
+	    /* 1.21_07 */
+	    doquietwarn(("$sth->{'format_max_size'} is deprecated," \
+			 " use $sth->{'PRECISION'}"));
 	    retsv = ST_FETCH_AV(AV_ATTRIB_LENGTH);
 #if defined(DBD_MYSQL)
 	} else if (strEQ(key, "format_default_size")) {
+	    /* 1.21_07 */
+	    doquietwarn(("$sth->{'format_max_size'} is deprecated," \
+			 " use $sth->{'PRECISION'}"));
 	    retsv = ST_FETCH_AV(AV_ATTRIB_MAX_LENGTH);
 #endif
 	} else if (strEQ(key, "format_right_justify")) {
+	    /* 1.21_07 */
+	    doquietwarn(("$sth->{'format_max_size'} is deprecated," \
+			 " use $sth->{'~~lc_dbd_driver~~_is_num'}"));
 	    retsv = ST_FETCH_AV(AV_ATTRIB_IS_NUM);
 	} else if (strEQ(key, "format_type_name")) {
+	    /* 1.21_07 */
+	    doquietwarn(("$sth->{'format_type_name'} is deprecated," \
+			 " use $sth->{'TYPE'}"));
 	    retsv = ST_FETCH_AV(AV_ATTRIB_TYPE_NAME);
 	}
 	break;
       case 'i':
 	if (strEQ(key, "insertid")) {
+	    /* 1.21_07 */
+	    doquietwarn(("$sth->{'insertid'} is deprecated," \
+			 " use $sth->{'mysql_insertid'}"));
 	    retsv = sv_2mortal(newSViv(imp_sth->insertid));
 	} else if (strEQ(key, "is_pri_key")) {
+	    /* 1.21_07 */ 
+	    doquietwarn(("$sth->{'is_pri_key'} is deprecated," \
+			 " use $sth->{'~~lc_dbd_driver~~_is_pri_key'}"));
 	    retsv = ST_FETCH_AV(AV_ATTRIB_IS_PRI_KEY);
 	} else if (strEQ(key, "is_not_null")) {
+	    /* 1.21_07 */ 
+	    doquietwarn(("$sth->{'is_not_null'} is deprecated," \
+			 " use $sth->{'NULLABLE'}"));
 	    retsv = ST_FETCH_AV(AV_ATTRIB_IS_NOT_NULL);
 #if defined(DBD_MYSQL)
 	} else if (strEQ(key, "is_key")) {
+	    /* 1.21_07 */
+	    doquietwarn(("$sth->{'is_key'} is deprecated," \
+			 " use $sth->{'~~lc_dbd_driver~~_is_key'}"));
 	    retsv = ST_FETCH_AV(AV_ATTRIB_IS_KEY);
 	} else if (strEQ(key, "is_blob")) {
+	    /* 1.21_07 */
+	    doquietwarn(("$sth->{'is_blob'} is deprecated," \
+			 " use $sth->{'~~lc_dbd_driver~~_is_blob'}"));
 	    retsv = ST_FETCH_AV(AV_ATTRIB_IS_BLOB);
 #endif
 	} else if (strEQ(key, "is_num")) {
+	    /* 1.21_07 */
+	    doquietwarn(("$sth->{'is_num'} is deprecated," \
+			 " use $sth->{'~~lc_dbd_driver~~_is_num'}"));
 	    retsv = ST_FETCH_AV(AV_ATTRIB_IS_NUM);
 	}
 	break;
       case 'l':
 	if (strEQ(key, "length")) {
+	    /* 1.21_07 */
+	    doquietwarn(("$sth->{'length'} is deprecated," \
+			 " use $sth->{'PRECISION'}"));
 	    retsv = ST_FETCH_AV(AV_ATTRIB_LENGTH);
 	}
 	break;
       case 'm':
 #if defined(DBD_MYSQL)
-	if (strEQ(key, "max_length")) {
-	    retsv = ST_FETCH_AV(AV_ATTRIB_MAX_LENGTH);
-	} else if (strEQ(key, "mysql_use_result")) {
-	    retsv = boolSV(imp_sth->use_mysql_use_result);
-	} else if (strEQ(key, "mysql_type")) {
-	    retsv = ST_FETCH_AV(AV_ATTRIB_TYPE);
+	switch (kl) {
+	  case 10:
+	    if (strEQ(key, "max_length")) {
+	        /* 1.21_07 */
+	        doquietwarn(("$sth->{'max_length'} is deprecated," \
+			     " use $sth->{'~~lc_dbd_driver~~_max_length'}"));
+		retsv = ST_FETCH_AV(AV_ATTRIB_MAX_LENGTH);
+	    } else if (strEQ(key, "mysql_type")) {
+	        retsv = ST_FETCH_AV(AV_ATTRIB_TYPE);
+	    }
+	    break;
+	  case 11:
+	    if (strEQ(key, "mysql_table")) {
+	        retsv = ST_FETCH_AV(AV_ATTRIB_TABLE);
+	    }
+	    break;
+	  case 12:
+	    if (       strEQ(key, "mysql_is_key")) {
+	        retsv = ST_FETCH_AV(AV_ATTRIB_IS_KEY);
+	    } else if (strEQ(key, "mysql_is_num")) {
+	        retsv = ST_FETCH_AV(AV_ATTRIB_IS_NUM);
+	    } else if (strEQ(key, "mysql_length")) {
+	        retsv = ST_FETCH_AV(AV_ATTRIB_LENGTH);
+	    } else if (strEQ(key, "mysql_result")) {
+	        retsv = sv_2mortal(newSViv((IV) imp_sth->cda));
+	    }
+	    break;
+	  case 13:
+	    if (strEQ(key, "mysql_is_blob")) {
+	        retsv = ST_FETCH_AV(AV_ATTRIB_IS_BLOB);
+	    }
+	    break;
+	  case 14:
+	    if (strEQ(key, "mysql_insertid")) {
+	        retsv = sv_2mortal(newSViv(imp_sth->insertid));
+	    }
+	    break;
+	  case 15:
+	    if (strEQ(key, "mysql_type_name")) {
+	        retsv = ST_FETCH_AV(AV_ATTRIB_TYPE_NAME);
+	    }
+	    break;
+	  case 16:
+	    if (       strEQ(key, "mysql_is_pri_key")) {
+	        retsv = ST_FETCH_AV(AV_ATTRIB_IS_PRI_KEY);
+	    } else if (strEQ(key, "mysql_max_length")) {
+	        retsv = ST_FETCH_AV(AV_ATTRIB_MAX_LENGTH);
+	    } else if (strEQ(key, "mysql_use_result")) {
+	        retsv = boolSV(imp_sth->use_mysql_use_result);
+	    }
+	    break;
 	}
 #else
-	if (strEQ(key, "msql_type")) {
-	    retsv = ST_FETCH_AV(AV_ATTRIB_TYPE);
+	switch (kl) {
+	  case 9:
+	    if (strEQ(key, "msql_type")) {
+	        retsv = ST_FETCH_AV(AV_ATTRIB_TYPE);
+	    }
+	    break;
+	  case 10:
+	    if (strEQ(key, "msql_table")) {
+	        retsv = ST_FETCH_AV(AV_ATTRIB_TABLE);
+	    }
+	    break;
+	  case 11:
+	    if (strEQ(key, "msql_is_num")) {
+	        retsv = ST_FETCH_AV(AV_ATTRIB_IS_NUM);
+	    } else if (strEQ(key, "msql_result")) {
+	        retsv = sv_2mortal(newSViv((IV) imp_sth->cda));
+	    }
+	    break;
+	  case 14:
+	    if (strEQ(key, "msql_type_name")) {
+	        retsv = ST_FETCH_AV(AV_ATTRIB_TYPE_NAME);
+	    }
+	    break;
+	  case 15:
+	    if (kl == 15  &&  strEQ(key, "msql_is_pri_key")) {
+	        retsv = ST_FETCH_AV(AV_ATTRIB_IS_PRI_KEY);
+	    }
+	    break;
 	}
 #endif
 	break;
       case 'r':
 	if (strEQ(key, "result")) {
+	    /* 1.21_07 */
+	    doquietwarn(("$sth->{'result'} is deprecated," \
+			 " use $sth->{'~~lc_dbd_driver~~_result'}"));
 	    retsv = sv_2mortal(newSViv((IV) imp_sth->cda));
 	}
 	break;
       case 't':
 	if (strEQ(key, "table")) {
+	    /* 1.21_07 */
+	    doquietwarn(("$sth->{'table'} is deprecated," \
+			 " use $sth->{'~~lc_dbd_driver~~_table'}"));
 	    retsv = ST_FETCH_AV(AV_ATTRIB_TABLE);
 	}
 	break;
-    }
-
-    if (dbis->debug >= 2) {
-        fprintf(DBILOGFP,
-		"    <- dbd_st_FETCH_attrib for %08lx, key %s: result %s\n",
-		(u_long) sth, key, retsv ? SvPV(retsv, na) : "NULL");
     }
 
     return retsv;
@@ -1836,7 +1979,6 @@ int dbd_st_blob_read (SV *sth, imp_sth_t *imp_sth, int field, long offset,
  **************************************************************************/
 
 int dbd_st_rows(SV* sth, imp_sth_t* imp_sth) {
-    if (!imp_sth->cda) { return -1; }
     return imp_sth->row_num;
 }
 

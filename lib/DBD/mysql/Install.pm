@@ -353,8 +353,7 @@ sub Initialize ($) {
 	$sysliblist = "-L$libdir -lmysqlclient";
     }
     $sysliblist .= " -lm";
-    my $defines = "-DDBD_MYSQL -DMyConnect=mysql_dr_connect"
-	. " -DMyLogin=mysql_dr_login";
+    my $defines = "-DDBD_MYSQL";
     my $linkwith = "";
     if ($Config::Config{'osname'} eq 'sco_sv') {
 	# Some extra libraries need added for SCO

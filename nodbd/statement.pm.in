@@ -46,33 +46,33 @@ sub dataseek ($$) {
 
 sub numrows { my($self) = shift; $self->rows() }
 sub numfields { my($self) = shift; $self->{'NUM_OF_FIELDS'} }
-sub affectedrows { my($self) = shift; $self->{'affected_rows'} }
-sub insertid { my($self) = shift; $self->{'insertid'} }
 sub arrAttr ($$) {
     my($self, $attr) = @_;
-    my($arr) = $self->{$attr};
+    my $arr = $self->{$attr};
     wantarray ? @$arr : $arr
 }
-sub table ($) { shift->arrAttr('table') }
+sub table ($) { shift->arrAttr('~~lc_dbd_driver~~_table') }
 sub name ($) { shift->arrAttr('NAME') }
 ~#if#~ ('~~dbd_driver~~' eq 'mysql')
+*affectedrows = \&numrows;
+sub insertid { my($self) = shift; $self->{'mysql_insertid'} }
 sub type ($) { shift->arrAttr('mysql_type') }
 ~#else#~
 sub type ($) { shift->arrAttr('msql_type') }
 ~#endif#~
-sub isnotnull ($) { shift->arrAttr('is_not_null') }
-sub isprikey ($) { shift->arrAttr('is_pri_key') }
-sub isnum ($) { shift->arrAttr('is_num') }
-sub isblob ($) { shift->arrAttr('is_blob') }
-sub length ($) { shift->arrAttr('length') }
+sub isnotnull ($) {
+    my $arr = [map {!$_} @{shift()->{'NULLABLE'}}];
+    wantarray ? @$arr : $arr;
+}
+sub isprikey ($) { shift->arrAttr('~~lc_dbd_driver~~_is_pri_key') }
+sub isnum ($) { shift->arrAttr('~~lc_dbd_driver~~_is_num') }
+sub isblob ($) { shift->arrAttr('~~lc_dbd_driver~~_is_blob') }
+sub length ($) { shift->arrAttr('PRECISION') }
 
 sub maxlength  {
     my $sth = shift;
     my $result;
-~#if#~ ('~~dbd_driver~~' eq 'mysql')
-    $result = $sth->fetchinternal('maxlength');
-~#else#~
-    if (!($result = $sth->{'maxlength'})) {
+    if (!($result = $sth->{'~~lc_dbd_driver~~_maxlength'})) {
 	$result = [];
 	my ($l);
 	for (0..$sth->numfields-1) {
@@ -96,9 +96,7 @@ sub maxlength  {
 		}
 	    }
 	}
-	$sth->{MAXLENGTH} = $result;
     }
-~#endif#~
     return wantarray ? @$result : $result;
 }
 
@@ -144,10 +142,9 @@ sub unctrl {
 sub optimize {
     my($self,$arg) = @_;
     if (defined $arg) {
-	return $self->{'OPTIMIZE'} = $arg;
-    } else {
-	return $self->{'OPTIMIZE'} ||= $OPTIMIZE;
+	$OPTIMIZE = $arg;
     }
+    $OPTIMIZE;
 }
 
 sub as_string {

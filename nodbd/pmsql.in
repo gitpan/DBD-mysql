@@ -1,12 +1,12 @@
-~startperl~
+~~startperl~~
 
 # $Id: pmysql.PL 1.1 Tue, 30 Sep 1997 01:28:08 +0200 joe $
-my $version = '~NODBD_VERSION~';
+my $version = '~~nodbd_version~~';
 
 BEGIN {require 5.002;}
 # use strict;      # only for testing. Unfriendly for the user-eval()s
 # $^W = 1;         # too early for readline 0.8
-$driver = '~DRIVER~'; eval "use $driver ()";
+$driver = '~~nodbd_driver~~'; eval "use $driver ()";
 use Term::ReadLine;
 use Carp ();
 
@@ -147,16 +147,7 @@ $escape = $quote;
 ~#if#~ ('~~dbd_driver~~' eq 'mysql')
     printf ("$prompt -- interactive Mysql monitor version $version\n");
 ~#else#~
-    my $probe_server;
-    if (Msql->connect($host)) {
-	$probe_server = "mSQL " . Msql->getserverinfo . " detected\n";
-    } else {
-	$probe_server = "You seem to run a version of ";
-	$probe_server .= defined &Msql::IDX_TYPE ? "mSQL >= 2.0\n" :
-	                                           "mSQL < 2.0\n";
-    }
     printf ("$prompt -- interactive mSQL monitor version $version\n");
-    print $probe_server;
 ~#endif#~
     print "Readline support $rl_avail\n\n";
 }
@@ -561,7 +552,7 @@ sub relshow {
 	    $keywidth = 3;
 	    $keytitle = "Key";
 ~#else#~
-	    if ($driver->getserverinfo lt 2) {
+	    if ($Dbh->getserverinfo lt 2) {
 		$keywidth = 3;
 		$keytitle = "Key";
 	    } else {
@@ -579,7 +570,7 @@ sub relshow {
 ~#if#~ ('~~dbd_driver~~' eq 'mysql')
 		$keyNO = "N";
 ~#else#~
-		if ($driver->getserverinfo lt 2  ||
+		if ($Dbh->getserverinfo lt 2  ||
 		    $sth->type->[$i] == &Msql::IDX_TYPE()) {
 		    $keyNO = "N";
 		} else {

@@ -108,7 +108,9 @@ sub FormatTypeName ($) {
     my $sth = shift;
     my ($types, $ref);
     $@ = '';
-    $ref = eval { $sth->{format_type_name} };
+    if (ref($sth) =~ /.*\:\:(.*)\:\:st$/) {
+	$ref = eval { $sth->{$1 . '_type_name'} };
+    }
     if ($@  ||  !$ref) {
 	$@ = '';
 	$types = eval { $sth->{TYPE} };
@@ -142,7 +144,7 @@ sub FormatTypeName ($) {
 sub FormatDefaultSize ($) {
     my $sth = shift;
     $@ = '';
-    my $ref = eval { $sth->{format_default_size} };
+    my $ref = eval { $sth->{mysql_maxlength} };
     if ($@  ||  !$ref) {
 	$ref = [];
     }
@@ -152,7 +154,7 @@ sub FormatDefaultSize ($) {
 sub FormatMaxSize ($) {
     my $sth = shift;
     $@ = '';
-    my $ref = eval { $sth->{format_max_size} };
+    my $ref = eval { $sth->{'PRECISION'} };
     if ($@  ||  !$ref) {
 	$@ = '';
 	$ref = eval { $sth->{sol_length} };
@@ -1574,78 +1576,6 @@ refine it in the near future. Feel free to implement your own
 refinements and let me know, if you have something better than what we
 have here.
 
-=head1 DRIVER REQUIREMENTS
-
-This section is mostly for authors of DBI drivers. If you are interested
-in using dbimon only, skip it.
-
-Dbimon should in theory work with any DBI driver. However, DBI is too
-restricted for really comfortable work. Thus I decided to use some
-very basic possibilities of the DBD::mSQL and DBD::mysql drivers. It
-should be easy to add these to any driver and dbimon doesn't depend
-on them: All requests for these variables are braced with eval's so
-that dbimon can either insert defaults or refuse to execute the
-respective commands.
-
-I'll be happy to drop these additional requirements as soon as the
-DBI gets extended in an appropriate way and adopt my sources, but
-for now, here's what I suggest:
-
-=over 2
-
-=item format_default_size
-
-A statement handle attribute; reference to an array of values, one
-for each column. The values contain the actual maximum size of all
-values to be distinguished from the theroretical maximum. For example,
-if you have a column of type char(64), but the values actually have 30
-characters or less, then the value 30 will be supplied by the driver.
-
-The driver is free, not to implement this attribute or to implement
-it only for certain columns, but he must supply C<undef> for other
-values.
-
-DBD::mysql implements this by reading the max_length attribute of
-a result. DBD::mSQL does not offer such an attribute, but it holds
-the complete result in memory, so I could easily add the attribute
-by scanning all rows. (Perhaps faster than relying on dbimons builtin
-possibility.)
-
-The array ref is passed to I<Data::ShowTable::ShowTable> as the
-I<widths> attribute.
-
-=item format_max_size
-
-Similar to I<format_default_size>, but this is the theoretical maximum
-size. Again, the driver is free not to implement this attribute or
-implement it for certain columns only, but he must supply C<undef>
-for all other columns.
-
-These values are displayed in the C<relshow database tables> command.
-
-=item format_type_name
-
-Reference to an array of type names; for example DBD::mSQL will insert
-the type name C<int> for a column of type I<INT_TYPE>. The driver
-should implement this attribute.
-
-This array is passed to I<Data::ShowTable::ShowTable> as the I<types>
-argument.
-
-=item C<@list = $dbh-E<gt>func('_ListTables')>
-
-Lists the tables of the dsn corresponding to I<$dbh>.
-
-=item C<$sth = $dbh-E<gt>prepare("LISTFIELDS $table")>
-
-Returns a statement handle describing the fields of a table. This could,
-for example, be implemented by a
-
-  SELECT * FROM table WHERE 0 = 1
-
-(Of course I can imagine better solutions ... :-)
-
-=back
 
 =head1 SEE ALSO
 
