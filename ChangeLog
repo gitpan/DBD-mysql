@@ -1,3 +1,8 @@
+2000-04-15  Jochen Wiedmann  <joe@ispsoft.de> (1.2212)
+
+	* Makefile.PL: Fixed use of builder-provided passwords.
+	  Buck Huppmann <buckh@pobox.com>
+
 2000-04-03  Jochen Wiedmann  <joe@ispsoft.de> (1.2211)
 
 	* Fixed $dbh->{Name} (David Jacobs <djacobs@mitre.org>)

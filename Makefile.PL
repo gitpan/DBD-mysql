@@ -19,8 +19,8 @@ use ExtUtils::PerlPP ();
 
 use vars qw($VERSION $DBD_VERSION $options);
 
-$VERSION = "1.2211";
-$DBD_VERSION = "2.0411";
+$VERSION = "1.2212";
+$DBD_VERSION = "2.0412";
 
 $options = { 'prompt' => 1 };
 
@@ -96,8 +96,7 @@ sub QueryDb ($) {
 	$test_user = undef if $test_user eq 'undef';
 
 	$test_pass = exists($options->{"$d-test-pass"}) ?
-	    $options->{"$d-test-pass"} : ($cfg->{'test_pass'} || "undef")
-		if $prompt;
+	    $options->{"$d-test-pass"} : ($cfg->{'test_pass'} || "undef");
 	$test_pass = prompt
 	    ("Password for connecting to database $test_db?", $test_pass)
 		if $prompt;
