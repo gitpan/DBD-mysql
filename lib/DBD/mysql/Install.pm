@@ -318,7 +318,11 @@ sub Initialize ($$) {
 
     my $headerdir;
     if (exists($options->{'mysql-incdir'})) {
-	$headerdir = $options->{'mysql-incdir'};
+	if (-d $options->{'mysql-incdir'}) {
+	    $headerdir = $options->{'mysql-incdir'};
+	} else {
+	    die "No such directory: $options->{'mysql-incdir'}";
+	}
     } else {
 	($headerdir, $gooddir) = $self->SearchHeaders
 	    ($options, \@gooddirs, \@mysqldirs,
@@ -326,7 +330,11 @@ sub Initialize ($$) {
     }
     my($libdir, $libfile);
     if (exists($options->{'mysql-libdir'})) {
-	$libdir = $options->{'mysql-libdir'};
+	if (-d $options->{'mysql-libdir'}) {
+	    $libdir = $options->{'mysql-libdir'};
+	} else {
+	    die "No such directory: $options->{'mysql-libdir'}";
+	}
     } else {
 	my(@searchpath, $file, $dir);
 	if ($^O =~ /mswin32/i) {

@@ -94,9 +94,9 @@ sub TableDefinition ($@) {
 #
 sub ListTables($) {
     my($dbh) = @_;
-    my(@tables);
+    my(@tables) = $dbh->func('_ListTables');
 
-    if (!defined(@tables = $dbh->func('_ListTables'))  ||  $dbh->errstr) {
+    if ($dbh->errstr) {
 	return undef;
     }
     @tables;

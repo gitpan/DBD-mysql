@@ -16,7 +16,7 @@ use DynaLoader();
 use Carp ();
 @ISA = qw(DynaLoader);
 
-$VERSION = '2.0414';
+$VERSION = '2.0416';
 
 bootstrap DBD::mSQL $VERSION;
 
@@ -1034,6 +1034,15 @@ the manual.
 Windows users may skip this section and pass over to L<WIN32
 INSTALLATION> below. Others, go on reading.
 
+First of all, you do not need an installed MySQL server for installing
+DBD::mSQL and/or DBD::mysql. However, you need at least the client
+libraries and possibly the header files, if you are compiling DBD::mysql
+or DBD::mSQL from source. In the case of MySQL you can create a
+client-only version by using the configure option --without-server.
+If you are using precompiled binaries, then it may be possible to
+use just selected RPM's like MySQL-client and MySQL-devel or something
+similar, depending on the distribution.
+
 First you need to install the DBI module. For using I<dbimon>, a
 simple DBI shell it is recommended to install Data::ShowTable another
 Perl module.
@@ -1112,16 +1121,14 @@ I have never attempted to install DBD::mSQL under Win32, so this is only
 for MySQL. If anyone succeeds, please let me know what you did.
 
 If you are using ActivePerl, you may use ppm to install DBD-mysql.
-For Perl 5.6, please do
+For Perl 5.6, upgrade to Build 623 or later, then it is sufficient
+to run
 
- ppm install http://www.perl.com/CPAN-local/authors/id/JWIED/DBD-mysql-1.2212.x86.ppd
+  ppm install DBI
+  ppm install DBD::mysql
 
 
-That should do. For Perl 5.005, ActiveState offers a package and you can
-simply do
-
- ppm
- install DBD-mysql
+The same applied to Perl 5.005.
 
 Otherwise you definitely *need* a C compiler. And it *must* be the same
 compiler that was being used for compiling Perl itself. If you don't

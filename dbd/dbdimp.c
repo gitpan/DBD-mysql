@@ -40,7 +40,10 @@ typedef short WORD;
 
 DBISTATE_DECLARE;
 
-#if defined(DBD_MYSQL)  &&  defined(mysql_errno)
+#if defined(DBD_MYSQL)  &&  (MYSQL_VERSION_ID >= 32300 || defined(mysql_errno))
+#define have_mysql_errno
+#endif
+#if defined(DBD_MYSQL)  &&  defined(have_mysql_errno)
 #define DO_ERROR(h, c, s) do_error(h, (int) mysql_errno(s), mysql_error(s))
 #else
 #define DO_ERROR(h, c, s) do_error(h, c, MyError(s))
@@ -484,6 +487,8 @@ int MyConnect(dbh_t *sock, char* unixSocket, char* host, char* port,
 
 	if (imp_dbh) {
 	    SV* sv = DBIc_IMP_DATA(imp_dbh);
+	    imp_dbh->has_transactions = TRUE;
+	    DBIc_set(imp_dbh, DBIcf_AutoCommit, &sv_yes);
 	    if (sv  &&  SvROK(sv)) {
 	        HV* hv = (HV*) SvRV(sv);
 		SV** svp;
@@ -554,6 +559,11 @@ int MyConnect(dbh_t *sock, char* unixSocket, char* host, char* port,
 	 */
         char buffer[32];
 	char* oldPort = NULL;
+
+	if (imp_dbh) {
+	    imp_dbh->has_transactions = FALSE;
+	    DBIc_set(imp_dbh, DBIcf_AutoCommit, &sv_yes);
+	}
 
 	sprintf(buffer, "%d", portNr);
 	if (portNr) {
@@ -735,9 +745,8 @@ int dbd_db_login(SV* dbh, imp_dbh_t* imp_dbh, char* dbname, char* user,
  *  Name:    dbd_db_commit
  *           dbd_db_rollback
  *
- *  Purpose: You guess what they should do. Unfortunately mysql doesn't
- *           support transactions so far. (Most important lack of
- *           feature, Monty! :-) So we stub commit to return OK
+ *  Purpose: You guess what they should do. mSQL doesn't support
+ *           transactions, so we stub commit to return OK
  *           and rollback to return ERROR in any case.
  *
  *  Input:   dbh - database handle being commited or rolled back
@@ -749,15 +758,42 @@ int dbd_db_login(SV* dbh, imp_dbh_t* imp_dbh, char* dbname, char* user,
  **************************************************************************/
 
 int dbd_db_commit(SV* dbh, imp_dbh_t* imp_dbh) {
-    do_warn(dbh, JW_ERR_NOT_IMPLEMENTED,
-	    "Commmit ineffective while AutoCommit is on");
+    if (DBIc_has(imp_dbh, DBIcf_AutoCommit)) {
+        do_warn(dbh, TX_ERR_AUTOCOMMIT,
+		"Commmit ineffective while AutoCommit is on");
+	return TRUE;
+    }
+
+    if (imp_dbh->has_transactions) {
+      if (MyQuery(imp_dbh->svsock, "COMMIT", 6) != 0) {
+        do_error(dbh, TX_ERR_COMMIT, "Commit failed");
+	return FALSE;
+      }
+    } else {
+      do_warn(dbh, JW_ERR_NOT_IMPLEMENTED,
+	      "Commmit ineffective while AutoCommit is on");
+    }
     return TRUE;
 }
 
 int dbd_db_rollback(SV* dbh, imp_dbh_t* imp_dbh) {
-    do_error(dbh, JW_ERR_NOT_IMPLEMENTED,
-	    "Rollback ineffective while AutoCommit is on");
-    return FALSE;
+    /* croak, if not in AutoCommit mode */
+    if (DBIc_has(imp_dbh, DBIcf_AutoCommit)) {
+        do_warn(dbh, TX_ERR_AUTOCOMMIT,
+		"Rollback ineffective while AutoCommit is on");
+	return FALSE;
+    }
+
+    if (imp_dbh->has_transactions) {
+      if (MyQuery(imp_dbh->svsock, "ROLLBACK", 8) != 0) {
+        do_error(dbh, TX_ERR_ROLLBACK, "ROLLBACK failed");
+	return FALSE;
+      }
+    } else {
+      do_error(dbh, JW_ERR_NOT_IMPLEMENTED,
+	       "Rollback ineffective while AutoCommit is on");
+    }
+    return TRUE;
 }
 
 
@@ -846,8 +882,14 @@ void dbd_db_destroy(SV* dbh, imp_dbh_t* imp_dbh) {
     /*
      *  Being on the safe side never hurts ...
      */
-    if (DBIc_ACTIVE(imp_dbh))
+    if (DBIc_ACTIVE(imp_dbh)) {
+        if (imp_dbh->has_transactions) {
+	    if (!DBIc_has(imp_dbh, DBIcf_AutoCommit)) {
+	        MyQuery(imp_dbh->svsock, "ROLLBACK", 8);
+	    }
+	}
         dbd_db_disconnect(dbh, imp_dbh);
+    }
 
     /*
      *  Tell DBI, that dbh->destroy must no longer be called
@@ -879,6 +921,36 @@ int dbd_db_STORE_attrib(SV* dbh, imp_dbh_t* imp_dbh, SV* keysv, SV* valuesv) {
     int cacheit = FALSE;
 
     if (kl==10 && strEQ(key, "AutoCommit")){
+      if (imp_dbh->has_transactions) {
+        int oldval = DBIc_has(imp_dbh,DBIcf_AutoCommit);
+	int newval = SvTRUE(valuesv);
+
+ 	/* if setting AutoCommit on ... */
+	if (newval) {
+	    if (!oldval) {
+	        /*  Need to issue a commit before entering AutoCommit  */
+	        if (MyQuery(imp_dbh->svsock,"COMMIT",6) != 0) {
+		    do_error(dbh, TX_ERR_COMMIT,"COMMIT failed");
+		    return FALSE;
+		}
+		if (MyQuery(imp_dbh->svsock, "SET AUTOCOMMIT=1", 16) != 0) {
+		  do_error(dbh, TX_ERR_AUTOCOMMIT,
+			   "Turning on AutoCommit failed");
+		  return FALSE;
+		}
+		DBIc_set(imp_dbh, DBIcf_AutoCommit, newval);
+	    }
+	} else {
+	    if (oldval) {
+	        if (MyQuery(imp_dbh->svsock, "SET AUTOCOMMIT=0", 16) != 0) {
+		  do_error(dbh, TX_ERR_AUTOCOMMIT,
+			   "Turning off AutoCommit failed");
+		  return FALSE;
+		}
+		DBIc_set(imp_dbh, DBIcf_AutoCommit, newval);
+	    }
+	}
+      } else {
         /*
 	 *  We do support neither transactions nor "AutoCommit".
 	 *  But we stub it. :-)
@@ -888,6 +960,7 @@ int dbd_db_STORE_attrib(SV* dbh, imp_dbh_t* imp_dbh, SV* keysv, SV* valuesv) {
 			   "Transactions not supported by database");
 	    croak("Transactions not supported by database");
 	}
+      }
     } else {
         return FALSE;
     }
@@ -922,16 +995,16 @@ SV* dbd_db_FETCH_attrib(SV* dbh, imp_dbh_t* imp_dbh, SV* keysv) {
     switch (*key) {
       case 'A':
 	if (strEQ(key, "AutoCommit")){
-	    /*
-	     *  We do support neither transactions nor "AutoCommit".
-	     *  But we stub it. :-)
-	     */
+	  if (imp_dbh->has_transactions) {
+	    return sv_2mortal(boolSV(DBIc_has(imp_dbh,DBIcf_AutoCommit)));
+	  } else {
 	    return &sv_yes;
+	  }
 	}
 	break;
       case 'e':
 	if (strEQ(key, "errno")) {
-#if defined(DBD_MYSQL)  &&  defined(mysql_errno)
+#if defined(DBD_MYSQL)  &&  defined(have_mysql_errno)
 	    return sv_2mortal(newSViv((IV)mysql_errno(imp_dbh->svsock)));
 #else
 	    return sv_2mortal(newSViv(-1));
@@ -957,7 +1030,11 @@ SV* dbd_db_FETCH_attrib(SV* dbh, imp_dbh_t* imp_dbh, SV* keysv) {
 	break;
       case 'm':
 	if (kl == 14  &&  strEQ(key, "mysql_insertid")) {
-	    return sv_2mortal(newSViv(mysql_insert_id(imp_dbh->svsock)));
+	  /* We cannot return an IV, because the insertid is a long.
+	   */
+	  char buf[64];
+	  sprintf(buf, "%lu", mysql_insert_id(imp_dbh->svsock));
+	  return sv_2mortal(newSVpv(buf, strlen(buf)));
 	}
 	break;
 #endif
@@ -1690,11 +1767,15 @@ SV* dbd_st_FETCH_attrib(SV* sth, imp_sth_t* imp_sth, SV* keysv) {
 #ifdef DBD_MYSQL
       case 'a':
 	if (strEQ(key, "affected_rows")) {
-	    D_imp_dbh_from_sth;
-	    /* 1.21_07 */ 
-	    doquietwarn(("$sth->{'affected_rows'} is deprecated," \
-			 " use $sth->rows()"));
-	    retsv = sv_2mortal(newSViv((IV)mysql_affected_rows(imp_dbh->svsock)));
+	  /* We cannot return an IV, because affected_rows is a long.
+	   */
+	  char buf[64];
+	  D_imp_dbh_from_sth;
+	  /* 1.21_07 */ 
+	  doquietwarn(("$sth->{'affected_rows'} is deprecated," \
+		       " use $sth->rows()"));
+	  sprintf(buf, "%lu", mysql_affected_rows(imp_dbh->svsock));
+	  retsv = sv_2mortal(newSVpv(buf, strlen(buf)));
 	}
 	break;
 #endif
@@ -1752,7 +1833,7 @@ SV* dbd_st_FETCH_attrib(SV* sth, imp_sth_t* imp_sth, SV* keysv) {
 	if (strEQ(key, "MAXLENGTH")) {
 	    /* 1.21_07 */
 	    doquietwarn(("$sth->{'MAXLENGTH'} is deprecated," \
-			 " use $sth->{'~~lc_dbd_driver~~__maxlength'}"));
+			 " use $sth->{'~~lc_dbd_driver~~__max_length'}"));
 	    retsv = ST_FETCH_AV(AV_ATTRIB_MAX_LENGTH);
 	}
 	break;
@@ -1828,10 +1909,14 @@ SV* dbd_st_FETCH_attrib(SV* sth, imp_sth_t* imp_sth, SV* keysv) {
 	break;
       case 'i':
 	if (strEQ(key, "insertid")) {
-	    /* 1.21_07 */
-	    doquietwarn(("$sth->{'insertid'} is deprecated," \
-			 " use $sth->{'mysql_insertid'}"));
-	    retsv = sv_2mortal(newSViv(imp_sth->insertid));
+	  /* We cannot return an IV, because the insertid is a long.
+	   */
+	  char buf[64];
+	  /* 1.21_07 */
+	  doquietwarn(("$sth->{'insertid'} is deprecated," \
+		       " use $sth->{'mysql_insertid'}"));
+	  sprintf(buf, "%lu", imp_sth->insertid);
+	  return sv_2mortal(newSVpv(buf, strlen(buf)));
 	} else if (strEQ(key, "is_pri_key")) {
 	    /* 1.21_07 */ 
 	    doquietwarn(("$sth->{'is_pri_key'} is deprecated," \
@@ -1905,7 +1990,11 @@ SV* dbd_st_FETCH_attrib(SV* sth, imp_sth_t* imp_sth, SV* keysv) {
 	    break;
 	  case 14:
 	    if (strEQ(key, "mysql_insertid")) {
-	        retsv = sv_2mortal(newSViv(imp_sth->insertid));
+	      /* We cannot return an IV, because the insertid is a long.
+	       */
+	      char buf[64];
+	      sprintf(buf, "%lu", imp_sth->insertid);
+	      return sv_2mortal(newSVpv(buf, strlen(buf)));
 	    }
 	    break;
 	  case 15:
@@ -2001,25 +2090,6 @@ SV* dbd_st_FETCH_attrib(SV* sth, imp_sth_t* imp_sth, SV* keysv) {
 int dbd_st_blob_read (SV *sth, imp_sth_t *imp_sth, int field, long offset,
 		      long len, SV *destrv, long destoffset) {
     return FALSE;
-}
-
-
-/***************************************************************************
- *
- *  Name:    dbd_st_rows
- *
- *  Purpose: Reads number of result rows
- *
- *  Input:   sth - statement handle
- *           imp_sth - drivers private statement handle data
- *
- *  Returns: Number of rows returned or affected by executing the
- *           statement
- *
- **************************************************************************/
-
-int dbd_st_rows(SV* sth, imp_sth_t* imp_sth) {
-    return imp_sth->row_num;
 }
 
 

@@ -25,9 +25,9 @@ $dbdriver = $mdriver; # $dbdriver is usually just the same as $mdriver.
 #
 #   DSN being used; do not edit this, edit "$dbdriver.dbtest" instead
 #
-$test_dsn      = $ENV{'DBI_DSN'}   ||  "~~test_dsn~~";
-$test_user     = $ENV{'DBI_USER'}  ||  "~~test_user~~";
-$test_password = $ENV{'DBI_PASS'}  ||  "~~test_pass~~";
+$test_dsn      = $ENV{'DBI_DSN'}   ||  '~~test_dsn~~';
+$test_user     = $ENV{'DBI_USER'}  ||  '~~test_user~~';
+$test_password = $ENV{'DBI_PASS'}  ||  '~~test_pass~~';
 
 
 $::COL_NULLABLE = 1;
@@ -160,6 +160,22 @@ if (-f ($file = "t/$mdriver.mtest")  ||
 		printf("not ok $::numTests%s\n",
 			(defined($error) ? " $error" : ""));
 		return 0;
+	    }
+	}
+	return 1;
+    }
+
+#
+#   Skip some test
+#
+    sub Skip ($) {
+	my $reason = shift;
+	++$::numTests;
+	if ($count == 2) {
+	    if ($reason) {
+		print "ok $::numTests # Skip $reason\n";
+	    } else {
+		print "ok $::numTests # Skip\n";
 	    }
 	}
 	return 1;

@@ -115,14 +115,22 @@ sub Initialize {
 
     my $headerdir;
     if (exists($options->{'msql-incdir'})) {
-	$headerdir = $options->{'msql-incdir'};
+	if (-d $options->{'msql-incdir'}) {
+	    $headerdir = $options->{'msql-incdir'};
+	} else {
+	    die "No such directory: $options->{'msql-incdir'}";
+	}
     } else {
 	($headerdir, $gooddir) = $self->SearchHeaders
 	    ($options, \@gooddirs, \@msqldirs, ["include/msql.h"]);
     }
     my $libdir;
     if (exists($options->{'msql-libdir'})) {
-	$libdir = $options->{'msql-libdir'};
+	if (-d $options->{'msql-libdir'}) {
+	    $libdir = $options->{'msql-libdir'};
+	} else {
+	    die "No such directory: $options->{'msql-libdir'}";
+	}
     } else {
 	($libdir) = $self->SearchLibs
 	    ($options, \@gooddirs, \@msqldirs, ["lib/libmsql.a"]);

@@ -4,6 +4,7 @@
 #
 # database specific definitions for a 'mysql' database
 
+my $have_transactions;
 
 #   This function generates a mapping of ANSI type names to
 #   database specific type names; it is called by TableDefinition().
@@ -80,8 +81,12 @@ sub TableDefinition ($@) {
     } else {
 	$keyDef = "";
     }
-    $def = sprintf("CREATE TABLE %s (%s%s)", $tablename,
-		   join(", ", @colDefs), $keyDef);
+    my $suffix = "";
+    if ($have_transactions) {
+      $suffix = " TYPE=$have_transactions";
+    }
+    $def = sprintf("CREATE TABLE %s (%s%s)%s", $tablename,
+		   join(", ", @colDefs), $keyDef, $suffix);
 }
 
 
@@ -125,7 +130,31 @@ sub IsNull($) {
 #   Return TRUE, if database supports transactions
 #
 sub HaveTransactions () {
-    0;
+    my $dbh = shift;
+    return 1 unless $dbh;
+    if (!defined($have_transactions)) {
+	$have_transactions = "";
+	my $sth = $dbh->prepare("SHOW VARIABLES");
+	$sth->execute();
+	while (my $row = $sth->fetchrow_hashref()) {
+	    if ($row->{'Variable_name'} eq 'have_bdb'  &&
+		$row->{'Value'} eq 'YES') {
+		$have_transactions = "bdb";
+		last;
+	    }
+	    if ($row->{'Variable_name'} eq 'have_innobase'  &&
+		$row->{'Value'} eq 'YES') {
+		$have_transactions = "innobase";
+		last;
+	    }
+	    if ($row->{'Variable_name'} eq 'have_gemini'  &&
+		$row->{'Value'} eq 'YES') {
+		$have_transactions = "gemini";
+		last;
+	    }
+	}
+    }
+    return $have_transactions;
 }
 
 

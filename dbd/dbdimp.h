@@ -55,7 +55,10 @@ enum errMsgs {
     JW_ERR_ILLEGAL_PARAM_NUM,
     JW_ERR_MEM,
     JW_ERR_LIST_INDEX,
-    JW_ERR_SEQUENCE
+    JW_ERR_SEQUENCE,
+    TX_ERR_AUTOCOMMIT,
+    TX_ERR_COMMIT,
+    TX_ERR_ROLLBACK
 };
 
 
@@ -118,6 +121,11 @@ struct imp_dbh_st {
     dbh_t svsock;           /*  socket number for msql, &mysql for
 			     *  mysql
 			     */
+    int has_transactions;   /*  boolean indicating support for
+			     *  transactions, currently always
+			     *  TRUE for MySQL and always FALSE
+			     *  for mSQL.
+			     */
 };
 
 
@@ -149,12 +157,12 @@ struct imp_sth_st {
 
     result_t cda;            /* result                                 */
     int currow;           /* number of current row                  */
-    int row_num;          /* total number of rows                   */
+    long row_num;          /* total number of rows                   */
 
     int   done_desc;      /* have we described this sth yet ?	    */
     long  long_buflen;    /* length for long/longraw (if >0)	    */
     bool  long_trunc_ok;  /* is truncating a long an error	    */
-    int   insertid;       /* ID of auto insert                      */
+    unsigned long insertid; /* ID of auto insert                      */
     imp_sth_ph_t* params; /* Pointer to parameter array             */
     AV* av_attr[AV_ATTRIB_LAST];/*  For caching array attributes        */
     int   use_mysql_use_result;  /*  TRUE if execute should use     */
@@ -181,7 +189,6 @@ struct imp_sth_st {
 #define dbd_db_STORE_attrib	mysql_db_STORE_attrib
 #define dbd_db_FETCH_attrib	mysql_db_FETCH_attrib
 #define dbd_st_prepare		mysql_st_prepare
-#define dbd_st_rows		mysql_st_rows
 #define dbd_st_execute		mysql_st_execute
 #define dbd_st_fetch		mysql_st_fetch
 #define dbd_st_finish		mysql_st_finish
@@ -213,7 +220,6 @@ struct imp_sth_st {
 #define dbd_db_STORE_attrib	msql1_db_STORE_attrib
 #define dbd_db_FETCH_attrib	msql1_db_FETCH_attrib
 #define dbd_st_prepare		msql1_st_prepare
-#define dbd_st_rows		msql1_st_rows
 #define dbd_st_execute		msql1_st_execute
 #define dbd_st_fetch		msql1_st_fetch
 #define dbd_st_finish		msql1_st_finish
@@ -246,7 +252,6 @@ struct imp_sth_st {
 #define dbd_db_STORE_attrib	msql_db_STORE_attrib
 #define dbd_db_FETCH_attrib	msql_db_FETCH_attrib
 #define dbd_st_prepare		msql_st_prepare
-#define dbd_st_rows		msql_st_rows
 #define dbd_st_execute		msql_st_execute
 #define dbd_st_fetch		msql_st_fetch
 #define dbd_st_finish		msql_st_finish

@@ -194,20 +194,19 @@ type_info_all(dbh)
 
 #if defined(DBD_MYSQL)
 
-int
+void
 _InsertID(dbh)
     SV *	dbh
   CODE:
     D_imp_dbh(dbh);
+    char buf[64];
     SV* sv = perl_get_sv("DBD::mysql::QUIET", FALSE);
     MYSQL *sock = (MYSQL*) imp_dbh->svsock;
     if (!sv  ||  !SvTRUE(sv)) {  /* 1.21_07 */
         warn("This method is deprecated. Use $dbh->{'mysql_insertid'}.");
     }
-    EXTEND( sp, 1 );
-    RETVAL = mysql_insert_id(sock);
-  OUTPUT:
-    RETVAL
+    sprintf(buf, "%lu", mysql_insert_id(sock));
+    ST(0) = sv_2mortal(newSVpv(buf, strlen(buf)));
 
 #endif
 
@@ -376,3 +375,14 @@ dataseek(sth, pos)
 }
   OUTPUT:
     RETVAL
+
+
+void
+rows(sth)
+    SV* sth
+  CODE:
+    D_imp_sth(sth);
+    char buf[64];
+    sprintf(buf, "%lu", imp_sth->row_num);
+    ST(0) = sv_2mortal(newSVpvn(buf, strlen(buf)));
+

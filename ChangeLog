@@ -1,3 +1,21 @@
+2001-04-01  Jochen Wiedmann  <joe@ispsoft.de> (1.2216)
+
+	* Added transaction support for MySQL.
+	  (Bob Lyons <lyons@nextrials.com>)
+	* dbd/dbdimp.c: Fixed MAXLENGTH warning; used to hint for
+	  a not existing mysql_maxlength, which should read
+	  mysql_max_length. (Paul DuBois <paul@snake.net>)
+	* Fixed installation problem when a directory was specified,
+	  but did not exist. (Will Partain <partain@dcs.gla.ac.uk>)
+	* Fixed that mysql_errno wasn't used properly. (Chris Adams
+	  <cmadams@hiwaay.net>)
+	* Fixed test suite problem, when user name and password
+	  have been interpolated. (Bruno Hivert (LMC)
+	  <lmcbrhi@lmc.ericsson.se>)
+	* mysql_insertid and mysql_affectedrows are no longer treated
+	  as integers, but longs. Thanks to Michael G Schwern
+	  <schwern@pobox.com>.
+
 2000-08-20  Jochen Wiedmann  <joe@ispsoft.de> (1.2215)
 
 	* lib/DBD/mysql/Install.pm (Initialize): Adding -lz -lgz by

@@ -861,6 +861,81 @@ Whenever possible, the ANSI SQL name is preferred.
 =back
 
 
+~#if#~ ('~~dbd_driver~~' eq 'mysql')
+=head1 TRANSACTION SUPPORT
+
+Beginning with Msql-Mysql-modules 1.2216, transactions are supported
+by DBD::mysql. The transaction support works as follows:
+
+=over
+
+=item *
+
+By default AutoCommit mode is on, following the DBI specifications.
+
+=item *
+
+If you execute
+
+    $dbh-E<gt>{'AutoCommit'} = 0;
+
+or
+
+    $dbh-E<gt>{'AutoCommit'} = 1;
+
+then the driver will set the MySQL server variable autocommit to 0 or
+1, respectively. Switching from 0 to 1 will also issue a COMMIT,
+following the DBI specifications.
+
+=item *
+
+The methods
+
+    $dbh-E<gt>rollback();
+    $dbh-E<gt>commit();
+
+will issue the commands COMMIT and ROLLBACK, respectively. A
+ROLLBACK will also be issued if AutoCommit mode is off and the
+database handles DESTROY method is called. Again, this is following
+the DBI specifications.
+
+=back
+
+Given the above, you should note the following:
+
+=over
+
+=item *
+
+You should never change the server variable autocommit manually,
+unless you are ignoring DBI's transaction support.
+
+=item *
+
+Switching AutoCommit mode from on to off or vice versa may fail.
+You should always check for errors, when changing AutoCommit mode.
+The suggested way of doing so is using the DBI flag RaiseError.
+If you don't like RaiseError, you have to use code like the
+following:
+
+  $dbh->{'AutoCommit'} = 0;
+  if ($dbh->{'AutoCommit'}) {
+    # An error occurred!
+  }
+
+=item *
+
+If you detect an error while changing the AutoCommit mode, you
+should no longer use the database handle. In other words, you
+should disconnect and reconnect again, because the transaction
+mode is unpredictable. Alternatively you may verify the transaction
+mode by checking the value of the server variable autocommit.
+However, such behaviour isn't portable.
+
+=back
+
+
+~#endif#~
 =head1 SQL EXTENSIONS
 
 Certain metadata functions of mSQL and mysql that are available on the
@@ -1166,6 +1241,15 @@ the manual.
 Windows users may skip this section and pass over to L<WIN32
 INSTALLATION> below. Others, go on reading.
 
+First of all, you do not need an installed MySQL server for installing
+DBD::mSQL and/or DBD::mysql. However, you need at least the client
+libraries and possibly the header files, if you are compiling DBD::mysql
+or DBD::mSQL from source. In the case of MySQL you can create a
+client-only version by using the configure option --without-server.
+If you are using precompiled binaries, then it may be possible to
+use just selected RPM's like MySQL-client and MySQL-devel or something
+similar, depending on the distribution.
+
 First you need to install the DBI module. For using I<dbimon>, a
 simple DBI shell it is recommended to install Data::ShowTable another
 Perl module.
@@ -1244,16 +1328,14 @@ I have never attempted to install DBD::mSQL under Win32, so this is only
 for MySQL. If anyone succeeds, please let me know what you did.
 
 If you are using ActivePerl, you may use ppm to install DBD-mysql.
-For Perl 5.6, please do
+For Perl 5.6, upgrade to Build 623 or later, then it is sufficient
+to run
 
- ppm install http://www.perl.com/CPAN-local/authors/id/JWIED/DBD-mysql-1.2212.x86.ppd
+  ppm install DBI
+  ppm install DBD::mysql
 
 
-That should do. For Perl 5.005, ActiveState offers a package and you can
-simply do
-
- ppm
- install DBD-mysql
+The same applied to Perl 5.005.
 
 Otherwise you definitely *need* a C compiler. And it *must* be the same
 compiler that was being used for compiling Perl itself. If you don't
