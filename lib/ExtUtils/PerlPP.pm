@@ -43,7 +43,7 @@ sub new {
 
 
 sub ppp {
-    my($in, $out, $config) = @_;
+    my($in, $out, $config) = @_ ? @_ : @ARGV;
     my $parser = ExtUtils::PerlPP->new('in_fh' => $in,
 				       'out_fh' => $out,
 				       'config' => $config);
@@ -259,7 +259,7 @@ ExtUtils::PerlPP - A Perl Preprocessor
 
 
     # And now a short cut for the same:
-    ppp('file.PL', 'file', $config);    
+    ppp('file.PL', 'file', $config);
 
 
 =head1 DESCRIPTION
@@ -416,6 +416,13 @@ This is equivalent to
 				       'out_fh' => 'outfile',
                                        'config' => 'configfile');
     $parser->parse();
+
+In order to be easily used within Makefiles, the ppp frontend can
+read from @ARGV. That is, you can use the module like this:
+
+    perl -MExtUtils::PerlPP -e ppp <infile> <outfile> <configfile>
+
+from the commandline.
 
 
 =head2 Macro replacements

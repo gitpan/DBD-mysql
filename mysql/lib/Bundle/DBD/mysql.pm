@@ -22,8 +22,6 @@ DBI
 
 Data::ShowTable
 
-ExtUtils::PerlPP
-
 Mysql
 
 DBD::mysql

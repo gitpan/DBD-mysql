@@ -5,7 +5,7 @@
 #  You may distribute this under the terms of either the GNU General Public
 #  License or the Artistic License, as specified in the Perl README file.
 #
-#  $Id: Makefile.PL,v 1.1.1.1 1999/07/13 08:14:45 joe Exp $
+#  $Id: Makefile.PL,v 1.2 1999/07/22 12:04:05 joe Exp $
 #
 BEGIN {require 5.004;}
 use strict;
@@ -13,13 +13,14 @@ use Config ();
 use Getopt::Long ();
 use ExtUtils::MakeMaker qw(prompt WriteMakefile);
 use File::Path ();
+use ExtUtils::PerlPP ();
 use Cwd ();
 use lib "lib";
 
 use vars qw($VERSION $DBD_VERSION $options);
 
-$VERSION = "1.2202";
-$DBD_VERSION = "2.0402";
+$VERSION = "1.2203";
+$DBD_VERSION = "2.0403";
 
 $options = { 'prompt' => 1 };
 
@@ -326,19 +327,6 @@ EOF
 	}
     }
 
-    # Checking for prerequisites
-    eval "use ExtUtils::PerlPP";
-    if ($@) {
-	print q{
-You don't have installed the ExtUtils::PerlPP module, which is
-required for building this package. Missing modules are available
-from any CPAN mirror, for example
-
-   ftp://ftp.funet.fi/pub/languages/perl/CPAN/modules/by-module
-
-};
-	exit 1;
-    }
     eval "use Data::Dumper";
     if ($@) {
 	print q{
@@ -466,7 +454,6 @@ CFG_FILE
 	    'mSQL and MySQL drivers for the Perl5 Database Interface (DBI)';
 	$opts{'PREREQ_PM'} = { 'DBI' => 1.08,
 			       'Data::Dumper' => 0,
-			       'ExtUtils::PerlPP' => 0.02,
 			       'Data::ShowTable' => 0 };
     }
     ExtUtils::MakeMaker::WriteMakefile(%opts);
@@ -497,7 +484,7 @@ pm_to_blib: $to
 $to :: $from
 	\$(PERL) -I\$(INST_ARCHLIB) -I\$(INST_LIB) -I\$(PERL_ARCHLIB) \\
 		-I\$(PERL_LIB) -Ilib -MExtUtils::PerlPP \\
-		-e "ppp('$from', '$to', '$cfg')"
+		-e ppp '$from' '$to' '$cfg'
 
 PART
     }
