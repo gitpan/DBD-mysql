@@ -120,7 +120,7 @@ while (Testing()) {
     Test($state or undef $cursor  ||  1);
 
     #
-    #   And now retreive the rows using bind_columns
+    #   And now retrieve the rows using bind_columns
     #
     Test($state or $cursor = $dbh->prepare("SELECT * FROM $table"
 					   . " ORDER BY id"))

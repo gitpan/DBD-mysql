@@ -27,9 +27,7 @@
 /*
  *  Header files we use
  */
-#define NEED_DBIXS_VERSION 9
 #include <DBIXS.h>  /* installed by the DBI module                        */
-
 #include "myMsql.h"
 
 
@@ -54,9 +52,7 @@ enum errMsgs {
     JW_ERR_NO_RESULT,
     JW_ERR_NOT_IMPLEMENTED,
     JW_ERR_ILLEGAL_PARAM_NUM,
-    JW_ERR_MEM,
-    JW_ERR_LIST_INDEX,
-    JW_ERR_SEQUENCE
+    JW_ERR_MEM
 };
 
 
@@ -221,4 +217,3 @@ void    dbd_preparse _((imp_sth_t *imp_sth, SV *statement));
 int dbd_st_internal_execute(SV*, SV*, SV*, int, imp_sth_ph_t*, result_t*,
 			    dbh_t, int);
 
-extern int MysqlReconnect(SV*);
