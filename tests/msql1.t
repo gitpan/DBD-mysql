@@ -7,8 +7,7 @@
 # are configured wrong in this respect. But you're welcome to test it
 # out.
 
-my $host = shift @ARGV || "~test_host~";
-my $dbname = shift @ARGV || "~test_db~";
+my $host = shift @ARGV || "";
 
 # That's the standard perl way tostart a testscript. It announces that
 # that many tests are to follow. And it does so before anything can go
@@ -23,7 +22,7 @@ BEGIN {
     print "1..69\n";
 }
 
-use ~DRIVER~;
+use Msql;
 
 # Force yourself to strict programming. See man strict for details.
 use strict;
@@ -45,24 +44,24 @@ my(
 
 # You may connect in two steps: (1) Connect and (2) SelectDB...
 
-if ($dbh = ~DRIVER~->connect($host)){
+if ($dbh = Msql->connect($host)){
     print "ok 1\n";
 } else {
-    $~DRIVER~::db_errstr ||= "";
+    $Msql::db_errstr ||= "";
     my $onhost = $host ? " (on $host)" : "";
-    printf STDERR (qq{not ok 1: %s
+    print STDERR qq{not ok 1: $Msql::db_errstr
 \tIt looks as if your server$onhost is not up and running.
 \tThis test requires a running server.
 \tPlease make sure your server is running and retry.
-}, ~DRIVER~->errmsg());
+};
     exit;
 }
 
-if ($dbh->selectdb($dbname)){
+if ($dbh->selectdb("test")){
     print("ok 2\n");
 } else {
-    die qq{not ok 2: " . $dbh->errmsg() .
-    Please make sure that a database \"$dbname\" exists
+    die qq{not ok 2: $Msql::db_errstr
+    Please make sure that a database \"test\" exists
     and that you have permission to read and write on it
 };
 }
@@ -70,10 +69,10 @@ if ($dbh->selectdb($dbname)){
 # Or you may call connect with two arguments, the first being the
 # host, and the second being the DB
 
-if ($dbh = ~DRIVER~->connect($host,$dbname)){
+if ($dbh = Msql->connect($host,"test")){
     print("ok 3\n");
 } else {
-    die "not ok 3: " . ~DRIVER~->errmsg() . "\n";
+    die "not ok 3: $Msql::db_errstr\n";
 }
 
 # For the error messages we're going to produce within this script we
@@ -85,7 +84,7 @@ sub test_error {
     $id    ||= "?";               # Newer Test::Harness will accept that
     $query ||= "";                # query is optional
     $query = "\n\tquery $query" if $query;
-    $error ||= ~DRIVER~->errmsg;  # without error we ask Msql
+    $error ||= Msql->errmsg;      # without error we ask Msql
     print qq{Not ok $id:\n\terrmsg $error$query\n};
 }
 
@@ -110,8 +109,7 @@ sub test_error {
 					)
 	    };
 	    unless ($dbh->query($query)){
-		die "Cannot create table: query [$query] message ["
-		    . $dbh->errmsg() . "]\n" if $limit++ > 1000;
+		die "Cannot create table: query [$query] message [$Msql::db_errstr]\n" if $limit++ > 1000;
 		next;
 	    }
 	    $_ = $goodtable;
@@ -189,10 +187,10 @@ $sth->is_not_null->[1] > 0
 
 # Are we able to just reconnect with the *same* scalar ($dbh) playing
 # the role of the db-handle?
-if ($dbh = ~DRIVER~->connect($host,$dbname)){
+if ($dbh = Msql->connect($host,"test")){
     print("ok 12\n");
 } else {
-    print "not ok 12: " . ~DRIVER~->errmsg() . "\n";
+    print "not ok 12: $Msql::db_errstr\n";
 }
 
 # We may have an arbitrary number of statementhandles. Each
@@ -205,9 +203,9 @@ if ($dbh = ~DRIVER~->connect($host,$dbname)){
     my($sth1,$sth2,@row1,$count);
 
     $sth1 = $dbh->query("select * from $firsttable")
-	or warn "Query had some problem: " . $dbh->errmsg() . "\n";
+	or warn "Query had some problem: $Msql::db_errstr\n";
     $sth2 = $dbh->query("select * from $secondtable")
-	or warn "Query had some problem: " . $dbh->errmsg() . "\n";
+	or warn "Query had some problem: $Msql::db_errstr\n";
 
     # You have seen this above, so NO COMMENT :)
     $count=0;
@@ -237,13 +235,13 @@ if ($dbh = ~DRIVER~->connect($host,$dbname)){
     # if you want the -w switch but do NOT want to see Msql's error
     # messages, you can turn them off using $Msql::QUIET
 
-    local($~DRIVER~::QUIET) = 1;
+    local($Msql::QUIET) = 1;
     # In reality we would say "or die ...", but in this case we forgot it:
     $sth = $dbh->query  ("select * from $firsttable
 	     where him = 'Thomas')");
 
-    # errmsg should contain the word "error" now
-    $dbh->errmsg() =~ /error/
+    # $Msql::db_errstr should contain the word "error" now
+    Msql->errmsg =~ /error/
 	and print("ok 15\n") or print("not ok 15\n");
 }
 
@@ -261,7 +259,7 @@ if ($@){print "ok 16\n"} else {print "not ok 16\n"}
 # 'Thomas', 'Pauline'). Let's see, if they are still there.
 $sth = $dbh->query  ("select * from $firsttable
      where him = 'Thomas'")
-     or warn "query had some problem: " . $dbh->errmsg() . "\n";
+     or warn "query had some problem: $Msql::db_errstr\n";
 
 @row = $sth->fetchrow or warn "$firsttable didn't find a matching row";
 $row[2] eq "Pauline" and print ("ok 17\n") or print("not ok 17\n");
@@ -287,14 +285,14 @@ $row[2] eq "Pauline" and print ("ok 17\n") or print("not ok 17\n");
 # economically -- they cost you a slot in the server connection table,
 # and you can easily run out of available slots -- we, in the test
 # script want to know what happens with more than one handle
-if ($dbh2 = ~DRIVER~->connect($host,$dbname)){
+if ($dbh2 = Msql->connect($host,"test")){
     print("ok 19\n");
 } else {
     print "not ok 19\n";
 }
 
 # Some quick checks about the contents of the handle...
-$dbh2->database eq $dbname and print("ok 20\n") or print("not ok 20\n");
+$dbh2->database eq "test" and print("ok 20\n") or print("not ok 20\n");
 $dbh2->sock =~ /^\d+$/ and print("ok 21\n") or print("not ok 21\n");
 
 # Is $dbh2 able to drop a table, while we are connected with $dbh?
@@ -313,14 +311,14 @@ $dbh2->query("drop table $secondtable") and print("ok 22\n") or print("not ok 22
 }
 
 # The third connection within a single script. I promise, this will do...
-if ($dbh3 = Connect ~DRIVER~($host,$dbname)){
+if ($dbh3 = Connect Msql($host,"test")){
     print("ok 25\n");
 } else {
     test_error(25,"connect->$host");
 }
 
 $dbh3->host eq $host and print("ok 26\n") or print "not ok 26\n";
-$dbh3->database eq $dbname and print("ok 27\n") or print "not ok 27\n";
+$dbh3->database eq "test" and print("ok 27\n") or print "not ok 27\n";
 
 
 # For what it's worth, we have a tough job for the server here. First
@@ -336,8 +334,7 @@ sub create {
     my($query) = "create table $tablename $createexpression";
     my $limit = 0;
     while (! $db->query($query)){
-	die "Cannot create table: query [$query] message ["
-	    . $db->errmsg() . "]\n" if $limit++ > 1000;
+	die "Cannot create table: query [$query] message [$Msql::db_errstr]\n" if $limit++ > 1000;
 	$tablename++;
 	$query = "create table $tablename $createexpression";
     }
@@ -409,7 +406,7 @@ print "ok 32\n";
 # The following tests show, that NULL fields (introduced with
 # msql-1.0.6) are handled correctly:
 
-if ($dbh->getserverinfo lt 2) { # Before version 2 we have the "primary key" syntax
+if (Msql->getserverinfo lt 2) { # Before version 2 we have the "primary key" syntax
     $firsttable = create($dbh,$firsttable,"( she char(14) primary key,
 	him integer, who char(1))") or test_error();
 } else {
@@ -464,7 +461,7 @@ if (( $him ) = $sth3->fetchrow()) {
 	print "ok 36\n";
     }
 } else {
-    print "not ok 36: sth[$sth3] err[" . $dbh->errmsg() . "]\n";
+    print "not ok 36: sth[$sth] err[$Msql::db_errstr]\n";
 }
 
 # So far we have evaluated metadata in scalar context. Let's see,
@@ -487,8 +484,6 @@ $sth = $dbh->query("insert into $firsttable values (\047x\047,2,\047y\047)");
 eval {$sth->fetchrow;};
 if ($@ =~ /^Can\'t call method/) {
     print "ok 43\n";
-} else {
-    print "not ok 43 Error message was $@";
 }
     
 
@@ -552,7 +547,7 @@ $dbh->query("drop table $firsttable") or test_error;
 # Although it is a bad idea to specify constants in lowercase,
 # I have to test if it is supported as it has been documented:
 
-if (~DRIVER~::int___type() == INT_TYPE) {
+if (Msql::int___type() == INT_TYPE) {
     print "ok 66\n";
 } else {
     print "not ok 66\n";
@@ -572,9 +567,7 @@ insert into $firsttable values ($nchar, $chr)
     };
     unless ($dbh->query($query)) {
 	$query = unctrl($query);
-	print("not ok 67 (q[$query] err[",
-	      $dbh->errmsg(),
-	      "])\n"); # well, could happen more thn once, but ...
+	print "not ok 67 (q[$query] err[$Msql::db_errstr])\n"; # well, could happen more thn once, but ...
     }
 }
 
@@ -602,7 +595,7 @@ $dbh->query("drop table $firsttable") or test_error;
 
 {
     my @created = ();
-    local($~DRIVER~::QUIET) = 1;
+    local($Msql::QUIET) = 1;
 
     # create 8 tables
     for (1..8) {

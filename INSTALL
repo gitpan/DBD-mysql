@@ -1,3 +1,6 @@
+BASIC INSTALLATION
+==================
+
 To install the package you usually just type
 
     perl Makefile.PL
@@ -43,8 +46,104 @@ this can have a number of possible reasons:
 
 	DBI_DSN="DBI:mSQL:test:hostname=localhost:port=3333"
 
+KNOWN PROBLEMS
+==============
+
+1.) If the MySQL binaries are compiled with gcc or egcs (as the precompiled
+binaries are), but your Perl is using another compiler, it is likely that
+you receive an error message like the following when running "make test":
+
+    t/00base............install_driver(mysql) failed: Can't load
+    '../blib/arch/auto/DBD/mysql/mysql.so' for module DBD::mysql:
+    ../blib/arch/auto/DBD/mysql/mysql.so: undefined symbol: _umoddi3
+    at /usr/local/perl-5.005/lib/5.005/i586-linux-thread/DynaLoader.pm
+    line 168.
+
+This means, that your linker doesn't include libgcc.a. You have the
+following options:
+
+a) Either recompile Perl or Mysql, it doesn't matter which. The important
+   thing is that you use the same compiler for both. This is definitely
+   the recommended solution in the long term.
+
+b) A simple workaround is to include libgcc.a manually. Do a "make clean"
+   and "make" and in the output wait for a line like
+
+        LD_RUN_PATH="/usr/lib/mysql:/lib" egcs -o
+        ../blib/arch/auto/DBD/mysql/mysql.so  -shared -L/usr/local/lib
+        dbdimp.o mysql.o -L/usr/lib/mysql -L/usr/lib/mysql -lmysqlclient
+        -lm
+
+    Repeat the same line in the shell by adding
+
+        -L/usr/lib/gcc-lib/i386-redhat-linux/gcc-2.7.2.3 -lgcc
+
+    where the directory is the location of libgcc.a. The best choice
+    for locating this file is executing
+
+	gcc --print-libgcc-file
+
+    or
+
+	gcc -v
+
+
+2.) Recent versions of mSQL have a bug that appears in the test script
+t/40bindparam.t:
+
+> Date: Tue, 14 Jul 1998 00:59:07 +0200 (CEST)
+> From: Barry Lagerweij <barry@euromedia.nl>
+> To: weder@arch.ethz.ch
+> Cc: msql-jdbc@list.imaginary.com, support@hughes.com.au
+> Subject: [MSQL-JDBC]: mSQL 2.0.4.1 ORDER BY bug
+> 
+> Hello Andreas,
+> 
+> I read your message concerning the mSQL ORDER BY bug, since I suffered
+> from the same problems.
+> 
+> I dived into the source, and came up with a solution: in avl_tree.c, the
+> copy/compare functions do not take the first (aka NULL) byte into account.
+> mSQL 2.0.4.1 supports NULL values, but these are not handled correctly in
+> the index functions. The following patch corrects this :
+> 
+> ----------------cut here----------------
+> 
+> *** avl_tree.c.orig     Mon Jul 13 14:22:31 1998
+> --- avl_tree.c  Mon Jul 13 15:37:59 1998
+> ***************
+> *** 218,223 ****
+> --- 218,224 ----
+>                 *dst;
+>         avltree *tree;
+>   {
+> +       *dst++ = *src++;
+>         switch(tree->sblk->keyType)
+>         {
+>                 case AVL_INT:
+> ***************
+> *** 529,534 ****
+> --- 530,538 ----
+>                 *v2;
+>         avltree *tree;
+>   {
+> +       int     i;
+> +
+> +       if ((i = (*v1++ - *v2++)) != 0) return(i);
+>         switch(tree->sblk->keyType)
+>         {
+>                 case AVL_INT:
+> 
+> -------------cut here------------------
+
+
+
+
 Please let us know, if you have further questions that should be dealt
 with in this document.
 
+
 Enjoy,
 Andreas & Jochen
+
+
