@@ -1,6 +1,6 @@
 #   Our beloved Emacs will give us -*- perl -*- mode :-)
 #
-#   $Id: dbd.pm.in,v 1.3 1999/08/29 18:39:59 joe Exp $
+#   $Id: dbd.pm.in,v 1.4 1999/09/16 17:40:51 joe Exp $
 #
 #   Copyright (c) 1994,1995,1996,1997 Alligator Descartes, Tim Bunce
 #
@@ -16,7 +16,7 @@ use DynaLoader();
 use Carp ();
 @ISA = qw(DynaLoader);
 
-$VERSION = '2.0406';
+$VERSION = '2.0407';
 
 bootstrap DBD::mSQL $VERSION;
 

@@ -172,6 +172,11 @@ DESCRIPTION
                 contains the option "mysql_compression=1", then the
                 communication between client and server will be compressed.
 
+    mysql_connect_timeout
+                If your DSN contains the option "mysql_connect_timeout=##",
+                the connect request to the server will timeout if it has not
+                been successful after the given number of seconds.
+
     mysql_read_default_file
     mysql_read_default_group
                 These options can be used to read a config file like

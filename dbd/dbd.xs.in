@@ -1,6 +1,6 @@
 /* Hej, Emacs, this is -*- C -*- mode!
 
-   $Id: dbd.xs.in,v 1.3 1999/08/29 18:39:59 joe Exp $
+   $Id: dbd.xs.in,v 1.4 1999/09/07 21:55:51 joe Exp $
 
    Copyright (c) 1997, 1998 Jochen Wiedmann
 
@@ -67,7 +67,7 @@ time_t
 timetounixtime(package = Package, clock)
     char* clock
   PROTOTYPE: $$
-  CODE: $$
+  CODE:
     RETVAL = msqlTimeToUnixTime(clock);
   OUTPUT:
     RETVAL

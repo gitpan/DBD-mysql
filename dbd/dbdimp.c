@@ -17,7 +17,7 @@
  *           Fax: +49 7123 / 14892
  *
  *
- *  $Id: dbdimp.c,v 1.3 1999/08/29 18:39:59 joe Exp $
+ *  $Id: dbdimp.c,v 1.4 1999/09/16 17:40:51 joe Exp $
  */
 
 
@@ -496,6 +496,16 @@ int MyConnect(dbh_t *sock, char* unixSocket, char* host, char* port,
 				      "imp_dbh->MyConnect: Enabling" \
 				      " compression.\n");
 		    mysql_options(*sock, MYSQL_OPT_COMPRESS, NULL);
+		}
+		if ((svp = hv_fetch(hv, "mysql_connect_timeout", 21, FALSE))
+		    &&  *svp  &&  SvTRUE(*svp)) {
+		  int to = SvIV(*svp);
+		  if (dbis->debug >= 2)
+		    PerlIO_printf(DBILOGFP,
+				  "imp_dbh->MyConnect: Setting" \
+				  " connect timeout (%d).\n",to);
+		  mysql_options(*sock, MYSQL_OPT_CONNECT_TIMEOUT,
+				(const char *)&to);
 		}
 		if ((svp = hv_fetch(hv, "mysql_read_default_file", 23,
 				    FALSE))  &&

@@ -122,7 +122,7 @@ sub Initialize {
     }
     my $libdir;
     if (exists($options->{'msql-libdir'})) {
-	$options->{'msql-libdir'};
+	$libdir = $options->{'msql-libdir'};
     } else {
 	($libdir) = $self->SearchLibs
 	    ($options, \@gooddirs, \@msqldirs, ["lib/libmsql.a"]);
@@ -180,8 +180,7 @@ the '-fPIC' flag to produce Position-Independent code.
     }
 
     $self->{'makemaker'} = {
-	'macro'       => { MSQL_HOME => $gooddir},
-	'dynamic_lib' => { OTHERLDFLAGS => "-L\$(MSQL_HOME)/lib $linkwith" },
+	'dynamic_lib' => { OTHERLDFLAGS => "-L$libdir $linkwith" },
 	'DEFINE'      => $defs,
 	'LIBS'        => $sysliblist,
 	'H'           => \@headerfiles,

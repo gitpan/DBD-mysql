@@ -5,7 +5,7 @@
 #  You may distribute this under the terms of either the GNU General Public
 #  License or the Artistic License, as specified in the Perl README file.
 #
-#  $Id: Makefile.PL,v 1.4 1999/08/29 18:39:57 joe Exp $
+#  $Id: Makefile.PL,v 1.7 1999/09/16 17:40:49 joe Exp $
 #
 BEGIN {require 5.004;}
 use strict;
@@ -19,8 +19,8 @@ use ExtUtils::PerlPP ();
 
 use vars qw($VERSION $DBD_VERSION $options);
 
-$VERSION = "1.2206";
-$DBD_VERSION = "2.0406";
+$VERSION = "1.2207";
+$DBD_VERSION = "2.0407";
 
 $options = { 'prompt' => 1 };
 
@@ -307,21 +307,22 @@ EOF
     $options->{'verbose'} = 1 if $options->{'debug'};
 
     # Checking for existing installations
-    my $package;
     my $old = {};
     my $config = {};
-    foreach $package ('mysql', 'mSQL', 'mSQL1') {
-	my $class = "DBD::${package}::Install";
+    foreach my $package ('mysql', 'mSQL', 'mSQL1') {
+	my $class = "DBD::$package\::Install";
+	eval "use $class()";
+	die $@ if $@;
 	# Try to find an existing configuration
-	eval qq{
-	    require $class;
-	    \$old->{\$package} = require $class\::Config;
-	};
-	if ($old->{$package}) {
-	    $config->{$package} = $old->{$package};
+	my $cfg = eval qq{require $class\::Config};
+	if ($cfg) {
+	    $old->{$package} = $config->{$package} =
+		bless($cfg, $class);
 	} else {
-	    $config->{$package} = $class->new($DBD_VERSION, $VERSION);
+	    $config->{$package} = eval "$class->new(\$DBD_VERSION, \$VERSION)";
 	}
+	$config->{$package}->{'nodbd_version'} = $VERSION;
+	$config->{$package}->{'dbd_version'} = $DBD_VERSION;
 	if ($config->{$package}->{'install'}  &&  !$README_created) {
 	    my $driver = $config->{$package}->{'dbd_driver'};
 	    $README_created = "\npm_to_blib: README\n\n"
@@ -351,7 +352,7 @@ from any CPAN mirror, for example
 
     my(@installdirs, @pl_files, @delete_files, $dbimon_done);
     $| = 1;
-    foreach $package ('mysql', 'mSQL', 'mSQL1') {
+    foreach my $package ('mysql', 'mSQL', 'mSQL1') {
 	my $cfg = $config->{$package};
 	# Create the config file
 	my $dir = $cfg->{'dbd_driver'};

@@ -444,7 +444,7 @@ while (Testing()) {
 	    @array = $dbh2->listdbs;
 	}
 
-	Test($state or (grep( /^test$/, @array )), undef, 'ListDBs')
+	Test($state or (grep( /^$dbname$/, @array )), undef, 'ListDBs')
 	    or print("'test' database not in db list.\n");
 
 	# Does ListTables now find our $table1?

@@ -124,6 +124,7 @@ sub test_error {
 # Now we write some test records into the two tables. Note, we *know*,
 # these tables are empty
 
+print "Writing some test records.\n";
 for $query (
 	    "insert into $firsttable values ('Anna', 'Franz', 'Otto')"        ,
 	    "insert into $firsttable values ('Sabine', 'Thomas', 'Pauline')"  ,
@@ -142,12 +143,14 @@ $sth = $dbh->query($query) or test_error(0,$query);
 
 # There is the array reference $sth->name. It has to have as many
 # fields as $sth->numfields tells us
+print "Checking numfields.\n";
 (@{$sth->name} == $sth->numfields)
     and print ("ok 6\n") or print("not ok 6\n");
 
 # There is the array reference $sth->table. We expect, that all three
 # fields in the array have the same value, as we only selected from
 # $firsttable
+print "Checking table.\n";
 $sth->table->[0] eq $firsttable
     and print ("ok 7\n") or print("not ok 7\n");
 $sth->table->[1] eq $sth->table->[2]
@@ -157,9 +160,11 @@ $sth->table->[1] eq $sth->table->[2]
 # Mysql. That is why you have to say 'use Mysql'. The functions are
 # really constants, but that's the way headerfile constants are
 # handled in perl5 up to 5.001m (will probably change soon)
+print "Checking type.\n";
 CHAR_TYPE() == $sth->type->[0]
     and print ("ok 9\n") or print("not ok 9\n");
 
+print "Checking number of rows.\n";
 {
     # Now we count the rows ourselves, we don't trust anybody
     my $rowcnt=0;
@@ -304,7 +309,7 @@ $dbh2->query("drop table $secondtable") and print("ok 22\n") or print("not ok 22
 {
     # Does ListDBs find the test database? Sure...
     my @array = $dbh2->listdbs;
-    grep( /^test$/, @array ) and print("ok 23\n") or print("not ok 23\n");
+    grep( /^$dbname$/, @array ) and print("ok 23\n") or print("not ok 23\n");
 
     # Does ListTables now find our $firsttable?
     @array = $dbh2->listtables;

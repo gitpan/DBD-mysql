@@ -19,7 +19,7 @@ my $haveFileSpec = $@ ? 0 : 1;
 
 sub new {
     my($class, $dbd_version, $nodbd_version) = @_;
-    my($old, $self);
+    my($old);
 
     if (@_ != 3) {
 	die 'Usage: new($dbd_version, $nodbd_version)';
@@ -324,7 +324,7 @@ sub Initialize ($$) {
 	    ($options, \@gooddirs, \@mysqldirs,
 	     ["include/mysql/mysql.h", "include/mysql.h"]);
     }
-    my($libdir, $gooddir, $libfile);
+    my($libdir, $libfile);
     if (exists($options->{'mysql-libdir'})) {
 	$libdir = $options->{'mysql-libdir'};
     } else {
@@ -462,7 +462,6 @@ sub Initialize ($$) {
     }
 
     $self->{'makemaker'} = {
-	'macro'       => { MYSQL_HOME => $gooddir },
 	'dynamic_lib' => { OTHERLDFLAGS => "-L$libdir $linkwith" },
 	'DEFINE'      => $defines,
 	'LIBS'        => $sysliblist,
@@ -471,3 +470,5 @@ sub Initialize ($$) {
     };
 }
 
+
+1;

@@ -1,6 +1,6 @@
 #   Our beloved Emacs will give us -*- perl -*- mode :-)
 #
-#   $Id: dbd.pm.in,v 1.3 1999/08/29 18:39:59 joe Exp $
+#   $Id: dbd.pm.in,v 1.4 1999/09/16 17:40:51 joe Exp $
 #
 #   Copyright (c) 1994,1995,1996,1997 Alligator Descartes, Tim Bunce
 #
@@ -16,7 +16,7 @@ use DynaLoader();
 use Carp ();
 @ISA = qw(DynaLoader);
 
-$VERSION = '2.0406';
+$VERSION = '2.0407';
 
 bootstrap DBD::mysql $VERSION;
 
@@ -447,6 +447,12 @@ when installing the Msql-Mysql-modules with
 As of MySQL 3.22.3, a new feature is supported: If your DSN contains
 the option "mysql_compression=1", then the communication between client
 and server will be compressed.
+
+=item mysql_connect_timeout
+
+If your DSN contains the option "mysql_connect_timeout=##", the connect
+request to the server will timeout if it has not been successful after
+the given number of seconds.
 
 =item mysql_read_default_file
 

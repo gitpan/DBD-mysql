@@ -1,6 +1,6 @@
 #!/usr/local/bin/perl
 #
-#   $Id: ak-dbd.t,v 1.2 1999/08/29 18:40:03 joe Exp $
+#   $Id: ak-dbd.t,v 1.3 1999/09/01 13:18:52 joe Exp $
 #
 #   This is a skeleton test. For writing new tests, take this file
 #   and modify/extend it.
@@ -367,7 +367,8 @@ while (Testing()) {
 				162, ""))
 	    or printf("Failed to insert: %s\n", $dbh->errstr());
 	my $rc;
-	my $query = "UPDATE $table SET object_title = ? WHERE object_id = 162";
+	my $query = "UPDATE $table SET object_title = ? WHERE object_id = 162"
+	    unless $state;
 	Test($state or
 	     ($rc = $dbh->do($query, undef, "test")))
 	    or printf("Failed to update: %s\n", $dbh->errstr());
@@ -404,4 +405,3 @@ while (Testing()) {
 	    or printf("Error while disconnecting: %s\n", $dbh->errstr());
     }
 }
-
