@@ -158,6 +158,7 @@ sub query ($$) {
     }
 #endxtract
     $sth->{'CompatMode'} = 1;
+    bless($sth, ref($self) . "::Statement");
     $sth;
 }
 

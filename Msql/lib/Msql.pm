@@ -16,7 +16,7 @@ use vars qw($QUIET @ISA @EXPORT @EXPORT_OK $VERSION $db_errstr);
 $db_errstr = '';
 $QUIET  = 0;
 @ISA    = qw(DBI); # Inherits Exporter and DynaLoader via DBI
-$VERSION = '1.19_20';
+$VERSION = '1.19_21';
 
 # @EXPORT is a relict from old times...
 @EXPORT = qw(
@@ -152,6 +152,7 @@ sub query ($$) {
 	return $result;
     }
     $sth->{'CompatMode'} = 1;
+    bless($sth, ref($self) . "::Statement");
     $sth;
 }
 

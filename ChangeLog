@@ -1,4 +1,10 @@
-1998-07-06  Jochen Wiedmann  <joe@ispsoft.de> (1.1920)
+1998-07-07  Jochen Wiedmann  <joe@ispsoft.de> (1.19_21)
+
+	* nodbd/nodbd.pm.in (query): Fixed a missing "bless($sth, ...)".
+	  My thanks to Ray Zimmermann <rz10@cornell.edu>. (Gives me
+	  a familiar feeling to always meet the same people ... :-)
+
+1998-07-06  Jochen Wiedmann  <joe@ispsoft.de> (1.19_20)
 
 	* Makefile.lib (InitializeMsql): Added /usr to the search path
 	  for mSQL headers and libraries.
@@ -8,7 +14,7 @@
 	* dbd/dbd.xs.in (DBD::mysql::ping): Now using mysql_ping().
 	* dbd/dbdimp.c (_MyLogin): Added mysql_compression.
 
-1998-06-25  Jochen Wiedmann  <joe@ispsoft.de> (1.1919)
+1998-06-25  Jochen Wiedmann  <joe@ispsoft.de> (1.19_19)
 
 	* dbd/dbdimp.c: Added $sth->{mysql_type} and
 	  $sth->{msql_type}, which are in fact just what
@@ -18,7 +24,7 @@
 	* Makefile.PL: Made test databases configurable.
 
 
-1998-06-14  Jochen Wiedmann  <joe@ispsoft.de> (1.1918)
+1998-06-14  Jochen Wiedmann  <joe@ispsoft.de> (1.19_18)
 
 	* Makefile.PL: dbdadmin.t was missing in the list of tests
 	* nodbd/nodbd.pm.in (query): Now really returning undef in
