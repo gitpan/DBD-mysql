@@ -1,0 +1,570 @@
+# -*- perl -*-
+
+BEGIN { require 5.004; }
+use strict;
+
+require File::Basename;
+
+
+package MY;
+
+sub postamble {
+    if ($_MY::Config::Postamble) {
+	&$_MY::Config::Postamble(@_);
+    } else {
+	'';
+    }
+}
+
+
+package _MY::Config;
+
+$_MY::Config::VERSION = "1.1828";
+$_MY::Config::DBD_VERSION = "2.0094";
+
+$_MY::Config::X_Msql = undef;
+$_MY::Config::X_Mysql = undef;
+@_MY::Config::Files::Mysql = ();
+@_MY::Config::Files::Msql = ();
+@_MY::Config::Files::mysql = ();
+@_MY::Config::Files::mSQL = ();
+$_MY::Config::initialized = 0;
+
+sub Init ($) {
+    if ($_MY::Config::initialized) {
+	return;
+    }
+
+    if (shift) {
+	$_MY::Config::enableDbd = 1;
+	$_MY::Config::enableMsql = 1;
+	$_MY::Config::enableMysql = 1;
+
+	print "Checking for DBI, 0.91 or later ... ";
+	$@ = '';
+	eval " use DBI 0.91 (); require DBI::DBD; ";
+	if ($@) {
+	    my $reply = ExtUtils::MakeMaker::prompt(
+	        "\n\n" .
+		"You don't have installed the DBI module, version 0.91 or" .
+                " later. I cannot\n" .
+                "continue installing the DBD modules. You have two" .
+		" options:\n\n" .
+		"  1.) Abort now, install the DBI module (available at any" .
+		" CPAN mirror,\n" .
+		"      see 'perldoc CPAN') and rerun me. (Recommended)\n" .
+                "  2.) Disable installation of the DBD modules and install" .
+                " the non-DBD\n" .
+                "      drivers only.\n\n" .
+	        "Do you want to abort now? ", "y");
+	    if ($reply =~ /y/i) {
+		exit 10;
+	    }
+	  _MY::Config::disableDbd();
+	} else {
+	    print "ok\n";
+	    print "Checking for Data::ShowTable ... ";
+	    $@ = '';
+	    eval { require Data::ShowTable; };
+	    if ($@) {
+		print "\n\n",
+		    "You don't have installed the 'Data::ShowTable' module.\n",
+		    "You won't be able to use 'dbimon', the DBI monitor",
+		    " until.\n",
+		    "'Data::ShowTable' is installed. You get it at the",
+		    " CPAN.\n",
+	            "See 'man CPAN' or 'perldoc CPAN' for more info.\n",
+		    "I will install 'dbimon' anyways.\n\n";
+	    } else {
+		print "ok\n";
+	    }
+	}
+
+
+	while (1) {
+	    my $reply;
+	    if (exists $ENV{IN_MYSQL_DISTRIBUTION}) {
+		$reply = $ENV{IN_MYSQL_DISTRIBUTION} || 1;
+	    } else {
+		$reply = ExtUtils::MakeMaker::prompt(
+		    "\n\nWhich DBMS do you want to use?\n\n" .
+		    "  1) MySQL\n" .
+	            "  2) mSQL\n" .
+		    "  3) Both\n\n" .
+		    "Enter your choice: ", "3");
+	    }
+	    if ($reply =~ /^1/) {
+	        _MY::Config::disableMsql();
+		last;
+	    }
+	    if ($reply =~ /^2/) {
+	        _MY::Config::disableMysql();
+		last;
+	    }
+	    if ($reply =~ /^3/) {
+		last;
+	    }
+	}
+
+	open(FILE, ">status.lib");
+	print FILE "\$_MY::Config::enableDbd = $_MY::Config::enableDbd;\n",
+	    "\$_MY::Config::enableMsql = $_MY::Config::enableMsql;\n",
+	    "\$_MY::Config::enableMysql = $_MY::Config::enableMysql;\n",
+	    "1\n";
+	close(FILE);
+    } else {
+	require "status.lib";
+    }
+
+    $_MY::Config::Postamble = \&CreatePostamble;
+
+    $_MY::Config::initialized = 1;
+}
+
+
+sub disableDbd { $_MY::Config::enableDbd = 0; }
+sub disableMsql { $_MY::Config::enableMsql = 0; }
+sub disableMysql { $_MY::Config::enableMysql = 0; }
+
+
+sub MakeDirs () {
+    my (@removeList);
+
+    if ($_MY::Config::enableMysql) {
+	@_MY::Config::Files::Mysql =
+	    (["nodbd/Makefile.PL.in", "Mysql/Makefile.PL"]);
+
+	if ($_MY::Config::enableDbd) {
+	    @_MY::Config::Files::mysql =
+		(["dbd/Makefile.PL.in", "DBD-mysql/Makefile.PL"]);
+	} else {
+	    push(@removeList, "DBD-mysql/Makefile.PL");
+	}
+	my $ref;
+	foreach $ref (@_MY::Config::Files::Mysql, @_MY::Config::Files::mysql) {
+	    Xtract($ref, "Mysql", "mysql");
+	}
+    } else {
+	push(@removeList, "Mysql/Makefile.PL", "DBD-mysql/Makefile.PL");
+    }
+    if ($_MY::Config::enableMsql) {
+	@_MY::Config::Files::Msql =
+	    (["nodbd/Makefile.PL.in", "Msql/Makefile.PL"]);
+	if ($_MY::Config::enableDbd) {
+	    @_MY::Config::Files::mSQL =
+		(["dbd/Makefile.PL.in", "DBD-mSQL/Makefile.PL"]);
+	    if (!$_MY::Config::enableMysql) {
+		push(@_MY::Config::Files::mSQL,
+		     ["dbd/dbimon.in", "DBD-mSQL/dbimon", 1]);
+	    }
+	} else {
+	    push(@removeList, "DBD-mSQL/Makefile.PL");
+	}
+	my $ref;
+	foreach $ref (@_MY::Config::Files::Msql, @_MY::Config::Files::mSQL) {
+	    Xtract($ref, "Msql", "mSQL");
+	}
+    } else {
+	push(@removeList, "Msql/Makefile.PL", "DBD-mSQL/Makefile.PL");
+    }
+
+    my $file;
+    foreach $file (@removeList) {
+	if (-f $file  &&  !unlink $file) {
+	    print STDERR "Cannot remove $file: $!\n";
+	    exit 10;
+	}
+    }
+}
+	
+
+sub CheckForLibGcc() {
+    # For reasons I don't understand the 'specs' file of some
+    # gcc versions disable linking against libgcc.a in conjunction
+    # with '-shared'. Unfortunately we need libgcc.a because of
+    # some arithmetic functions.
+    #
+    # We try to fix this by always linking against libgcc.a. Unfortunately
+    # it's somewhat hard to find out the path of this file ...
+    #
+    if ($Config::Config{gccversion} eq '') {
+	return '';
+    }
+
+    my($libgccfile) = `$Config::Config{cc} -print-libgcc-file-name 2>&1`;
+    my($libgccdir);
+    if ($libgccfile =~ /^\S+$/) {
+	if ($libgccfile =~ /(.*)\/lib(\S+)\.a/) {
+	    $libgccdir = $1;
+	    $libgccfile = $2;
+	}
+    } else {
+	my($specs) = `$Config::Config{cc} -v 2>&1`;
+	if ($specs =~ /Reading specs from (\S+)/) {
+	    $specs = $1;
+	} else {
+	    printf(<<"MSG", $Config::Config{cc});
+Your Perl configuration says you are using gcc, but your compiler (%s) doesn't
+look like gcc. There might be missing symbols in libmysqlclient.a, typically
+'umoddi3' or something similar, if you have precompiled mysql binaries. If so,
+try to compile your own binaries, perhaps the '--without-server' option
+might help in the configure stage.
+MSG
+	    return '';
+	}
+
+	$specs = $1;
+	if ($specs =~ /(.*)\//) {
+	    $libgccdir = $1;
+	    $libgccfile = "gcc";
+	} else {
+	    printf(<<"MSG", $Config::Config{cc});
+Your Perl configuration says you are using gcc (%s), but I cannot determine the
+path of your libgcc.a file. There might be missing symbols in
+libmysqlclient.a, typically 'umoddi3' or something similar, if you have
+precompiled mysql binaries. If so, try to compile your own binaries, perhaps
+the '--without-server' option might help in the configure stage.
+MSG
+	    return '';
+	}
+    }
+
+    if ($libgccdir) {
+        "-L$libgccdir -l$libgccfile";
+    } else {
+        $libgccfile;
+    }
+}
+
+
+############################################################################
+#
+#   Name:    Search
+#
+#   Purpose: Find installed files (headers or libraries)
+#
+#   Inputs:  $gooddirs - List of directories where to search; these
+#                directories are accepted immediately if a file is
+#                found there
+#            $dirs - List of additional directories where to search;
+#                these are accepted only if the users confirms them
+#            $files - List of files to search for; any of these will
+#                be sufficient
+#            $prompt - Prompt for asking the user to confirm a
+#                directory
+#
+#   Returns: List of two directories: The first directory is the basename
+#       of "$dir/$file" where $dir is one of $gooddirs or $dirs and $file
+#       is one of $files. (Note that the file name may contain preceding
+#       directory names!) The second directory is the corresponding dir
+#       od $gooddirs or $dirs.
+#
+############################################################################
+
+sub Search ($$$$) {
+    my ($gooddirs, $dirs, $files, $prompt) = @_;
+    my ($dir, $file, $realfile);
+    foreach $dir (@$gooddirs) {
+	foreach $file (@$files) {
+	    if (-f ($realfile = "$dir/$file")) {
+		return (File::Basename::dirname($realfile), $dir);
+	    }
+	}
+    }
+    my ($gooddir);
+    foreach $dir (@$dirs) {
+	foreach $file (@$files) {
+	    if (-f "$dir/$file") {
+		$gooddir = $dir;
+		last;
+	    }
+	}
+	if ($gooddir) {
+	    last;
+	}
+    }
+    $gooddir ||= $$gooddirs[0] || $$dirs[0];
+
+    $gooddir = ExtUtils::MakeMaker::prompt($prompt, $gooddir)
+	||  $gooddir;  # for 5.002;
+
+    foreach $file (@$files) {
+	if (-f ($realfile = "$gooddir/$file")) {
+	    return (File::Basename::dirname($realfile), $gooddir);
+	}
+    }
+
+    if (@$files == 1) {
+	die "Cannot find " . $$files[0] . " in $gooddir.\n";
+    }
+    die "Cannot find one of " . join(", ", @$files) . " in $gooddir";
+}
+
+
+sub InitializeMsql {
+    if ($_MY::Config::X_Msql) {
+	return $_MY::Config::X_Msql;
+    }
+
+    my %X;
+    my @msqldirs = qw{/usr/local/Hughes /usr/local/Minerva /usr/local
+		      /usr/mSQL /opt/mSQL};
+    my @gooddirs;
+    if (exists($ENV{MSQL_HOME})) { push(@gooddirs, $ENV{MSQL_HOME}); }
+
+    my($headerdir, $gooddir) = Search(\@gooddirs, \@msqldirs,
+				      ["include/msql.h"],
+				      "Where is your msql installed? Please"
+				      . " tell me the directory that"
+				      . " contains\n"
+				      . " the subdir include/.");
+    unshift(@gooddirs, $gooddir);
+    my($libdir) = Search(\@gooddirs, \@msqldirs, ["lib/libmsql.a"],
+			 "Where is your msql installed? Please tell me the"
+			 . " directory that contains\n"
+			 . " the subdir lib/.");
+
+    # the necessity to determine the version at this stage is legacy ADESC
+    # the necessity to determine how many arguments are needed for
+    # msqlget*conf is due to random changes in the API
+    my $version = "MSQL1";
+    my $getconf = "";
+    open MSQL, "$headerdir/msql.h" 
+	or die "Couldn't open $headerdir/msql.h: $!";
+    local $/ = "\n";
+    while (<MSQL>) {
+	if (/IDX_TYPE/) {
+	    $version = "MSQL2";
+	}
+	if (
+	    m{
+	      ^
+	      (int|char)
+	      \s+
+	      \*?
+	      msqlGet
+	      (Int|Char)
+	      Conf
+	      \s+
+	      __ANSI_PROTO
+	      \(\(
+	      char
+	      \s*
+	      \*\)\)
+	     }x
+	   ) {
+	    $getconf = " -DMSQLGETXCONF1";
+	}
+    }
+    
+    my $extralibs = "";
+    my $linkwith = "";
+    if ( $Config::Config{osname} eq 'sco_sv' ) {
+	# Some extra libraries need added for SCO
+	$extralibs = "-lc";
+    } elsif ( $Config::Config{osname} eq 'solaris' ) {
+	# We need to link with -R if we're on Solaris.......Brain-damaged....
+	$linkwith = "-L$libdir -R$libdir";
+    } elsif ( $Config::Config{osname} eq 'hpux' ) {
+	# We need to add +z to the list of CFLAGS if we're on HP-SUX, or -fPIC 
+	# if we're on HP-SUX and using 'gcc'
+	if ( $Config::Config{cccdlflags} eq '+z' ) {
+	    print q{You\'re building on HP-UX with the HP compiler.
+You might get a warning at the link stage of:
+
+    ld: DP-Relative Code in file .../libmsql.a(libmsql.o)
+    >  - Shared Library must be Position-Independent
+
+You\'ll have to recompile libmsql.a from the mSQL distribution with the
+    '+z' flag of your C compiler.
+};
+	  } elsif( $Config::Config{cccdlflags} eq '-fPIC' ) {
+	    print q{You\'re building on HP-UX with the GNU C Compiler.
+You might get a warning at the link stage like:
+
+    ld: DP-Relative Code in file .../libmsql.a(libmsql.o)
+    >  - Shared Library must be Position-Independent
+
+You\'ll have to recompile libmsql.a from the mSQL distribution specifying
+the '-fPIC' flag to produce Position-Independent code.
+};
+	  }
+    }
+
+    my $sysliblist = "-L$libdir -lmsql -lm $extralibs";
+
+    my(@headerfiles) = ("$headerdir/msql.h");
+    $X{macro} = {MSQL_HOME => $gooddir};
+    $X{dynamic_lib} = { OTHERLDFLAGS => '-L$(MSQL_HOME)/lib ' . $linkwith } if $linkwith;
+    $X{DEFINE}   = "-DDBD_MSQL -D$version$getconf";
+    $X{LIBS}     = $sysliblist;
+    $X{INC}      = "-I../dbd -I$headerdir  -I\$(INSTALLSITEARCH)/auto/DBI"
+	. " -I\$(INSTALLARCHLIB)";
+    $X{H}        = \@headerfiles;
+
+    my $dir;
+    foreach $dir (@INC) {
+	if (-f "$dir/auto/DBI/DBIXS.h") {
+	    $X{INC} .= " -I$dir/auto/DBI";
+	    last;
+	}
+    }
+
+    $_MY::Config::X_Msql = \%X;
+}
+
+
+sub InitializeMysql {
+    if ($_MY::Config::X_Mysql) {
+	return $_MY::Config::X_Mysql;
+    }
+
+    my %X;
+    my @mysqldirs = qw{/usr/local /usr/local/mysql /usr /usr/mysql /opt/mysql};
+    my @gooddirs = ();
+    if (exists($ENV{MYSQL_HOME})) {
+	unshift @gooddirs, $ENV{MYSQL_HOME};
+    }
+    if (exists($ENV{MYSQL_BUILD})) {
+	unshift @gooddirs, $ENV{MYSQL_BUILD};
+    }
+
+    my($headerdir, $gooddir) = Search(\@gooddirs, \@mysqldirs,
+				      ["include/mysql/mysql.h",
+				       "include/mysql.h"],
+				      "Where is your mysql installed? Please"
+				      . " tell me the directory that"
+				      . " contains\n"
+				      . "the subdir include/.");
+    unshift(@gooddirs, $gooddir);
+    my($libdir) = Search(\@gooddirs, \@mysqldirs,
+			 ["lib/mysql/libmysqlclient.a", "lib/libmysqlclient.a",
+			  "client/libmysqlclient.a"],
+			 "Where is your mysql installed? Please tell me the"
+			 . " directory that contains\n"
+			 . "the subdir lib/.");
+
+    
+    my $extralibs = "";
+    my $linkwith = "";
+    if ($Config::Config{osname} eq 'sco_sv') {
+	# Some extra libraries need added for SCO
+	$extralibs = "-lc";
+    } elsif ($Config::Config{osname} eq 'solaris') {
+	# We need to link with -R if we're on Solaris.......Brain-damaged....
+	$linkwith = "-L$libdir -R$libdir";
+    } elsif ($Config::Config{osname} eq 'hpux') {
+	# We need to add +z to the list of CFLAGS if we're on HP-SUX, or -fPIC 
+	# if we're on HP-SUX and using 'gcc'
+	if ($Config::Config{cccdlflags} eq '+z') {
+	    print("\nYou're building on HP-UX with the HP compiler.\n");
+	} elsif ($Config::Config{cccdlflags} eq '-fPIC') {
+	    print("\nYou're building on HP-UX with the GNU C Compiler.\n");
+	} else {
+	    print("\nYou're building on HP-UX with an unknown compiler.\n");
+	}
+	print("You might get a warning at the link stage of:\n\n",
+	      "ld: DP-Relative Code in file .../libmysqlclient.a",
+	      "(libmysql.o)\n",
+	      ">  - Shared Library must be Position-Independent\n\n",
+	      "You'll have to recompile libmysqlclient.a from the mysql",
+	      " distribution specifying\n",
+	      "the '", $Config::Config{cccdlflags}, "' flag",
+	      " of your C compiler.\n");
+    }
+
+    $extralibs .= CheckForLibGcc();
+
+    # List the libraries we're linking with (ADESC)
+    my $sysliblist = ["-L$libdir -lmysqlclient -lm $extralibs"];
+
+    my(@headerfiles) = ("$headerdir/mysql.h");
+    $X{macro} = {MYSQL_HOME => $gooddir};
+    $X{dynamic_lib} = { OTHERLDFLAGS => "-L$libdir/lib $linkwith" } if $linkwith;
+    $X{DEFINE}   = "-DDBD_MYSQL";
+    $X{LIBS}     = $sysliblist;
+    $X{INC}      = "-I$headerdir -I../dbd  -I\$(INSTALLSITEARCH)/auto/DBI"
+	. " -I\$(INSTALLARCHLIB)";
+    $X{H}        = \@headerfiles;
+    if ($ENV{HOSTNAME} eq 'laptop.ispsoft.de'  &&  $ENV{'LOGNAME'} eq 'joe') {
+	$X{'DEFINE'} .= ' -Wall -Wno-comment -Wpointer-arith'
+            . ' -Wcast-align -Wtraditional -Wcast-qual';
+    }
+    $X{NAME} = "Mysql",
+    $X{DISTNAME} = "Mysql-modules",
+
+    my $dir;
+    foreach $dir (@INC) {
+	if (-f "$dir/auto/DBI/DBIXS.h") {
+	    $X{INC} = "-I$dir/auto/DBI " . $X{INC};
+	    last;
+	}
+    }
+
+    $_MY::Config::X_Mysql = \%X;
+}
+
+sub CreatePostamble ($) {
+    my ($ref, $pa, $from, $to);
+
+    my @mysqlFiles = (["nodbd/bundle.pm.in", "lib/Bundle/Mysql.pm"],
+		      ["nodbd/nodbd.pm.in", "lib/Mysql.pm"],
+		      ["nodbd/statement.pm.in", "lib/Mysql/Statement.pm"],
+		      ["dbd/dbd.pm.in", "lib/DBD/mysql.pm"]);
+    if ($_MY::Config::enableMysql) {
+	push(@mysqlFiles, @_MY::Config::Files::Mysql,
+	     ["dbd/dbimon.in", "dbimon", 1]);
+	if ($_MY::Config::enableDbd) {
+	    push(@mysqlFiles, @_MY::Config::Files::mysql);
+	}
+    }
+    foreach $ref (@mysqlFiles) {
+	$pa .= XtractF($ref, "Mysql", "mysql");
+    }
+
+    my @msqlFiles = (["nodbd/bundle.pm.in", "lib/Bundle/Msql.pm"],
+		     ["nodbd/nodbd.pm.in", "lib/Msql.pm"],
+
+		     ["nodbd/statement.pm.in", "lib/Msql/Statement.pm"],
+		     ["dbd/dbd.pm.in", "lib/DBD/mSQL.pm"]);
+    if ($_MY::Config::enableMsql) {
+	push(@msqlFiles, @_MY::Config::Files::Msql);
+	if (!$_MY::Config::enableMysql) {
+	    push(@msqlFiles, ["dbd/dbimon.in", "dbimon", 1]);
+	}
+	if ($_MY::Config::enableDbd) {
+	    push(@msqlFiles, @_MY::Config::Files::mSQL);
+	}
+    }
+    foreach $ref (@msqlFiles) {
+	$pa .= XtractF($ref, "Msql", "mSQL");
+    }
+    $pa . "\nMakefile: Makefile.lib\n\n";
+}
+
+sub Xtract($$$) {
+    my ($ref, $driver, $dbdDriver, $path) = @_;
+    if (!$path) {
+	$path = "xtract";
+    }
+    system sprintf("%s %s %s %s %s %s %s %s",
+		   $^X, $path,
+		   $ref->[0], $ref->[1], $driver, $dbdDriver,
+		   $_MY::Config::VERSION, $_MY::Config::DBD_VERSION);
+    chmod $ref->[2] ? 0755 : 0644, $ref->[1];
+}
+
+sub XtractF($$$$) {
+    my ($ref, $driver, $dbdDriver, $path) = @_;
+    if (!$path) {
+	$path = "xtract";
+    }
+    sprintf("%s: %s Makefile\n"
+	    . "\t%s %s %s %s %s %s %s %s\n\tchmod %s %s\n",
+	    $ref->[1], $ref->[0], $^X, $path,
+	    $ref->[0], $ref->[1], $driver, $dbdDriver,
+	    $_MY::Config::VERSION, $_MY::Config::DBD_VERSION,
+	    $ref->[2] ? "0755" : "0644", $ref->[1]);
+}
+
+1;

@@ -5,40 +5,60 @@ require ExtUtils::MakeMaker;
 require Config;
 require DBI::DBD;
 use lib "..";
+require "Makefile.lib";
 
-use vars qw($MyConfig);
-if (!defined($MyConfig)) {
-    require ".status";
+_MY::Config::Init(0);
+
+sub config () {
+    my $dbd_driver = "~DBD_DRIVER~";
+    my $from_driver = "~DRIVER~";
+
+    my $ref = &_MY::Config::Initialize~DRIVER~;
+
+    my %hash = %$ref;
+    $hash{'DEFINE'} .= " -DMyConnect=dbd_db_connect";
+    $hash{'NAME'} = "DBD::" . $dbd_driver;
+    $hash{'VERSION_FROM'} = "../lib/DBD/$dbd_driver.pm";
+    $hash{'clean'} = { 'FILES' => '*.xsi' };
+    \%hash;
 }
 
-my($lcDriver) = lc '~DRIVER~';
-my(%hash) = %{$MyConfig->{"X_$lcDriver"}};
-$hash{'NAME'} = 'DBD::~DBD_DRIVER~';
-$hash{'OBJECT'} = '$(O_FILES)';
-$hash{'VERSION'} = $MyConfig->{'DBD_VERSION'};
-$hash{'clean'} = { 'FILES' => '*.xsi' };
-$hash{'PMLIBDIRS'} = $MyConfig->{"install_${lcDriver}perl"} ? ["lib"] : [];
 
-ExtUtils::MakeMaker::WriteMakefile(%hash);
+my $pa = $_MY::Config::Postamble;
+$_MY::Config::Postamble = \&Create~DBD_DRIVER~Postamble;
+ExtUtils::MakeMaker::WriteMakefile(
+	      OBJECT       => qq[\$(O_FILES)],
+	      CONFIGURE    => \&config
+	     );
+$_MY::Config::Postamble = $pa;
 
 
-package MY;
+sub Create~DBD_DRIVER~Postamble ($) {
+    my $self = shift;
 
-sub postamble {
-    my($self) = shift;
-    my($driver, $dbdDriver, $lcDriver);
-    if ($self->{'NAME'} eq 'DBD::mSQL') {
-	$driver = 'Msql';
-	$dbdDriver = 'mSQL';
-	$lcDriver = 'msql';
-    } elsif ($self->{'NAME'} eq 'DBD::mysql') {
-	$driver = 'Mysql';
-	$dbdDriver = 'mysql';
-	$lcDriver = 'mysql';
-    } else {
-	return '';
+    my $pa = "\n";
+    my $ref;
+    foreach $ref
+	(@_MY::Config::Files::~DBD_DRIVER~,
+	 ["../dbd/dbd.xs.in", "~DBD_DRIVER~.xs"],
+	 ["../dbd/dbdimp.c", "dbdimp.c"],
+	 ["../dbd/myMsql.c", "myMsql.c"],
+	 ["../tests/lib.pl", "t/lib.pl"],
+	 ["../tests/00base.t", "t/00base.t"],
+	 ["../tests/10dsnlist.t", "t/10dsnlist.t"],
+	 ["../tests/20createdrop.t", "t/20createdrop.t"],
+	 ["../tests/30insertfetch.t", "t/30insertfetch.t"],
+	 ["../tests/40bindparam.t", "t/40bindparam.t"],
+	 ["../tests/40listfields.t", "t/40listfields.t"],
+	 ["../tests/40nulls.t", "t/40nulls.t"],
+	 ["../tests/40numrows.t", "t/40numrows.t"],
+	 ["../tests/50chopblanks.t", "t/50chopblanks.t"],
+	 ["../tests/50commit.t", "t/50commit.t"],
+	 ["../tests/ak-dbd.t", "t/ak-dbd.t"]) {
+	$pa .= _MY::Config::XtractF($ref, "~DRIVER~", "~DBD_DRIVER~",
+				    "../xtract");
     }
-    my($pa) = "\n" . $::MyConfig->{"postamble_$lcDriver"};
+    $pa = $pa . "\ndbd.xs: ~DBD_DRIVER~.xsi\n\n";
 
     # we must be careful of quotes for Win32 here.
     my ($dir, $dbiDir);
@@ -65,4 +85,15 @@ $(BASEEXT).xsi: $(DBI_DRIVER_XST)
 ';
 
     $pa;
+}
+
+
+package MY;
+
+sub postamble {
+    if ($_MY::Config::Postamble) {
+	&$_MY::Config::Postamble(@_);
+    } else {
+	'';
+    }
 }

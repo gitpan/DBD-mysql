@@ -21,14 +21,8 @@ my(
    %hash,
   );
 
-my($file);
-foreach $file ("lib.pl", "t/lib.pl", "~DRIVER~/t/lib.pl") {
-    if (-f $file) {
-	do $file;
-	if ($@) { die "Cannot load 'lib.pl': $@.\n"; }
-	last;
-    }
-}
+do ((-f "lib.pl") ? "lib.pl" : "t/lib.pl");
+if ($@) { die "Cannot load 'lib.pl': $@.\n"; }
 
 use vars qw($mdriver);
 if ($mdriver ne 'mysql'  &&  $mdriver ne 'mSQL'  &&  $mdriver ne 'mSQL1') {
@@ -598,20 +592,23 @@ while (Testing()) {
     if ($mdriver eq 'mysql') {
 	Test($state or ($@ eq ''), undef,
 	     "Fetchrow from non-select handle $sth")
-	    or printf("Died while fetching a row from a"
-		      . " non-result handle, error was $@.\n");
+	    or !$verbose or printf("Died while fetching a row from a"
+				   . " non-result handle, error was $@.\n");
     } else {
 	Test($state or ($@ ne ''), undef, "Fetchrow from non-select handle")
-	    or print("Fetching a row from a non-result handle",
-		     " without dying.\n");
+	    or !$verbose or print("Fetching a row from a non-result handle",
+				  " without dying.\n");
 	Test($state or ($@ =~ /without a package or object/))
-	    or printf("Fetching row from a non-result handle"
-		      . " produced wrong error message $@.\n");
+	    or !$verbose or printf("Fetching row from a non-result handle"
+				   . " produced wrong error message $@.\n");
     }
 
     Test($state or !defined($ref))
-	or printf("Fetching a row from a non-result handle"
-		  . " returned TRUE ($ref).\n");
+	or !$verbose or printf("Fetching a row from a non-result handle"
+			       . " returned TRUE ($ref).\n");
+    Test($state or $$errstrRef)
+	or !$verbose or printf("Fetching a row from a non-result handle"
+			       . " didn't produce an error message.\n");
 
     {
 	my($sth_query, $sth_listf, $method, $ok);

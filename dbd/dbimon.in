@@ -2,38 +2,25 @@
 #
 #   dbimon - DBI monitor
 #
-#   Copyright (C) 1997, 1998: Jochen Wiedmann
 #
+#   Author and Copyright (c) 1997:  Jochen Wiedmann
+#                                   Am Eisteich 9
+#                                   72555 Metzingen
+#                                   Germany
 #
-#   This program implements a simple SQL shell. You can enter queries via
-#   a comfortable ReadLine interface and retrieve result tables in different
-#   output modes:
-#
-#   Author:  Jochen Wiedmann
-#            Am Eisteich 9
-#            72555 Metzingen
-#            Germany
-#
-#            Email: joe@ispsoft.de
-#            Phone: +49 7123 14887
+#                                   Email: joe@ispsoft.de
+#                                   Phone: +49 7123 14887
 #
 #   dbimon is based on pmsql, which is
 #
 #   Copyright 1994-1997  Andreas König
 #
-#   This program is free software; you can redistribute it and/or modify
-#   it under the terms of the GNU General Public License as published by
-#   the Free Software Foundation; either version 2 of the License, or
-#   (at your option) any later version.
+#   You may distribute this under the terms of either the GNU General Public
+#   License or the Artistic License, as specified in the Perl README file,
+#   with the exception that it cannot be placed on a CD-ROM or similar media
+#   for commercial distribution without the prior approval of the author.
 #
-#   This program is distributed in the hope that it will be useful,
-#   but WITHOUT ANY WARRANTY; without even the implied warranty of
-#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#   GNU General Public License for more details.
-#
-#   You should have received a copy of the GNU General Public License
-#   along with this program; if not, write to the Free Software
-#   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+#   $Id: dbimon.PL 1.1 Tue, 30 Sep 1997 01:28:08 +0200 joe $
 #
 ############################################################################
 #
@@ -46,7 +33,6 @@ use strict;      # Enable for testing only, disable for distributions
 use DBI ();
 use Term::ReadLine ();
 use Data::ShowTable ();
-
 
 
 ############################################################################
@@ -222,20 +208,9 @@ sub Connect (@) {
 	my $errmsg = $DBI::errstr;
 	print "Failed to connect: $errmsg\n";
 	if (!$batchMode  &&  !defined($npassword)  ||  $npassword eq '') {
-	    $@ = '';
-	    eval { require Term::ReadKey; };
-	    my($readKeyAvailable) = $@ ? 0 : 1;
 	    print "This might be due to a missing password. If so, enter\n";
 	    print "the password, otherwise just type return: ";
-	    if ($readKeyAvailable) {
-		Term::ReadKey::ReadMode('noecho');
-		$npassword = Term::ReadKey::ReadLine(0);
-		Term::ReadKey::ReadMode('restore');
-		print "\n";
-	    } else {
-		$npassword = <STDIN>;
-	    }
-	    chomp $npassword;
+	    $npassword = <STDIN>; chomp $npassword;
 	    if (defined($npassword)  &&  $npassword ne '') {
 		$dbh = DBI->connect($ndsn, $nuser, $npassword);;
 		if (!defined($dbh)) {
@@ -246,17 +221,8 @@ sub Connect (@) {
     }
 
     if ($dbh) {
-	if ($ndsn =~ /^dbi\:([^\:]+)\:(.*)/i) {
+	if ($ndsn =~ /^dbi\:([^\:]+)\:/i) {
 	    $driver = $1;
-	    my($rdsn) = $2;
-	    if ($driver eq 'mSQL'  ||  $driver eq 'mysql') {
-		my($class) = "DBD::$driver";
-		my($hash) = {};
-		$class->_OdbcParse($rdsn, $hash, ["database"]);
-		if ($hash->{'database'}) {
-		    $prompt = "$driver:" . $hash->{'database'} . "> ";
-		}
-	    }
 	} else {
 	    $driver = undef;
 	}
@@ -310,17 +276,17 @@ sub Output ($) {
 	$quote = defined($quoteChar) ? $quoteChar : "";
 	if (defined($escapeChar)  &&  $escapeChar ne '') {
 	    $ePattern = $escapeChar;
-	    $ePattern =~ s/(\W)/\\$1/g;
+	    $ePattern =~ s/(.)/\\$1/g;
 	    if ($quote ne '') {
 		$qPattern = $quote;
-		$qPattern =~ s/(\W)/\\$1/g;
+		$qPattern =~ s/(.)/\\$1/g;
 		if ($ePattern) {
 		    $ePattern = "$ePattern|$qPattern";
 		} else {
 		    $ePattern = $qPattern;
 		}
 	    }
-	    $ePattern = "$ePattern|\\0";
+	    $ePattern = "($ePattern|\\0)";
 	} else {
 	    $ePattern = '';
 	}
@@ -334,7 +300,7 @@ sub Output ($) {
 		if ($ePattern) {
 		    $word =~ s/($ePattern)/$escapeChar$1/g;
 		}
-		printf ("%s%s%s%s", $add, $quote, $word, $quote);
+		printf ("%s%s%s%s", $quote, $word, $quote, $add);
 		$add = $sepChar;
 	    }
 	    print "\n";
@@ -473,15 +439,13 @@ sub FieldList($$;$) {
 	if ($dsn ne $rdsn) {
 	    my $ndbh = DBI->connect($rdsn, $user, $password);
 	    if ($ndbh) {
-		$sth = $ndbh->prepare("LISTFIELDS $table");
-		$sth->execute;
+		$sth = $ndbh->func($table, "_ListFields");
 		($sth, $ndbh);
 	    } else {
 		(undef);
 	    }
 	} else {
-	    $sth = $dbh->prepare("LISTFIELDS $table");
-	    $sth->execute;
+	    $sth = $dbh->func($table, "_ListFields");
 	    ($sth);
 	}
     };
@@ -601,7 +565,6 @@ sub RelShow (;$$) {
     }
 
     if ($ndbh) {
-	undef $sth;
 	$ndbh->disconnect;
     }
 }
@@ -1073,7 +1036,7 @@ dbimon $VERSION Copyright (C) 1997 Jochen Wiedmann
     if (!($dbh = Connect($dsn, $user, $password))) {
 	print STDERR "Cannot connect: $DBI::errstr\n";
 	exit 1;
-    }
+    }	
 
     if (!$batchMode) {
 	$term = Term::ReadLine->new("dbimon $VERSION");
@@ -1109,7 +1072,7 @@ dbimon $VERSION Copyright (C) 1997 Jochen Wiedmann
     # Main loop
     my $line;
     while ($batchMode ? defined($line = <STDIN>) :
-	   defined($line = $term->readline($prompt))) {
+	   defined($line = $term->readline("dbimon> "))) {
 	# Remove preceding and trailing blanks, ignore empty lines
 	$line =~ s/^\s+//;
 	$line =~ s/\s+$//;
@@ -1150,9 +1113,8 @@ dbimon $VERSION Copyright (C) 1997 Jochen Wiedmann
 	
 	if ($command =~ /^d(sn?)?$/i) {
 	    if (@args) {
-		my($ndbh);
-		my($ndsn, $nuser, $npassword) = @args;
-		if (!($ndbh = Connect($ndsn, $nuser, $npassword))) {
+		my $ndbh;
+		if (!($ndbh = Connect(@args))) {
 		    print "Cannot connect: $DBI::errstr\n";
 		} else {
 		    $dbh->disconnect;
@@ -1422,7 +1384,7 @@ argument.
 
 Lists the tables of the dsn corresponding to I<$dbh>.
 
-=item C<$sth = $dbh-E<gt>prepare("LISTFIELDS $table")>
+=item C<$sth = $dbh-E<gt>func($table, '_ListFields')>
 
 Returns a statement handle describing the fields of a table. This could,
 for example, be implemented by a
@@ -1442,3 +1404,4 @@ not come with the perl distribution but are available from CPAN (see
 http://www.perl.com/CPAN).
 
 See L<pmsql (1)>, L<DBI (3)>, L<Term::ReadKey (3)>, L<Term::ReadLine (3)>,
+
