@@ -291,7 +291,7 @@ sub Output ($) {
 	$restoreStdout = 1;
     }
 
-    if (!$showMode eq 'Export') {
+    if ($showMode eq 'Export') {
 	# Output for export is somewhat simpler ...
 	my(@res);
 	my($ePattern, $qPattern, $null, $ref, $quote);
@@ -328,6 +328,7 @@ sub Output ($) {
 		printf ("%s%s%s%s", $quote, $word, $quote, $add);
 		$add = $sepChar;
 	    }
+	    print "\n";
 	}
     } else {
 	my @rowCache;

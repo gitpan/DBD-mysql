@@ -14,7 +14,7 @@ if (!defined($MyConfig)) {
 my(%hash) = %{$MyConfig->{'X_' . (lc '~DRIVER~')}};
 $hash{'NAME'} = 'DBD::~DBD_DRIVER~';
 $hash{'OBJECT'} = '$(O_FILES)';
-$hash{'VERSION'} = $MyConfig->{'VERSION'};
+$hash{'VERSION'} = $MyConfig->{'DBD_VERSION'};
 $hash{'clean'} = { 'FILES' => '*.xsi' };
 
 ExtUtils::MakeMaker::WriteMakefile(%hash);

@@ -1,3 +1,9 @@
+1998-03-15  Jochen Wiedmann  <joe@laptop.ispsoft.de> (1.19_11)
+
+	* Makefile.PL: Fixed Bugs in _OdbcParse and version numbers.
+	* dbd/dbimon.in: Fixed bugs in export mode (Nem W. Schlecht
+	  <nem@abattoir.cc.ndsu.nodak.edu>)
+
 1998-02-26  Jochen Wiedmann  <joe@ispsoft.de> (1.19_10)
 
 	* M(y)sqlPerl now emulated by DBI drivers.

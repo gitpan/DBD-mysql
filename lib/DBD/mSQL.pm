@@ -16,7 +16,7 @@ use DynaLoader();
 use Carp ();
 @ISA = qw(DynaLoader);
 
-$VERSION = '2.01_10';
+$VERSION = '2.01_11';
 
 bootstrap DBD::mSQL $VERSION;
 
@@ -70,8 +70,8 @@ sub _OdbcParse($$$) {
 	    foreach $var (@$args) {
 		if (!defined($hash->{$var})) {
 		    $hash->{$var} = $val;
+		    last;
 		}
-		last;
 	    }
 	}
     }

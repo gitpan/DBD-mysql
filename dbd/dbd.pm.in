@@ -70,8 +70,8 @@ sub _OdbcParse($$$) {
 	    foreach $var (@$args) {
 		if (!defined($hash->{$var})) {
 		    $hash->{$var} = $val;
+		    last;
 		}
-		last;
 	    }
 	}
     }
