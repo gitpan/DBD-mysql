@@ -9,10 +9,10 @@
 # are configured wrong in this respect. But you're welcome to test it
 # out.
 
-my $host = shift @ARGV || $ENV{'DBI_HOST'} || "";
-my $user = shift @ARGV || $ENV{'DBI_USER'} || "";
-my $password = shift @ARGV || $ENV{'DBI_PASS'} || "";
-my $dbname = shift @ARGV || $ENV{'DBI_DB'} || "test";
+my $host = shift @ARGV || $ENV{'DBI_HOST'} || "~~test_host~~";
+my $user = shift @ARGV || $ENV{'DBI_USER'} || "~~test_user~~";
+my $password = shift @ARGV || $ENV{'DBI_PASS'} || "~~test_pass~~";
+my $dbname = shift @ARGV || $ENV{'DBI_DB'} || "~~test_db~~";
 
 # That's the standard perl way tostart a testscript. It announces that
 # that many tests are to follow. And it does so before anything can go
@@ -58,11 +58,11 @@ if ($dbh = Mysql->connect($host, $dbname, $user, $password)){
     exit;
 }
 
-if ($dbh->selectdb("test")){
+if ($dbh->selectdb($dbname)){
     print("ok 2\n");
 } else {
     die qq{not ok 2: $Mysql::db_errstr
-    Please make sure that a database \"test\" exists
+    Please make sure that a database \"$dbname\" exists
     and that you have permission to read and write on it
 };
 }
@@ -293,7 +293,7 @@ if ($dbh2 = Mysql->connect($host,$dbname,$user,$password)){
 }
 
 # Some quick checks about the contents of the handle...
-$dbh2->database eq "test" and print("ok 20\n") or print("not ok 20\n");
+$dbh2->database eq $dbname and print("ok 20\n") or print("not ok 20\n");
 $dbh2->sock =~ /^\d+$/ and print("ok 21\n") or print("not ok 21\n");
 
 # Is $dbh2 able to drop a table, while we are connected with $dbh?
@@ -319,7 +319,7 @@ if ($dbh3 = Connect Mysql($host,$dbname,$user,$password)){
 }
 
 $dbh3->host eq $host and print("ok 26\n") or print "not ok 26\n";
-$dbh3->database eq "test" and print("ok 27\n") or print "not ok 27\n";
+$dbh3->database eq $dbname and print("ok 27\n") or print "not ok 27\n";
 
 
 # For what it's worth, we have a tough job for the server here. First
@@ -408,10 +408,10 @@ print "ok 32\n";
 # Mysql-1.0.6) are handled correctly:
 
 if ($dbh->getserverinfo lt 2) { # Before version 2 we have the "primary key" syntax
-    $firsttable = create($dbh,$firsttable,"( she char(14) primary key NOT NULL,
+    $firsttable = create($dbh,$firsttable,"( she char(14) primary key not null,
 	him int, who char(1))") or test_error();
 } else {
-    $firsttable = create($dbh,$firsttable,"( she char(14) NOT NULL,
+    $firsttable = create($dbh,$firsttable,"( she char(14) not null,
 	him int, who char(1))") or test_error();
     $dbh->query("create unique index she_index on $firsttable ( she )") or test_error();
 }
@@ -465,9 +465,9 @@ foreach (qw/table name type is_not_null is_pri_key length/) {
 # mSQL: return value as an object reference, we should not core dump
 # In mysql a query always return an object!
 
-$sth = $dbh->query("insert into $firsttable values (\047x\047,2,\047y\047)");
 {
     local($Mysql::QUIET) = 1;
+    $sth = $dbh->query("insert into $firsttable values (\047x\047,2,\047y\047)");
     if (!defined($sth->fetchrow))
     {
 	print "ok 42\n";

@@ -4,7 +4,7 @@
 #
 #   This is a simple insert/fetch test.
 #
-
+$^W = 1;
 
 #
 #   Make -w happy
@@ -19,7 +19,7 @@ $test_password = '';
 #
 use DBI;
 $mdriver = "";
-foreach $file ("lib.pl", "t/lib.pl") {
+foreach $file ("lib.pl", "t/lib.pl", "DBD-~~dbd_driver~~/t/lib.pl") {
     do $file; if ($@) { print STDERR "Error while executing lib.pl: $@\n";
 			   exit 10;
 		      }

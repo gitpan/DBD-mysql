@@ -2,7 +2,7 @@
 
    $Id: mysql.xs 1.1 Tue, 30 Sep 1997 01:28:08 +0200 joe $
 
-   Copyright (c) 1997 Jochen Wiedmann
+   Copyright (c) 1997, 1998 Jochen Wiedmann
 
    You may distribute under the terms of either the GNU General Public
    License or the Artistic License, as specified in the Perl README file,
@@ -11,20 +11,24 @@
 
 */
 
+
+#if defined(POORIFY)
+#include "poorify.h"
+#endif
+
+
 #include "dbdimp.h"
-#include "../nodbd/constants.h"
-
-
-/* --- Variables --- */
+#include "../dbd/constants.h"
 
 
 DBISTATE_DECLARE;
 
-MODULE = DBD::~DBD_DRIVER~	PACKAGE = DBD::~DBD_DRIVER~
 
-INCLUDE: ~DBD_DRIVER~.xsi
+MODULE = DBD::~~dbd_driver~~	PACKAGE = DBD::~~dbd_driver~~
 
-MODULE = DBD::~DBD_DRIVER~	PACKAGE = DBD::~DBD_DRIVER~
+INCLUDE: ~~dbd_driver~~.xsi
+
+MODULE = DBD::~~dbd_driver~~	PACKAGE = DBD::~~dbd_driver~~
 
 double
 constant(name, arg)
@@ -35,26 +39,66 @@ constant(name, arg)
   OUTPUT:
     RETVAL
 
-MODULE = DBD::~DBD_DRIVER~	PACKAGE = DBD::~DBD_DRIVER~::dr
+#if defined(DBD_MSQL) && defined(IDX_TYPE) && defined(HAVE_STRPTIME)
+
+char*
+unixtimetodate(package = Package, clock)
+    time_t clock
+  PROTOTYPE: $$
+  CODE:
+    RETVAL = msqlUnixTimeToDate(clock);
+  OUTPUT:
+    RETVAL
+
+char*
+unixtimetotime(package = Package, clock)
+    time_t clock
+  PROTOTYPE: $$
+  CODE:
+    RETVAL = msqlUnixTimeToTime(clock);
+  OUTPUT:
+    RETVAL
+
+time_t
+datetounixtime(package = Package, clock)
+  PROTOTYPE: $$
+  CODE:
+    RETVAL = msqlDateToUnixTime(clock);
+  OUTPUT:
+    RETVAL
+
+time_t
+timetounixtime(package = Package, clock)
+  PROTOTYPE: $$
+  CODE: $$
+    RETVAL = msqlTimeToUnixTime(clock);
+  OUTPUT:
+    RETVAL
+
+#endif /* defined(DBD_MSQL) && defined(IDX_TYPE) && defined(HAVE_STRPTIME) */
+
+
+MODULE = DBD::~~dbd_driver~~	PACKAGE = DBD::~~dbd_driver~~::dr
 
 void
-_ListDBs(drh, host)
+_ListDBs(drh, host, port=NULL)
     SV *        drh
     char *	host
+    char *      port
   PPCODE:
-#xtract Mysql
+{
+#if defined(DBD_MYSQL)
     MYSQL mysql;
     dbh_t sock = &mysql;
-    if (dbd_db_connect(sock,host,NULL,NULL,NULL)) {
-#xtract Msql
+#elif defined(DBD_MSQL)
     dbh_t sock;
-    if (dbd_db_connect(&sock,host,NULL,NULL,NULL)) {
-#endxtract
+#endif
+    if (MyConnect(&sock,host,port,NULL,NULL,NULL,NULL)) {
         result_t res;
         row_t cur;
         res = MyListDbs(sock);
         if (!res) {
-            do_error(drh, JW_ERR_LIST_DB, MyError(sock));
+            do_error(drh, MyErrno(sock, JW_ERR_LIST_DB), MyError(sock));
         } else {
             EXTEND(sp, MyNumRows(res));
 	    while ((cur = MyFetchRow(res))) {
@@ -64,100 +108,107 @@ _ListDBs(drh, host)
         }
         MyClose(sock);
     }
+}
 
 
-SV*
-_CreateDB(drh, host, dbname=host)
-    SV *        drh
-    char *      host
-    char *      dbname
-  PROTOTYPE: $$;$
+void
+_admin_internal(drh,dbh,command,dbname=NULL,host=NULL,port=NULL,user=NULL,password=NULL)
+    SV* drh
+    SV* dbh
+    char* command
+    char* dbname
+    char* host
+    char* port
+    char* user
+    char* password
   PPCODE:
     {
         dbh_t sock;
-	int result = FALSE;
-#xtract Mysql
+	int result;
+#if defined(DBD_MYSQL)
 	MYSQL mysql;
 	sock = &mysql;
-#endxtract
+#endif
 
-	if (items < 3) {
-	    host = NULL;
-	}
-#xtract Mysql
-	if (dbd_db_connect(sock,host,NULL,NULL,NULL)) {
-#xtract Msql
-	if (dbd_db_connect(&sock,host,NULL,NULL,NULL)) {
-#endxtract
-	    if (MyCreateDb(sock,dbname)) {
-	        result = TRUE;
-	    } else {
-	        do_error(drh, JW_ERR_CREATE_DB, MyError(sock));
-	    }
-	    MyClose(sock);
+	/*
+	 *  Connect to the database, if required.
+	 */
+	if (SvOK(dbh)) {
+	    D_imp_dbh(dbh);
+	    sock = imp_dbh->svsock;
 	} else {
-	    do_error(drh, JW_ERR_CONNECT, MyError(sock));
-	}
-	XPUSHs(boolSV(result));
-    }
+	    if (!MyConnect(&sock,host,port,user,password,NULL,NULL)) {
+	        do_error(drh, MyErrno(sock, JW_ERR_CONNECT), MyError(sock));
+		XSRETURN_NO;
+	    }
+       }
+ 
+       if (strEQ(command, "shutdown")) {
+	   result = MyShutdown(sock);
+       } else if (strEQ(command, "reload")) {
+	   result = MyReload(sock);
+       } else if (strEQ(command, "createdb")) {
+	   result = MyCreateDb(sock, dbname);
+       } else if (strEQ(command, "dropdb")) {
+          result = MyDropDb(sock, dbname);
+       } else {
+	  croak("Unknown command: %s", command);
+       }
+#if defined(DBD_MYSQL)
+       if (result) {
+#elif defined(DBD_MSQL)
+       if (result < 0) {
+#endif
+	   do_error(SvOK(dbh) ? dbh : drh, MyErrno(sock, JW_ERR_LIST_DB),
+		    MyError(sock));
+	   result = 0;
+       } else {
+	   result = 1;
+       }
+       if (SvOK(dbh)) {
+	   MyClose(sock);
+       }
+       if (result) { XSRETURN_YES; } else { XSRETURN_NO; }
+   }
 
 
+MODULE = DBD::~~dbd_driver~~    PACKAGE = DBD::~~dbd_driver~~::db
 
-SV*
-_DropDB(drh, host, dbname=host)
-    SV *        drh
-    char *      host
-    char *      dbname
-  PROTOTYPE: $$;$
+
+void
+type_info_all(dbh)
+    SV* dbh
   PPCODE:
     {
-        dbh_t sock;
-	int result = FALSE;
-#xtract Mysql
-	MYSQL mysql;
-	sock = &mysql;
-#endxtract
-
-#xtract Mysql
-	if (items < 3) {
-	    host = NULL;
-	}
-	if (dbd_db_connect(sock,host,NULL,NULL,NULL)) {
-#xtract Msql
-	if (dbd_db_connect(&sock,host,NULL,NULL,NULL)) {
-#endxtract
-	    if (MyDropDb(sock,dbname) != -1) {
-	        result = TRUE;
-	    } else {
-	        do_error(drh, JW_ERR_DROP_DB, MyError(sock));
-	    }
-	    MyClose(sock);
-	} else {
-	    do_error(drh, JW_ERR_CONNECT, MyError(sock));
-	}
-	XPUSHs(boolSV(result));
+/* 	static AV* types = NULL; */
+/* 	if (!types) { */
+/* 	    D_imp_dbh(dbh); */
+/* 	    if (!(types = dbd_db_type_info_all(dbh, imp_dbh))) { */
+/* 	        croak("Cannot create types array (out of memory?)"); */
+/* 	    } */
+/* 	} */
+/* 	ST(0) = sv_2mortal(newRV_inc((SV*) types)); */
+        D_imp_dbh(dbh);
+	ST(0) = sv_2mortal(newRV_noinc((SV*) dbd_db_type_info_all(dbh,
+								  imp_dbh)));
+	XSRETURN(1);
     }
 
 
-MODULE = DBD::~DBD_DRIVER~    PACKAGE = DBD::~DBD_DRIVER~::db
-
-
-
-#xtract Mysql
+#if defined(DBD_MYSQL)
 
 int
 _InsertID(dbh)
     SV *	dbh
   CODE:
     D_imp_dbh(dbh);
-    int id;
     MYSQL *sock = (MYSQL*) imp_dbh->svsock;
     EXTEND( sp, 1 );
     RETVAL = mysql_insert_id(sock);
   OUTPUT:
     RETVAL
 
-#endxtract
+#endif
 
 void
 _ListDBs(dbh)
@@ -167,8 +218,10 @@ _ListDBs(dbh)
     result_t res;
     row_t cur;
     res = MyListDbs(imp_dbh->svsock);
-    if (!res) {
-        do_error(dbh, JW_ERR_LIST_DB, MyError(imp_dbh->svsock));
+    if (!res  &&  (!MyReconnect(imp_dbh->svsock, dbh)
+		   ||  !(res = MyListDbs(imp_dbh->svsock)))) {
+        do_error(dbh, MyErrno(imp_dbh->svsock, JW_ERR_LIST_DB),
+		 MyError(imp_dbh->svsock));
     } else {
         EXTEND(sp, MyNumRows(res));
 	while ((cur = MyFetchRow(res))) {
@@ -177,23 +230,6 @@ _ListDBs(dbh)
 	MyFreeResult(res);
     }
     MyClose(imp_dbh->svsock);
-
-void
-_SelectDB(dbh, dbname)
-    SV *	dbh
-    char *	dbname
-    PPCODE:
-    D_imp_dbh(dbh);
-#xtract Mysql
-    if (imp_dbh->svsock->net.fd != -1) {
-#xtract Msql
-    if (imp_dbh->svsock != -1) {
-#endxtract
-        if (MySelectDb(imp_dbh->svsock, dbname) == -1) {
-            do_error(dbh, JW_ERR_SELECT_DB, 
-			   MyError(imp_dbh->svsock));
-        }
-    }
 
 
 void
@@ -204,8 +240,10 @@ _ListTables(dbh)
     result_t res;
     row_t cur;
     res = MyListTables(imp_dbh->svsock);
-    if (!res) {
-        do_error(dbh, JW_ERR_LIST_TABLES, MyError(imp_dbh->svsock));
+    if (!res  &&  (!MyReconnect(imp_dbh->svsock, dbh)
+		   ||  !(res = MyListTables(imp_dbh->svsock)))) {
+        do_error(dbh, MyErrno(imp_dbh->svsock, JW_ERR_LIST_TABLES),
+		 MyError(imp_dbh->svsock));
     } else {
         while ((cur = MyFetchRow(res))) {
             XPUSHs(sv_2mortal((SV*)newSVpv( cur[0], strlen(cur[0]))));
@@ -255,14 +293,86 @@ do(dbh, statement, attr=Nullsv, ...)
 }
 
 
-MODULE = DBD::~DBD_DRIVER~    PACKAGE = DBD::~DBD_DRIVER~::st
+SV*
+ping(dbh)
+    SV* dbh;
+  PROTOTYPE: $
+  CODE:
+    {
+        int result;
+	D_imp_dbh(dbh);
+#if defined(DBD_MYSQL)
+	result = (mysql_ping(imp_dbh->svsock) == 0)  ||
+	    MyReconnect(imp_dbh->svsock, dbh);
+#elif defined(DBD_MSQL)
+	result = TRUE;
+#endif
+	RETVAL = boolSV(result);
+    }
+  OUTPUT:
+    RETVAL
+
+
 
 void
-_NumRows(sth)
-    SV *	sth
-    PPCODE:
-    D_imp_sth(sth);
-    EXTEND( sp, 1 );
-    PUSHs( sv_2mortal((SV*)newSViv(imp_sth->row_num)));
+quote(dbh, str, type=NULL)
+    SV* dbh
+    SV* str
+    SV* type
+  PROTOTYPE: $$;$
+  PPCODE:
+    {
+        SV* quoted = dbd_db_quote(dbh, str, type);
+	if (quoted) {
+	    ST(0) = sv_2mortal(quoted);
+	}
+	XSRETURN(1);
+    }
 
-# end of mysql.xs
+
+#if defined(DBD_MSQL) && defined(IDX_TYPE)
+
+void
+getsequenceinfo(dbh, table)
+    SV* dbh
+    char* table
+  PROTOTYPE: $$
+  PPCODE:
+  {
+    m_seq* seq;
+    D_imp_dbh(dbh);
+    seq = msqlGetSequenceInfo(imp_dbh->svsock, table);
+    if (!seq) {
+        do_error(dbh, MyErrno(sock, JW_ERR_SEQUENCE), MyError(sock));
+	XSRETURN_UNDEF;
+    } else {
+        EXTEND(sp, 2);
+	ST(0) = sv_2mortal(newSViv(seq->step));
+	ST(1) = sv_2mortal(newSViv(seq->value));
+	XSRETURN(2);
+	Safefree(seq);
+    }
+  }
+
+#endif /* defined(DBD_MSQL) && defined(IDX_TYPE) */
+
+MODULE = DBD::~~dbd_driver~~    PACKAGE = DBD::~~dbd_driver~~::st
+
+int
+dataseek(sth, pos)
+    SV* sth
+    int pos
+  PROTOTYPE: $$
+  CODE:
+{
+    D_imp_sth(sth);
+    if (imp_sth->cda) {
+        MyDataSeek(imp_sth->cda, pos);
+	RETVAL = 1;
+    } else {
+        RETVAL = 0;
+	do_error(sth, JW_ERR_NOT_ACTIVE, "Statement not active");
+    }
+}
+  OUTPUT:
+    RETVAL

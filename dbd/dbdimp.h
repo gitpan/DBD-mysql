@@ -28,6 +28,7 @@
  *  Header files we use
  */
 #include <DBIXS.h>  /* installed by the DBI module                        */
+
 #include "myMsql.h"
 
 
@@ -52,7 +53,9 @@ enum errMsgs {
     JW_ERR_NO_RESULT,
     JW_ERR_NOT_IMPLEMENTED,
     JW_ERR_ILLEGAL_PARAM_NUM,
-    JW_ERR_MEM
+    JW_ERR_MEM,
+    JW_ERR_LIST_INDEX,
+    JW_ERR_SEQUENCE
 };
 
 
@@ -63,12 +66,15 @@ enum av_attribs {
     AV_ATTRIB_NAME = 0,
     AV_ATTRIB_TABLE,
     AV_ATTRIB_TYPE,
+    AV_ATTRIB_SQL_TYPE,
     AV_ATTRIB_IS_PRI_KEY,
     AV_ATTRIB_IS_NOT_NULL,
     AV_ATTRIB_NULLABLE,
     AV_ATTRIB_LENGTH,
     AV_ATTRIB_IS_NUM,
     AV_ATTRIB_TYPE_NAME,
+    AV_ATTRIB_PRECISION,
+    AV_ATTRIB_SCALE,
 #ifdef DBD_MYSQL
     AV_ATTRIB_MAX_LENGTH,
     AV_ATTRIB_IS_KEY,
@@ -112,6 +118,7 @@ struct imp_dbh_st {
     dbh_t svsock;           /*  socket number for msql, &mysql for
 			     *  mysql
 			     */
+    int compression;        /*  Using compression.  */
 };
 
 
@@ -168,6 +175,7 @@ struct imp_sth_st {
 #define dbd_db_commit		mysql_db_commit
 #define dbd_db_rollback		mysql_db_rollback
 #define dbd_db_disconnect	mysql_db_disconnect
+#define dbd_discon_all		mysql_db_discon_all
 #define dbd_db_destroy		mysql_db_destroy
 #define dbd_db_STORE_attrib	mysql_db_STORE_attrib
 #define dbd_db_FETCH_attrib	mysql_db_FETCH_attrib
@@ -180,10 +188,47 @@ struct imp_sth_st {
 #define dbd_st_blob_read	mysql_st_blob_read
 #define dbd_st_STORE_attrib	mysql_st_STORE_attrib
 #define dbd_st_FETCH_attrib	mysql_st_FETCH_attrib
+#define dbd_st_FETCH_internal	mysql_st_FETCH_internal
 #define dbd_describe		mysql_describe
 #define dbd_bind_ph		mysql_bind_ph
+#define BindParam		mysql_st_bind_param
 #define dbd_st_internal_execute mysql_st_internal_execute
 #define mymsql_constant         mysql_constant
+#define do_warn			mysql_dr_warn
+#define do_error		mysql_dr_error
+#define dbd_db_type_info_all    mysql_db_type_info_all
+#define dbd_db_quote            mysql_db_quote
+#elif defined(DBD_MSQL1)
+#define dbd_init		msql1_dr_init
+#define dbd_db_login		msql1_db_login
+#define dbd_db_do		msql1_db_do
+#define dbd_db_commit		msql1_db_commit
+#define dbd_db_rollback		msql1_db_rollback
+#define dbd_db_disconnect	msql1_db_disconnect
+#define dbd_discon_all		msql1_db_discon_all
+#define dbd_db_destroy		msql1_db_destroy
+#define dbd_db_STORE_attrib	msql1_db_STORE_attrib
+#define dbd_db_FETCH_attrib	msql1_db_FETCH_attrib
+#define dbd_st_prepare		msql1_st_prepare
+#define dbd_st_rows		msql1_st_rows
+#define dbd_st_execute		msql1_st_execute
+#define dbd_st_fetch		msql1_st_fetch
+#define dbd_st_finish		msql1_st_finish
+#define dbd_st_destroy		msql1_st_destroy
+#define dbd_st_blob_read	msql1_st_blob_read
+#define dbd_st_STORE_attrib	msql1_st_STORE_attrib
+#define dbd_st_FETCH_attrib	msql1_st_FETCH_attrib
+#define dbd_st_FETCH_internal	msql1_st_FETCH_internal
+#define dbd_describe		msql1_describe
+#define dbd_bind_ph		msql1_bind_ph
+#define BindParam		msql1_st_bind_param
+#define dbd_st_internal_execute msql1_st_internal_execute
+#define mymsql_constant         msql1_constant
+#define do_warn			msql1_dr_warn
+#define do_error		msql1_dr_error
+#define dbd_dr_types            msql1_dr_types
+#define dbd_db_type_info_all    msql1_db_type_info_all
+#define dbd_db_quote            msql1_db_quote
 #else
 #define dbd_init		msql_dr_init
 #define dbd_db_login		msql_db_login
@@ -191,6 +236,7 @@ struct imp_sth_st {
 #define dbd_db_commit		msql_db_commit
 #define dbd_db_rollback		msql_db_rollback
 #define dbd_db_disconnect	msql_db_disconnect
+#define dbd_discon_all		msql_db_discon_all
 #define dbd_db_destroy		msql_db_destroy
 #define dbd_db_STORE_attrib	msql_db_STORE_attrib
 #define dbd_db_FETCH_attrib	msql_db_FETCH_attrib
@@ -203,10 +249,17 @@ struct imp_sth_st {
 #define dbd_st_blob_read	msql_st_blob_read
 #define dbd_st_STORE_attrib	msql_st_STORE_attrib
 #define dbd_st_FETCH_attrib	msql_st_FETCH_attrib
+#define dbd_st_FETCH_internal	msql_st_FETCH_internal
 #define dbd_describe		msql_describe
 #define dbd_bind_ph		msql_bind_ph
+#define BindParam		msql_st_bind_param
 #define dbd_st_internal_execute msql_st_internal_execute
 #define mymsql_constant         msql_constant
+#define do_warn			msql_dr_warn
+#define do_error		msql_dr_error
+#define dbd_dr_types            msql_dr_types
+#define dbd_db_type_info_all    msql_db_type_info_all
+#define dbd_db_quote            msql_db_quote
 #endif
 
 #include <dbd_xsh.h>
@@ -216,4 +269,30 @@ SV	*dbd_db_fieldlist _((result_t res));
 void    dbd_preparse _((imp_sth_t *imp_sth, SV *statement));
 int dbd_st_internal_execute(SV*, SV*, SV*, int, imp_sth_ph_t*, result_t*,
 			    dbh_t, int);
+AV* dbd_db_type_info_all _((SV* dbh, imp_dbh_t* imp_dbh));
+SV* dbd_db_quote(SV*, SV*, SV*);
 
+
+typedef struct {
+    char* typeName;
+    int dataType;
+    int precision;
+    char* literalPrefix;
+    char* literalSuffix;
+    char* createParams;
+    int nullable;
+    int caseSensitive;
+    int searchable;
+    int unsignedAttribute;
+    int money;
+    int autoIncrement;
+    char* localTypeName;
+    int minimumScale;
+    int maximumScale;
+    AV* av;
+} mymsql_type;
+
+extern mymsql_type dbd_dr_types[];
+
+
+extern int MysqlReconnect(SV*);

@@ -1,35 +1,78 @@
 # -*- perl -*-
 
-package ~DRIVER~::Statement;
+package ~~nodbd_driver~~::Statement;
+
+@~~nodbd_driver~~::Statement::ISA = qw(DBI::st);
 
 use strict;
 use vars qw($OPTIMIZE $VERSION $AUTOLOAD);
 
-$VERSION = '~NODBD_VERSION~';
+$VERSION = '~~nodbd_version~~';
 
 $OPTIMIZE = 0; # controls, which optimization we default to
 
-sub numrows    { my $x = shift; $x->{'NUMROWS'} or $x->fetchinternal( 'NUMROWS'
-  ) }
-sub numfields  { shift->fetchinternal( 'NUMFIELDS' ) }
-sub affectedrows { my $x = shift; $x->fetchinternal( 'AFFECTEDROWS') }
-sub insertid  { my $x = shift; $x->fetchinternal( 'INSERTID') }
-sub table      { return wantarray ? @{shift->fetchinternal('TABLE'    )}: shift->fetchinternal('TABLE'    )}
-sub name       { return wantarray ? @{shift->fetchinternal('NAME'     )}: shift->fetchinternal('NAME'     )}
-sub type       { return wantarray ? @{shift->fetchinternal('TYPE'     )}: shift->fetchinternal('TYPE'     )}
-sub isnotnull  { return wantarray ? @{shift->fetchinternal('ISNOTNULL')}: shift->fetchinternal('ISNOTNULL')}
-sub isprikey   { return wantarray ? @{shift->fetchinternal('ISPRIKEY' )}: shift->fetchinternal('ISPRIKEY' )}
-sub isnum     { return wantarray ? @{shift->fetchinternal('ISNUM' )}: shift->fetchinternal('ISNUM' )}
-sub isblob     { return wantarray ? @{shift->fetchinternal('ISBLOB' )}: shift->fetchinternal('ISBLOB' )}
-sub length     { return wantarray ? @{shift->fetchinternal('LENGTH'   )}: shift->fetchinternal('LENGTH'   )}
+sub fetchrow ($) {
+    my($self) = shift;
+    my($ref) = $self->fetchrow_arrayref;
+    if ($ref) {
+	@$ref;
+    } else {
+	();
+    }
+}
+sub fetchhash ($) {
+    my($self) = shift;
+    my($ref) = $self->fetchrow_hashref;
+    if ($ref) {
+	%$ref;
+    } else {
+	();
+    }
+}
+sub fetchcol ($$) {
+    my($self, $colNum) = @_;
+    my(@col);
+    $self->dataseek(0);
+    my($ref);
+    while ($ref = $self->fetchrow_arrayref) {
+	push(@col, $ref->[$colNum]);
+    }
+    @col;
+}
+sub dataseek ($$) {
+    my($self, $pos) = @_;
+    $self->func($pos, 'dataseek');
+}
+
+sub numrows { my($self) = shift; $self->rows() }
+sub numfields { my($self) = shift; $self->{'NUM_OF_FIELDS'} }
+sub affectedrows { my($self) = shift; $self->{'affected_rows'} }
+sub insertid { my($self) = shift; $self->{'insertid'} }
+sub arrAttr ($$) {
+    my($self, $attr) = @_;
+    my($arr) = $self->{$attr};
+    wantarray ? @$arr : $arr
+}
+sub table ($) { shift->arrAttr('table') }
+sub name ($) { shift->arrAttr('NAME') }
+~#if#~ ('~~dbd_driver~~' eq 'mysql')
+sub type ($) { shift->arrAttr('mysql_type') }
+~#else#~
+sub type ($) { shift->arrAttr('msql_type') }
+~#endif#~
+sub isnotnull ($) { shift->arrAttr('is_not_null') }
+sub isprikey ($) { shift->arrAttr('is_pri_key') }
+sub isnum ($) { shift->arrAttr('is_num') }
+sub isblob ($) { shift->arrAttr('is_blob') }
+sub length ($) { shift->arrAttr('length') }
 
 sub maxlength  {
     my $sth = shift;
     my $result;
-#xtract Mysql
-    $result = $sth->fetchinternal('MAXLENGTH');
-#xtract Msql
-    if (!($result = $sth->{MAXLENGTH})) {
+~#if#~ ('~~dbd_driver~~' eq 'mysql')
+    $result = $sth->fetchinternal('maxlength');
+~#else#~
+    if (!($result = $sth->{'maxlength'})) {
 	$result = [];
 	my ($l);
 	for (0..$sth->numfields-1) {
@@ -55,17 +98,17 @@ sub maxlength  {
 	}
 	$sth->{MAXLENGTH} = $result;
     }
-#endxtract
+~#endif#~
     return wantarray ? @$result : $result;
 }
 
 sub listindices {
     my($sth) = shift;
     my(@result,$i);
-#xtract Mysql
+~#if#~ ('~~dbd_driver~~' eq 'mysql')
     return ();
-#xtract Msql
-    if (!&Msql::IDX_TYPE) {
+~#else#~
+    if (!&Msql::IDX_TYPE()) {
 	return ();
     }
     foreach $i (0..$sth->numfields-1) {
@@ -73,7 +116,7 @@ sub listindices {
 	push @result, $sth->name->[$i];
     }
     @result;
-#endxtract
+~#endif#~
 }
 
 sub AUTOLOAD {
@@ -116,15 +159,15 @@ sub as_string {
     }
     for (0..$sth->numfields-1) {
 	$l=CORE::length($sth->name->[$_]);
-#xtract Mysql
+~#if#~ ('~~dbd_driver~~' eq 'mysql')
 	if ($l < $sth->maxlength->[$_]) {
 	    $l= $sth->maxlength->[$_];
 	}
-#xtract Msql
+~#else#~
 	if ($sth->optimize  &&  $l < $sth->maxlength->[$_]) {
 	    $l= $sth->maxlength->[$_];
 	}
-#endxtract
+~#endif#~
 	if (!$sth->isnotnull  &&  $l < 4) {
 	    $l = 4;
 	}
@@ -143,7 +186,7 @@ sub as_string {
 	    $col = $row[$i];
 	    $j = @prow;
 	    $pcol = defined $col ? unctrl($col) : "NULL";
-#xtract Msql
+~#if#~ ('~~dbd_driver~~' ne 'mysql')
 	    # New in 2.0: a string is longer than it should be
 	    if (defined &Msql::TEXT_TYPE  &&
 		$sth->optimize &&
@@ -152,7 +195,7 @@ sub as_string {
 		my $l = CORE::length($col);
 		substr($pcol,$sth->length->[$j])="...($l)";
 	    }
-#endxtract
+~#endif#~
 	    push(@prow, $pcol);
 	}
 	$result .= sprintf $sprintf, @prow;

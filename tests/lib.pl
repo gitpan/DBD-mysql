@@ -9,14 +9,13 @@
 
 require 5.003;
 use strict;
-use vars qw($mdriver $dbdriver $childPid $test_dsn $test_user $test_password
-            $verbose);
+use vars qw($mdriver $dbdriver $childPid $test_dsn $test_user $test_password);
 
 
 #
 #   Driver names; EDIT THIS!
 #
-$mdriver = '~DBD_DRIVER~';
+$mdriver = '~~dbd_driver~~';
 $dbdriver = $mdriver; # $dbdriver is usually just the same as $mdriver.
                       # The exception is DBD::pNET where we have to
                       # to separate between local driver (pNET) and
@@ -26,9 +25,9 @@ $dbdriver = $mdriver; # $dbdriver is usually just the same as $mdriver.
 #
 #   DSN being used; do not edit this, edit "$dbdriver.dbtest" instead
 #
-$test_dsn      = $ENV{'DBI_DSN'}   ||  "DBI:$dbdriver:test";
-$test_user     = $ENV{'DBI_USER'}  ||  "";
-$test_password = $ENV{'DBI_PASS'}  ||  "";
+$test_dsn      = $ENV{'DBI_DSN'}   ||  "~~test_dsn~~";
+$test_user     = $ENV{'DBI_USER'}  ||  "~~test_user~~";
+$test_password = $ENV{'DBI_PASS'}  ||  "~~test_pass~~";
 
 
 $::COL_NULLABLE = 1;
@@ -38,7 +37,8 @@ $::COL_KEY = 2;
 my $file;
 if (-f ($file = "t/$dbdriver.dbtest")  ||
     -f ($file = "$dbdriver.dbtest")    ||
-    -f ($file = "../tests/$dbdriver.dbtest")) {
+    -f ($file = "../tests/$dbdriver.dbtest")  ||
+    -f ($file = "tests/$dbdriver.dbtest")) {
     eval { require $file; };
     if ($@) {
 	print STDERR "Cannot execute $file: $@.\n";
@@ -48,7 +48,8 @@ if (-f ($file = "t/$dbdriver.dbtest")  ||
 }
 if (-f ($file = "t/$mdriver.mtest")  ||
     -f ($file = "$mdriver.mtest")    ||
-    -f ($file = "../tests/$mdriver.mtest")) {
+    -f ($file = "../tests/$mdriver.mtest")  ||
+    -f ($file = "tests/$mdriver.mtest")) {
     eval { require $file; };
     if ($@) {
 	print STDERR "Cannot execute $file: $@.\n";
@@ -149,7 +150,7 @@ if (-f ($file = "t/$mdriver.mtest")  ||
 	my($result, $error, $diag) = @_;
 	++$::numTests;
 	if ($count == 2) {
-	    if ($::verbose && defined($diag)) {
+	    if (defined($diag)) {
 	        printf("$diag%s", (($diag =~ /\n$/) ? "" : "\n"));
 	    }
 	    if ($::state || $result) {
@@ -171,9 +172,9 @@ if (-f ($file = "t/$mdriver.mtest")  ||
 #
 sub DbiError ($$) {
     my($rc, $err) = @_;
-    if ($::verbose) {
-	print "Test $::numTests: DBI error $rc, $err\n";
-    }
+    $rc ||= 0;
+    $err ||= '';
+    print "Test $::numTests: DBI error $rc, $err\n";
 }
 
 
@@ -233,8 +234,8 @@ sub DbiError ($$) {
 }
 
 
-sub ErrMsg (@_) { if ($verbose) { print (@_); } }
-sub ErrMsgF (@_) { if ($verbose) { printf (@_); } }
+sub ErrMsg (@_) { print (@_); }
+sub ErrMsgF (@_) { printf (@_); }
 
 
 1;
