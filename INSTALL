@@ -220,6 +220,23 @@ t/40bindparam.t:
 > -------------cut here------------------
 
 
+5.) There are known problems with shared versions of libmysqlclient, at
+least on some Linux boxes. If you receive an error message similar to
+
+    install_driver(mysql) failed: Can't load
+    '/usr/lib/perl5/site_perl/i586-linux/auto/DBD/mysql/mysql.so'
+    for module DBD::mysql: File not found at
+    /usr/lib/perl5/i586-linux/5.00404/DynaLoader.pm line 166
+
+then this error message can be misleading: It's not mysql.so that fails
+being loaded, but libmysqlclient.so!
+
+As a workaround, clean your source directory, for example by doing a
+"make realclean" or by removing and extracting it again, and then run
+
+	perl Makefile.PL -static
+
+This option forces linkage against the static libmysqlclient.a.
 
 
 Please let us know, if you have further questions that should be dealt

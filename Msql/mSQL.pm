@@ -16,7 +16,7 @@ use DynaLoader();
 use Carp ();
 @ISA = qw(DynaLoader);
 
-$VERSION = '2.0206';
+$VERSION = '2.0207';
 
 bootstrap DBD::mSQL $VERSION;
 

@@ -12,6 +12,7 @@
 BEGIN {require 5.004;}
 use strict;
 require Config;
+require Getopt::Long;
 use ExtUtils::MakeMaker qw(prompt WriteMakefile);
 require File::Path;
 require Config;
@@ -20,8 +21,12 @@ use lib ".";
 
 use vars qw($MyConfig $VERSION $DBD_VERSION);
 
-$VERSION = "1.2006";
-$DBD_VERSION = "2.0206";
+$VERSION = "1.2007";
+$DBD_VERSION = "2.0207";
+
+
+my %options;
+Getopt::Long::GetOptions(\%options, "static");
 
 
 ############################################################################
@@ -54,7 +59,7 @@ sub Search ($$$$) {
     foreach $dir (@$gooddirs) {
 	foreach $file (@$files) {
 	    if (-f ($realfile = "$dir/$file")) {
-		return (File::Basename::dirname($realfile), $dir);
+		return (File::Basename::dirname($realfile), $dir, $realfile);
 	    }
 	}
     }
@@ -76,7 +81,7 @@ sub Search ($$$$) {
 
     foreach $file (@$files) {
 	if (-f ($realfile = "$gooddir/$file")) {
-	    return (File::Basename::dirname($realfile), $gooddir);
+	    return (File::Basename::dirname($realfile), $gooddir, $realfile);
 	}
     }
 
@@ -283,7 +288,9 @@ MSG
 }
 
 
-sub InitializeMysql () {
+sub InitializeMysql ($) {
+    my $cfg = shift;
+
     my %X;
     my @mysqldirs = ($^O =~ /mswin32/i) ?  qw(C:/mysql C:/my/myodbc)  :
 	qw{/usr/local /usr/local/mysql /usr /usr/mysql /opt/mysql};
@@ -309,7 +316,7 @@ sub InitializeMysql () {
 	unshift(@gooddirs, $gooddir);
     }
 
-    my $libdir;
+    my($libdir, $libfilename);
     if (exists($ENV{'MYSQL_LIBDIR'})) {
 	$libdir = $ENV{'MYSQL_LIBDIR'};
     } else {
@@ -320,20 +327,31 @@ sub InitializeMysql () {
 			     lib_release/lib.lib lib_debug/lib.lib);
 	} else {
 	    @searchpath = qw(lib/mysql/libmysqlclient.a
-			     lib/mysql/libmysqlclient.so
 			     lib/libmysqlclient.a
-			     lib/libmysqlclient.so
 			     client/libmysqlclient.a
+			     lib/mysql/libmysqlclient.so
+			     lib/libmysqlclient.so
 			     client/libmysqlclient.so);
 	}
-	($libdir) = Search(\@gooddirs, \@mysqldirs, \@searchpath,
-			   "Where is your mysql installed? Please tell me the"
-			   . " directory that contains\n"
-			   . "the subdir lib/.");
+	($libdir, $gooddir, $libfilename) =
+	    Search(\@gooddirs, \@mysqldirs, \@searchpath,
+		   "Where is your mysql installed? Please tell me the"
+		   . " directory that contains\n"
+		   . "the subdir lib/.");
     }
-    
+
     # List the libraries we're linking with (ADESC)
-    my $sysliblist = "-L$libdir -lmysqlclient -lm";
+    my $sysliblist;
+    if ($options{'static'}) {
+	if ($libfilename !~ /\.a/) {
+	    die "Option -static given, but no static libmysqlclient.a found";
+	}
+	$cfg->{'Mysql'}->{'EXTRA_LIBS'} = $libfilename;
+	$MY::LIBS = $libfilename;
+    } else {
+	$sysliblist = "-L$libdir -lmysqlclient";
+    }
+    $sysliblist .= " -lm";
     my $linkwith = "";
     my $defines = "-DDBD_MYSQL -DMyConnect=mysql_dr_connect"
 	. " -DMyLogin=mysql_dr_login";
@@ -539,69 +557,6 @@ the '-fPIC' flag to produce Position-Independent code.
 
 ############################################################################
 #
-#   Name:    Search
-#
-#   Purpose: Find installed files (headers or libraries)
-#
-#   Inputs:  $gooddirs - List of directories where to search; these
-#                directories are accepted immediately if a file is
-#                found there
-#            $dirs - List of additional directories where to search;
-#                these are accepted only if the users confirms them
-#            $files - List of files to search for; any of these will
-#                be sufficient
-#            $prompt - Prompt for asking the user to confirm a
-#                directory
-#
-#   Returns: List of two directories: The first directory is the basename
-#       of "$dir/$file" where $dir is one of $gooddirs or $dirs and $file
-#       is one of $files. (Note that the file name may contain preceding
-#       directory names!) The second directory is the corresponding dir
-#       od $gooddirs or $dirs.
-#
-############################################################################
-
-sub Search ($$$$) {
-    my ($gooddirs, $dirs, $files, $prompt) = @_;
-    my ($dir, $file, $realfile);
-    foreach $dir (@$gooddirs) {
-	foreach $file (@$files) {
-	    if (-f ($realfile = "$dir/$file")) {
-		return (File::Basename::dirname($realfile), $dir);
-	    }
-	}
-    }
-    my ($gooddir);
-    foreach $dir (@$dirs) {
-	foreach $file (@$files) {
-	    if (-f "$dir/$file") {
-		$gooddir = $dir;
-		last;
-	    }
-	}
-	if ($gooddir) {
-	    last;
-	}
-    }
-    $gooddir ||= $$gooddirs[0] || $$dirs[0];
-
-    $gooddir = prompt($prompt, $gooddir)  ||  $gooddir;  # for 5.002;
-
-    foreach $file (@$files) {
-	if (-f ($realfile = "$gooddir/$file")) {
-	    return (File::Basename::dirname($realfile), $gooddir);
-	}
-    }
-
-    if (@$files == 1) {
-	die "Cannot find " . $$files[0] . " in $gooddir.\n";
-    }
-    die "Cannot find one of " . join(", ", @$files) . " in $gooddir";
-}
-
-
-############################################################################
-#
 #    Name:    Init
 #
 #    Purpose: Setup variables that are manually configurable
@@ -729,7 +684,7 @@ about compatibility to existing applications!}, "y");
             QueryDb($MyConfig, 'Mysql', 'mysql');
         }
         if (!exists $MyConfig->{'X_mysql'}) {
-            $MyConfig->{'X_mysql'} = InitializeMysql();
+            $MyConfig->{'X_mysql'} = InitializeMysql($MyConfig);
         }
     }
 
@@ -973,4 +928,3 @@ if ($ExtUtils::MakeMaker::VERSION >= 5.43) {
 }
 
 ExtUtils::MakeMaker::WriteMakefile(%opts);
-

@@ -6,10 +6,12 @@ require Config;
 require DBI::DBD;
 use lib "..";
 
-use vars qw($MyConfig);
+use vars qw($MyConfig $MyCfg);
 if (!defined($MyConfig)) {
     require ".status";
 }
+
+$MyCfg = $MyConfig->{'~DRIVER~'};
 
 my($lcDriver) = lc '~DRIVER~';
 my(%hash) = %{$MyConfig->{"X_$lcDriver"}};
@@ -79,4 +81,14 @@ sub libscan {
     } else {
 	$path;
     }
+}
+
+
+sub const_loadlibs {
+    my $self = shift;
+    my $str = $self->SUPER::const_loadlibs(@_);
+    if (my $el = $::MyCfg->{'EXTRA_LIBS'}) {
+	$str =~ s/((?:EXTRALIBS|LDLOADLIBS)\s+=\s+)/$1$el /sg;
+    }
+    $str;
 }
