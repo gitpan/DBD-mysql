@@ -4,6 +4,7 @@
 #
 #   This is testing the transaction support.
 #
+$^W = 1;
 
 
 #

@@ -7,7 +7,7 @@
 #   You may distribute under the terms of either the GNU General Public
 #   License or the Artistic License, as specified in the Perl README file.
 
-package DBD::mysql;
+package DBD::mSQL;
 use strict;
 use vars qw(@ISA $VERSION $err $errstr $drh);
 
@@ -16,9 +16,9 @@ use DynaLoader();
 use Carp ();
 @ISA = qw(DynaLoader);
 
-$VERSION = '2.0096';
+$VERSION = '2.01_17';
 
-bootstrap DBD::mysql $VERSION;
+bootstrap DBD::mSQL $VERSION;
 
 
 $err = 0;	# holds error code   for DBI::err
@@ -32,18 +32,60 @@ sub driver{
     $class .= "::dr";
 
     # not a 'my' since we use it above to prevent multiple drivers
-    $drh = DBI::_new_drh($class, { 'Name' => 'mysql',
+    $drh = DBI::_new_drh($class, { 'Name' => 'mSQL',
 				   'Version' => $VERSION,
-				   'Err'    => \$DBD::mysql::err,
-				   'Errstr' => \$DBD::mysql::errstr,
-				   'Attribution' => 'DBD::mysql by Jochen Wiedmann'
+				   'Err'    => \$DBD::mSQL::err,
+				   'Errstr' => \$DBD::mSQL::errstr,
+				   'Attribution' => 'DBD::mSQL by Jochen Wiedmann'
 				 });
 
     $drh;
 }
 
+sub _OdbcParse($$$) {
+    my($class, $dsn, $hash, $args) = @_;
+    my($var, $val);
+    if (!defined($dsn)) {
+	return;
+    }
+    while (length($dsn)) {
+	if ($dsn =~ /([^:;]*)[:;](.*)/) {
+	    $val = $1;
+	    $dsn = $2;
+	} else {
+	    $val = $dsn;
+	    $dsn = '';
+	}
+	if ($val =~ /([^=]*)=(.*)/) {
+	    $var = $1;
+	    $val = $2;
+	    if ($var eq 'hostname') {
+		$hash->{'host'} = $val;
+	    } elsif ($var eq 'db'  ||  $var eq 'dbname') {
+		$hash->{'database'} = $val;
+	    } else {
+		$hash->{$var} = $val;
+	    }
+	} else {
+	    foreach $var (@$args) {
+		if (!defined($hash->{$var})) {
+		    $hash->{$var} = $val;
+		    last;
+		}
+	    }
+	}
+    }
+}
+
+sub _OdbcParseHost ($$) {
+    my($class, $dsn) = @_;
+    my($hash) = {};
+    $class->_OdbcParse($dsn, $hash, ['host', 'port']);
+    ($hash->{'host'}, $hash->{'port'});
+}
+
 sub AUTOLOAD {
-    my ($meth) = $DBD::mysql::AUTOLOAD;
+    my ($meth) = $DBD::mSQL::AUTOLOAD;
     my ($smeth) = $meth;
     $smeth =~ s/(.*)\:\://;
 
@@ -56,7 +98,7 @@ sub AUTOLOAD {
 1;
 
 
-package DBD::mysql::dr; # ====== DRIVER ======
+package DBD::mSQL::dr; # ====== DRIVER ======
 use strict;
 
 sub connect {
@@ -69,17 +111,25 @@ sub connect {
     $password ||= '';
 
     # create a 'blank' dbh
-    my $this;
+    my($this, $privateAttrHash);
+    $privateAttrHash = {
+	'dsn' => $dsn,
+	'user' => $username,
+	'password' => $password
+    };
 
-    if (!defined($this = DBI::_new_dbh($drh, { 'dsn' => $dsn,
-					       'user' => $username
-                                             }))) {
+    DBD::mSQL->_OdbcParse($dsn, $privateAttrHash,
+				  ['database', 'host', 'port']);
+
+    if (!defined($this = DBI::_new_dbh($drh, {}, $privateAttrHash))) {
 	return undef;
     }
 
+    $this->{'private_DBD_mSQL_attr'} = $privateAttrHash;
+
     # Call msqlConnect func in mSQL.xs file
     # and populate internal handle data.
-    DBD::mysql::db::_login($this, $dsn, $username, $password)
+    DBD::mSQL::db::_login($this, $dsn, $username, $password)
 	  or $this = undef;
     $this;
 }
@@ -89,23 +139,59 @@ sub data_sources {
     my(@dsn) = $self->func('', '_ListDBs');
     my($i);
     for ($i = 0;  $i < @dsn;  $i++) {
-	$dsn[$i] = "DBI:mysql:$dsn[$i]";
+	$dsn[$i] = "DBI:mSQL:$dsn[$i]";
     }
     @dsn;
 }
 
+sub admin {
+    my($drh) = shift;
+    my($command) = shift;
+    my($dbname) = ($command eq 'createdb'  ||  $command eq 'dropdb') ?
+	shift : '';
+    my($host, $port) = DBD::mSQL->_OdbcParseHost(shift(@_) || '');
+    my($user) = shift || '';
+    my($password) = shift || '';
 
-package DBD::mysql::db; # ====== DATABASE ======
+    $drh->func(undef, $command,
+	       $dbname || '',
+	       $host || '',
+	       $port || '',
+	       $user, $password, '_admin_internal');
+}
+
+sub _CreateDB {
+    my($drh) = shift;
+    my($host) = (@_ > 1) ? shift : undef;
+    my($dbname) = shift;
+    if (!$DBD::mSQL::QUIET) {
+	warn "'_CreateDB' is deprecated, use 'admin' instead";
+    }
+    $drh->func('createdb', $dbname, $host, 'admin');
+}
+
+sub _DropDB {
+    my($drh) = shift;
+    my($host) = (@_ > 1) ? shift : undef;
+    my($dbname) = shift;
+    if (!$DBD::mSQL::QUIET) {
+	warn "'DropDB' is deprecated, use 'admin' instead";
+    }
+    $drh->func('dropdb', $dbname, $host, 'admin');
+}
+
+
+package DBD::mSQL::db; # ====== DATABASE ======
 use strict;
 
-%DBD::mysql::db::db2ANSI = ("INT"   =>  "INTEGER",
+%DBD::mSQL::db::db2ANSI = ("INT"   =>  "INTEGER",
 			   "CHAR"  =>  "CHAR",
 			   "REAL"  =>  "REAL",
 			   "IDENT" =>  "DECIMAL"
                           );
 
 ### ANSI datatype mapping to mSQL datatypes
-%DBD::mysql::db::ANSI2db = ("CHAR"          => "CHAR",
+%DBD::mSQL::db::ANSI2db = ("CHAR"          => "CHAR",
 			   "VARCHAR"       => "CHAR",
 			   "LONGVARCHAR"   => "CHAR",
 			   "NUMERIC"       => "INTEGER",
@@ -135,7 +221,7 @@ sub prepare {
     });
 
     # Populate internal handle data.
-    if (!DBD::mysql::st::_prepare($sth, $statement)) {
+    if (!DBD::mSQL::st::_prepare($sth, $statement)) {
 	$sth = undef;
     }
 
@@ -145,41 +231,53 @@ sub prepare {
 sub db2ANSI {
     my $self = shift;
     my $type = shift;
-    return $DBD::mysql::db::db2ANSI{"$type"};
+    return $DBD::mSQL::db::db2ANSI{"$type"};
 }
 
 sub ANSI2db {
     my $self = shift;
     my $type = shift;
-    return $DBD::mysql::db::ANSI2db{"$type"};
+    return $DBD::mSQL::db::ANSI2db{"$type"};
 }
 
-sub quote {
-    my ($self, $str) = @_;
-    if (!defined($str)) { return 'NULL'; }
-    $str =~ s/([\0\\\'])/\\$1/g;
-    "'$str'";
-}
-
-# Just a stub for backward compatibility; use is deprecated
 sub _ListFields($$) {
-    my ($self, $table) = @_;
-    my ($sth);
-    if (!($sth = $self->prepare("LISTFIELDS $table"))) {
-	return undef;
+    my($self, $table) = @_;
+    if (!$DBD::mSQL::QUIET) {
+	warn "'_ListFields' is deprecated, use the SQL query 'LISTFIELDS \$table' instead.";
     }
-    if (!$sth->execute) {
-	return undef;
+    my($sth) = $self->prepare("LISTFIELDS $table");
+    if ($sth  &&  !$sth->execute()) {
+	undef $sth;
     }
     $sth;
 }
 
-package DBD::mysql::st; # ====== STATEMENT ======
+sub admin {
+    my($dbh) = shift;
+    my($command) = shift;
+    my($dbname) = ($command eq 'createdb'  ||  $command eq 'dropdb') ?
+	shift : '';
+    $dbh->{'Driver'}->func($dbh, $command, $dbname, '', '', '',
+			   '_admin_internal');
+}
+
+
+package DBD::mSQL::st; # ====== STATEMENT ======
 use strict;
 
 # Just a stub for backward compatibility; use is deprecated
 sub _ListSelectedFields ($) {
+    if (!$DBD::mSQL::QUIET) {
+	warn "_ListSelectedFields is deprecated and superfluos";
+    }
     shift;
+}
+
+sub _NumRows ($) {
+    if (!$DBD::mSQL::QUIET) {
+	warn "_NumRows is deprecated, use \$sth->rows instead.";
+    }
+    shift->rows;
 }
 
 1;
@@ -196,38 +294,61 @@ Interface (DBI)
 
     use DBI;
 
-    $dbh = DBI->connect("DBI:mSQL:$database:$hostname:$port",
-			undef, undef);
+    $driver = "mSQL"; # or "mSQL1";
+    $dsn = "DBI:$driver:database=$database;host=$hostname;port=$port";
+
+    $dbh = DBI->connect($dsn,	undef, undef);
 
         or
 
-    $dbh = DBI->connect("DBI:mysql:$database:$hostname:$port",
-			$user, $password);
+    $driver = "mysql";
+    $dsn = "DBI:$driver:database=$database;host=$hostname;port=$port";
 
-    @databases = DBD::mysql::dr->func( $hostname, '_ListDBs' );
+    $dbh = DBI->connect($dsn, $user, $password);
+
+
+    @databases = DBD::mysql::dr->func($host, $port, '_ListDBs');
     @tables = $dbh->func( '_ListTables' );
 
-    $sth = $dbh->prepare("LISTFIELDS $table");
-    $sth->execute;
-    $sth->finish;
-
     $sth = $dbh->prepare("SELECT * FROM foo WHERE bla");
+       or
+    $sth = $dbh->prepare("LISTFIELDS $table");
+       or
+    $sth = $dbh->prepare("LISTINDEX $table $index");
     $sth->execute;
     $numRows = $sth->rows;
     $numFields = $sth->{'NUM_OF_FIELDS'};
     $sth->finish;
 
-    $rc = $drh->func( $database, '_CreateDB' );
-    $rc = $drh->func( $host, $database, '_CreateDB' );
-    $rc = $drh->func( $database, '_DropDB' );
-    $rc = $drh->func( $host, $database, '_DropDB' );
+    $rc = $drh->func('createdb', $database, $host, $user, $password, 'admin');
+    $rc = $drh->func('dropdb', $database, $host, $user, $password, 'admin');
+    $rc = $drh->func('shutdown', $host, $user, $password, 'admin');
+    $rc = $drh->func('reload', $host, $user, $password, 'admin');
+
+    $rc = $dbh->func('createdb', $database, 'admin');
+    $rc = $dbh->func('dropdb', $database, 'admin');
+    $rc = $dbh->func('shutdown', 'admin');
+    $rc = $dbh->func('reload', 'admin');
+
+
+=head1 EXPERIMENTAL SOFTWARE
+
+This package contains experimental software and should *not* be used
+in a production environment. We are following the Linux convention and
+treat the "even" releases (1.18xx as of this writing, perhaps 1.20xx,
+1.22xx, ... in the future) as stable. Only bug or portability fixes
+will go into these releases.
+
+The "odd" releases (1.19xx as of this writing, perhaps 1.21xx, 1.23xx
+in the future) will be used for testing new features or other serious
+code changes.
 
 
 =head1 DESCRIPTION
 
 <DBD::mysql> and <DBD::mSQL> are the Perl5 Database Interface drivers for
 the mysql, mSQL 1.I<x> and mSQL 2.I<x> databases. The drivers are part
-of the I<mysql-modules> and I<Msql-modules> packages, respectively.
+of the I<Msql-Mysql-modules> package.
 
 
 =head2 Class Methods
@@ -238,20 +359,20 @@ of the I<mysql-modules> and I<Msql-modules> packages, respectively.
 
     use DBI;
 
-    $dbh = DBI->connect("DBI:mSQL:$database", undef, undef);
-    $dbh = DBI->connect("DBI:mSQL:$database:$hostname", undef, undef);
-    $dbh = DBI->connect("DBI:mSQL:$database:$hostname:$port",
-			undef, undef);
+    $driver = "mSQL";  #  or "mSQL1"
+    $dsn = "DBI:$driver:$database";
+    $dsn = "DBI:$driver:database=$database;host=$hostname";
+    $dsn = "DBI:$driver:database=$database;host=$hostname;port=$port";
+
+    $dbh = DBI->connect($dsn, undef, undef);
 
         or
 
-    use DBI;
+    $dsn = "DBI:mysql:$database";
+    $dsn = "DBI:mysql:database=$database;host=$hostname";
+    $dsn = "DBI:mysql:database=$database;host=$hostname;port=$port";
 
-    $dbh = DBI->connect("DBI:mysql:$database", $user, $password);
-    $dbh = DBI->connect("DBI:mysql:$database:$hostname",
-			$user, $password);
-    $dbh = DBI->connect("DBI:mysql:$database:$hostname:$port",
-			$user, $password);
+    $dbh = DBI->connect($dsn, $user, $password);
 
 A C<database> must always be specified.
 
@@ -310,7 +431,14 @@ an empty list is returned.
 
 =item B<ListFields>
 
-Deprecated, see L</COMPATIBILITY ALERT> below.
+Deprecated, see L</COMPATIBILITY ALERT> below. Used to be equivalent
+to
+
+    $sth = $dbh->prepare("LISTFIELDS $table");
+    $sth->execute;
+
+See L</SQL EXTENSIONS> below.
+
 
 =item B<ListSelectedFields>
 
@@ -319,13 +447,74 @@ Deprecated, see L</COMPATIBILITY ALERT> below.
 =back
 
 
-=head2 Database Manipulation
+=head2 Server Administration
 
 =over 4
 
-=item B<CreateDB>
+=item admin
 
-=item B<DropDB>
+    $rc = $drh->func("createdb", $dbname, [host, user, password,], 'admin');
+    $rc = $drh->func("dropdb", $dbname, [host, user, password,], 'admin');
+    $rc = $drh->func("shutdown", [host, user, password,], 'admin');
+    $rc = $drh->func("reload", [host, user, password,], 'admin');
+
+      or
+
+    $rc = $dbh->func("createdb", $dbname, 'admin');
+    $rc = $dbh->func("dropdb", $dbname, 'admin');
+    $rc = $dbh->func("shutdown", 'admin');
+    $rc = $dbh->func("reload", 'admin');
+
+For server administration you need a server connection. For obtaining
+this connection you have two options: Either use a driver handle (drh)
+and supply the appropriate arguments (host, defaults localhost, user,
+defaults to '' and password, defaults to ''). A driver handle can be
+obtained with
+
+    $drh = DBI->install_driver('mSQL');
+
+Otherwise reuse the existing connection of a database handle (dbh).
+
+There's only one function available for administrative purposes, comparable
+to the m(y)sqladmin programs. The command being execute depends on the
+first argument:
+
+=over 8
+
+=item createdb
+
+Creates the database $dbname. Equivalent to "m(y)sqladmin create $dbname".
+
+=item dropdb
+
+Drops the database $dbname. Equivalent to "m(y)sqladmin drop $dbname".
+
+It should be noted that database deletion is
+I<not prompted for> in any way.  Nor is it undo-able from DBI.
+
+    Once you issue the dropDB() method, the database will be gone!
+
+These method should be used at your own risk.
+
+=item shutdown
+
+Silently shuts down the database engine. (Without prompting!)
+Equivalent to "m(y)sqladmin shutdown".
+
+=item reload
+
+Reloads the servers configuration files and/or tables. This can be particularly
+important if you modify access privileges or create new users.
+
+=back
+
+
+=item B<_CreateDB>
+
+=item B<_DropDB>
+
+
+These methods are deprecated, see L</COMPATIBILITY ALERT> below.!
 
     $rc = $drh->func( $database, '_CreateDB' );
     $rc = $drh->func( $database, '_DropDB' );
@@ -335,18 +524,9 @@ Deprecated, see L</COMPATIBILITY ALERT> below.
     $rc = $drh->func( $host, $database, '_CreateDB' );
     $rc = $drh->func( $host, $database, '_DropDB' );
 
-These two methods allow programmers to create and drop databases from
-DBI scripts. Since mSQL disallows the creation and deletion of
-databases over the network, these methods explicitly connect to the
-mSQL daemon running on the machine C<localhost> and execute these
-operations there.
-
-It should be noted that database deletion is I<not prompted for> in
-any way.  Nor is it undo-able from DBI.
-
-    Once you issue the dropDB() method, the database will be gone!
-
-These methods should be used at your own risk.
+These methods are equivalent to the admin method with "createdb" or
+"dropdb" commands, respectively. In particular note the warnings
+concerning the missing prompt for dropping a database!
 
 =back
 
@@ -498,79 +678,103 @@ MySQL uses &DBD::mysql::FIELD_TYPE_SHORT, &DBD::mysql::FIELD_TYPE_STRING etc.
 =back
 
 
-=head1 COMPATIBILITY ALERT
+=head1 SQL EXTENSIONS
 
-As of version 0.70 DBD::mSQL has a new maintainer. Even more, the sources
-have been completely rewritten in August 1997, so it seemed apropriate
-to bump the version number: Incompatibilities are more than likely.
-
-=head2 Recent changes:
-
-=over 2
-
-=item New connect method
-
-DBD::mSQL and DBD::mysql now use the new I<connect> method as introduced
-with DBI 0.83 or so. For compatibility reasons the old method still
-works, but the driver issues a warning when he detects use of the
-old version. There's no workaround, you must update your sources.
-(Sorry, but the change was in DBI, not in DBD::mysql and DBD::mSQL.)
-
-=item _ListFields returning statement handle
-
-As of Msql-modules 1.1805, the private functions
-
-    $dbh->func($table, "_ListFields");
-
-and
-
-    $sth->func("_ListSelectedFields");
-
-no longer return a simple hash, but a statement handle.
-(I<_ListSelectedFields> is a stub now which just returns $self.)
-This should usually not be visible, when your statement handle gets
-out of scope. However, if your database handle (C<$dbh> in the
-above example) disconnects, either because you explicitly disconnect
-or because he gets out of scope, and the statement handle is still
-active, DBI will issue a warning for active cursors being destroyed.
-
-The simple workaround is to execute C<$sth-E<gt>finish> or to ensure
-that C<$sth> gets out of scope before C<$dbh>. Sorry, but it was
-obvious nonsense to support two different things for accessing the
-basically same thing: A M(y)SQL result.
-
-=back
-
-The drivers do not conform to the current DBI specification in some minor
-points. For example, the private attributes I<is_num> or I<is_blob> have
-been written I<IS_NUM> and I<IS_BLOB>. For historical reasons we continue
-supporting the capitalized names, although the DBI specification now
-reserves capitalized names for standard names, mixed case for DBI and lower
-case for private attributes and methods.
-
-We currently consider anything not conforming to the DBI as deprecated.
-It is quite possible that we remove support of these deprecated names
-and methods in the future. In particular these includes:
+Certain metadata functions of mSQL and mysql that are available on the
+C API level, haven't been implemented here. Instead they are implemented
+as "SQL extensions" because they return in fact nothing else but the
+equivalent of a statement handle. These are:
 
 =over 4
 
-=item C<$sth-E<gt>func($table, '_ListSelectedFields')>
+=item LISTFIELDS $table
 
-highly deprecated, all attributes are directly accessible via the
-statement handle. For example instead of
+Returns a statement handle that describes the columns of $table.
+Ses the docs of msqlListFields or mysql_list_fields for details.
 
-  $ref = $sth->func($table, '_ListSelectedFields')
-  my @names = $ref->{'NAME'}
+=item LISTINDEX $table $index
 
-you just do a
-
-  my @names = @{$sth->{'NAME'}};
-
-=item Capitalized attribute names
-
-Deprecated, should be replaced by the respective lower case names.
+mSQL only; returns a statement handle that describes the index $index
+of table $table. See the docs of msqlListIndex for details.
 
 =back
+
+=head1 COMPATIBILITY ALERT
+
+Certain attributes methods have been declared obsolete or deprecated,
+partially because there names are agains DBI's naming conventions,
+partially because they are just superfluous or obsoleted by other methods.
+
+Obsoleted attributes and methods will be explicitly listed below. You cannot
+expect them to work in future versions, but they have not yet been scheduled
+for removal and currently they should be usable without any code modifications.
+
+Deprecated attributes and methods will currently issue a warning unless
+you set the variable $DBD::mSQL::QUIET to a true value. This will
+be the same for Msql-Mysql-modules 1.19xx and 1.20xx. They will be silently
+removed in 1.21xx.
+
+Here is a list of obsoleted attributes and/or methods:
+
+=over 4
+
+=item _CreateDB
+
+=item _DropDB
+
+deprecated, use
+
+    $drh->func("createdb", $dbname, $host, "admin")
+    $drh->func("dropdb", $dbname, $host, "admin")
+
+=item _ListFields
+
+deprecated, use
+
+    $sth = $dbh->prepare("LISTFIELDS $table")
+    $sth->execute;
+
+=item _ListSelectedFields
+
+deprecated, just use the statement handles for accessing the same attributes.
+
+=item _NumRows
+
+deprecated, use
+
+    $numRows = $sth->rows;
+
+=item IS_PRI_KEY
+
+=item IS_NOT_NULL
+
+=item IS_KEY
+
+=item IS_BLOB
+
+=item IS_NUM
+
+=item LENGTH
+
+=item MAXLENGTH
+
+=item NUMROWS
+
+=item NUMFIELDS
+
+=item RESULT
+
+=item TABLE
+
+=item TYPE
+
+All these statement handle attributes are obsolete. They can be simply
+replaced by just downcasing the attribute names. You should expect them
+to be deprecated as of Msql-Mysql-modules 1.1821. (Whenever that will
+be.)
+
+=back
+
 
 =head1 BUGS
 
