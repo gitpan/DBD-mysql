@@ -438,15 +438,13 @@ sub FieldList($$;$) {
 	if ($dsn ne $rdsn) {
 	    my $ndbh = DBI->connect($rdsn, $user, $password);
 	    if ($ndbh) {
-		$sth = $ndbh->prepare("LISTFIELDS $table");
-		$sth->execute;
+		$sth = $ndbh->func($table, "_ListFields");
 		($sth, $ndbh);
 	    } else {
 		(undef);
 	    }
 	} else {
-	    $sth = $dbh->prepare($table, "LISTFIELDS $table");
-	    $sth->execute;
+	    $sth = $dbh->func($table, "_ListFields");
 	    ($sth);
 	}
     };
@@ -566,7 +564,6 @@ sub RelShow (;$$) {
     }
 
     if ($ndbh) {
-	undef $sth;
 	$ndbh->disconnect;
     }
 }
@@ -1386,7 +1383,7 @@ argument.
 
 Lists the tables of the dsn corresponding to I<$dbh>.
 
-=item C<$sth = $dbh-E<gt>prepare("LISTFIELDS $table")>
+=item C<$sth = $dbh-E<gt>func($table, '_ListFields')>
 
 Returns a statement handle describing the fields of a table. This could,
 for example, be implemented by a

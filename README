@@ -10,20 +10,6 @@ and may be used, copied and redistributed under the same terms as perl
 (see the files README, Copying and Artistic in the perl distribution).
 
 
-*EXPERIMENTAL SOFTWARE*
------------------------
-
-This package contains experimental software and should *not* be used
-in a production environment. We are following the Linux convention and
-treat the "even" releases (1.18xx as of this writing, perhaps 1.20xx,
-1.22xx, ... in the future) as stable. Only bug or portability fixes
-will go into these releases.
-
-The "odd" releases (1.19xx as of this writing, perhaps 1.21xx, 1.23xx
-in the future) will be used for testing new features or other serious
-code changes.
-
-
 Where to get it
 ---------------
 
@@ -88,9 +74,8 @@ than DBD::mSQL and DBD::mysql.
 
 As of Msql-Mysql-modules 1.1815, we consider DBD::mSQL and DBD::mysql
 superior over MsqlPerl and MysqlPerl: They are sufficiently stable
-(there´s only one known problem in DBI itself and it's announced to
-be fixed in DBI 0.91) and definitely faster. Anyways, you have to decide
-on your own about the trade-offs.
+and definitely faster. Anyways, you have to decide on your own about
+the trade-offs.
 
 
 What you achieve with Msql.pm and Mysql.pm
@@ -220,6 +205,23 @@ Mailing lists
 Several mailing lists are devoted to the support of this package or
 parts of it. 
 
+  - The most preferable is
+
+      msql-mysql-modules@tcx.se
+
+    (This is the only one where the current maintainer is listening.)
+    It's an open list, for subscribing just send a mail with the
+    words
+
+	subscribe msql-mysql-modules
+
+		or
+
+	subscribe msql-mysql-modules-digest
+
+    to mdomo@tcx.se. (The latter will guarantee that you receive only
+    one email per day.) A mailing list archive is in preparation.
+
   - MsqlPerl- and MysqlPerl related topics are best sent to
 
       msqlperl@franz.ww.tu-berlin.de.
@@ -238,21 +240,24 @@ parts of it.
 
       msqlperl-request@franz.ww.tu-berlin.de
 
+    This list is leaving out, as the machine franz.ww.tu-berlin.de
+    will be switched off in the near future.
+
   - DBI users will prefer the DBI related mailing lists
 
-     dbi-users@fugue.net
-     dbi-announce@fugue.net
+     dbi-users@fugue.com
+     dbi-announce@fugue.com
 
    these are closed mailing lists: You must subscribe before posting
    here. You can subscribe at
 
-     http://www.fugue.net/
+     http://www.fugue.com/dbi
 
    where you also find archives of these mailing lists.
 
 Announcements of new versions of major importance will usually be made
 on comp.lang.perl.announce. Smaller updates will be announced on the
-mailing list.
+mailing lists.
 
 
 
