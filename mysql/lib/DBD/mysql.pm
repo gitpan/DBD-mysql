@@ -16,7 +16,7 @@ use DynaLoader();
 use Carp ();
 @ISA = qw(DynaLoader);
 
-$VERSION = '2.0407';
+$VERSION = '2.0408';
 
 bootstrap DBD::mysql $VERSION;
 
@@ -246,7 +246,7 @@ sub _SelectDB ($$) {
 	    }
 	}
 	my $sth = $dbh2->prepare("LISTTABLES", { 'rows' => \@tables,
-						 'NAMES' => $names });
+						 'NAME' => $names });
 	if (!$sth) {
 	    DBI::set_err($sth, $dbh2->err(), $dbh2->errstr());
 	}

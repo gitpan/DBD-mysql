@@ -7,7 +7,7 @@ package Mysql::Statement;
 use strict;
 use vars qw($VERSION $AUTOLOAD);
 
-$VERSION = '1.2207';
+$VERSION = '1.2208';
 
 sub fetchrow ($) {
     my $self = shift;

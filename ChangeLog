@@ -1,3 +1,8 @@
+1999-10-13  Jochen Wiedmann  <joe@ispsoft.de> (1.2209)
+
+	* Fixed bug in $dbh->tables(): Didnt't work with
+	  empty databases.
+
 1999-09-17  Jochen Wiedmann  <joe@ispsoft.de> (1.2208)
 
 	* dbd/bindparam.h: Added support for MySQL's double
