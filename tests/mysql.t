@@ -9,7 +9,10 @@
 # are configured wrong in this respect. But you're welcome to test it
 # out.
 
-my $host = shift @ARGV || "";
+my $host = shift @ARGV || $ENV{'DBI_HOST'} || "";
+my $user = shift @ARGV || $ENV{'DBI_USER'} || "";
+my $password = shift @ARGV || $ENV{'DBI_PASS'} || "";
+my $dbname = shift @ARGV || $ENV{'DBI_DB'} || "test";
 
 # That's the standard perl way tostart a testscript. It announces that
 # that many tests are to follow. And it does so before anything can go
@@ -42,7 +45,7 @@ my(
 
 # You may connect in two steps: (1) Connect and (2) SelectDB...
 
-if ($dbh = Mysql->connect($host)){
+if ($dbh = Mysql->connect($host, $dbname, $user, $password)){
     print "ok 1\n";
 } else {
     $Mysql::db_errstr ||= "";
@@ -67,7 +70,7 @@ if ($dbh->selectdb("test")){
 # Or you may call connect with two arguments, the first being the
 # host, and the second being the DB
 
-if ($dbh = Mysql->connect($host,"test")){
+if ($dbh = Mysql->connect($host,$dbname,$user,$password)){
     print("ok 3\n");
 } else {
     die "not ok 3: $Mysql::db_errstr\n";
@@ -185,7 +188,7 @@ $sth->is_not_null->[1] > 0
 
 # Are we able to just reconnect with the *same* scalar ($dbh) playing
 # the role of the db-handle?
-if ($dbh = Mysql->connect($host,"test")){
+if ($dbh = Mysql->connect($host,$dbname,$user,$password)){
     print("ok 12\n");
 } else {
     print "not ok 12: $Mysql::db_errstr\n";
@@ -283,7 +286,7 @@ $row[2] eq "Pauline" and print ("ok 17\n") or print("not ok 17\n");
 # economically -- they cost you a slot in the server connection table,
 # and you can easily run out of available slots -- we, in the test
 # script want to know what happens with more than one handle
-if ($dbh2 = Mysql->connect($host,"test")){
+if ($dbh2 = Mysql->connect($host,$dbname,$user,$password)){
     print("ok 19\n");
 } else {
     print "not ok 19\n";
@@ -309,7 +312,7 @@ $dbh2->query("drop table $secondtable") and print("ok 22\n") or print("not ok 22
 }
 
 # The third connection within a single script. I promise, this will do...
-if ($dbh3 = Connect Mysql($host,"test")){
+if ($dbh3 = Connect Mysql($host,$dbname,$user,$password)){
     print("ok 25\n");
 } else {
     test_error(25,"connect->$host");

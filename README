@@ -10,20 +10,6 @@ and may be used, copied and redistributed under the same terms as perl
 (see the files README, Copying and Artistic in the perl distribution).
 
 
-*EXPERIMENTAL SOFTWARE*
------------------------
-
-This package contains experimental software and should *not* be used
-in a production environment. We are following the Linux convention and
-treat the "even" releases (1.18xx as of this writing, perhaps 1.20xx,
-1.22xx, ... in the future) as stable. Only bug or portability fixes
-will go into these releases.
-
-The "odd" releases (1.19xx as of this writing, perhaps 1.21xx, 1.23xx
-in the future) will be used for testing new features or other serious
-code changes.
-
-
 Where to get it
 ---------------
 
@@ -214,32 +200,41 @@ command line editor, a basic completion and history, and you get the
 output of any select query piped into your favorite pager program.
 
 
-Mailing list
-------------
+Mailing lists
+-------------
 
-Please direct your questions to the mailing list devoted to the
-support of the package:
+Several mailing lists are devoted to the support of this package or
+parts of it. 
 
-    msqlperl@franz.ww.tu-berlin.de.
+  - MsqlPerl- and MysqlPerl related topics are best sent to
 
-Do not send them to me. If you do, I'll eventually forward your mail
-to the mailing list. So please be prepared to have your question
-exposed to hundreds of msqlperl users.
+      msqlperl@franz.ww.tu-berlin.de.
 
-Before you post your questions have a look at the archive of the
-mailing list at
+    Note that this mailing list really is for MsqlPerl and MysqlPerl
+    only and not for DBI specific topics, besides perhaps installation
+    of the Msql-Mysql-modules. An archive of this list is available
+    at
 
-    http://franz.ww.tu-berlin.de/msqlperl
+      http://franz.ww.tu-berlin.de/msqlperl
 
-It would be kind if you would subscribe to the mailing list yourself,
-so you can answer the same questions later that you have asked
-yourself before.
+    Please search this archive first before posting a new question.
+    The mailing list is open: You can post questions without being
+    subscribed. If you want to subscribe, send a mail with the word
+    "subscribe" in the first line of the body to
 
-Subscribe to the list by sending mail to
+      msqlperl-request@franz.ww.tu-berlin.de
 
-    msqlperl-request@franz.ww.tu-berlin.de
+  - DBI users will prefer the DBI related mailing lists
 
-with the word "subscribe" in the body of the message.
+     dbi-users@fugue.net
+     dbi-announce@fugue.net
+
+   these are closed mailing lists: You must subscribe before posting
+   here. You can subscribe at
+
+     http://www.fugue.net/
+
+   where you also find archives of these mailing lists.
 
 Announcements of new versions of major importance will usually be made
 on comp.lang.perl.announce. Smaller updates will be announced on the

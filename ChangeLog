@@ -1,9 +1,15 @@
-1998-01-07  Jochen Wiedmann  <joe@ispsoft.de> (1.1900)
+1998-01-18  Jochen Wiedmann  <joe@ispsoft.de> (1.1825)
 
-	* dbd/dbd.xs.in: Implemented $dbh->quote() in XS.
-	* dbd/dbd.xs.in: Added '_Admin' function.
-	* dbd/dbd.xs.in, dbd/dbdimp.c: Added automatic reconnect when
-	  mysql returns CR_SERVER_GONE_ERROR.
+	* README: Added hint for not using msqlperl mailing lists
+	  except for MsqlPerl and MysqlPerl related things.
+	* dbd/dbimon.in: Leaving pager mode worked unreliable; fixed.
+	  Andreas Koenig <koenig@anna.mind.de>	
+	* tests/akmisc.t, tests/mysql.t, tests/mysql2.t: Minor modifications
+	  in the connect parameters for passing the test suite under
+	  Windows/NT.
+
+1998-01-12  Jochen Wiedmann  <joe@laptop.ispsoft.de>
+
 	* Makefile.lib (InitializeMysql): Modified order of -I statements
 	  (Inside MySQL distribution it can happen that headers of recently
 	  installed DBI versions are used instead of the correct headers.)
@@ -14,6 +20,10 @@
 	  in dbh's.
 	* Makefile.lib (InitializeMsql): Fixed typo that made MSQL_HOME
 	  useless. (Ray Zimmermann, <rz10@cornell.edu>)
+	* dbd/dbd.xs.in: Fixed CreateDB and DropDB to use 'localhost'
+	  as default host.
+	* dbd/dbd.pm.in: Fixed CreateDB and DropDB docs.
+	  (Ray Zimmermann, <rz10@cornell.edu>)
 	* Makefile.lib (InitializeMysql): Fixed typo "lib/mysqlclient.a"
 	  to "lib/libmysqlclient.a". (Michael 'Monty' Widenius,
 	  <monty@tcx.se>)

@@ -10,22 +10,6 @@ _MY::Config::Init(0);
 
 my $DRIVER = "~DRIVER~";
 
-my(@xtractFiles) = (["../dbd/myMsql.c", "myMsql.c"],
-		    ["../nodbd/nodbd.xs.in", "~DRIVER~.xs"],
-		    ["../nodbd/pmsql.in",
-		     ($DRIVER eq 'Msql') ? 'pmsql' : 'pmysql', 1],
-		    ["../nodbd/typemap", "typemap"],
-		    ["../tests/lib.pl", "t/lib.pl"],
-		    ["../tests/msql1.t", "t/msql1.t"],
-		    ["../tests/msql2.t", "t/msql2.t"],
-		    ["../tests/akmisc.t", "t/akmisc.t"]);
-
-my $ref;
-foreach $ref (@xtractFiles) {
-    &_MY::Config::Xtract($ref, "~DRIVER~", "~DBD_DRIVER~", "../xtract");
-}
-
-
 sub ~DRIVER~_config () {
     my $ref = _MY::Config::Initialize~DRIVER~();
     my %hash = %$ref;
@@ -44,7 +28,16 @@ $_MY::Config::Postamble = $pa;
 sub Create~DRIVER~Postamble {
     my $pa = "\n";
     my $ref;
-    foreach $ref (@xtractFiles) {
+    foreach $ref (@_MY::Config::Files::~DRIVER~,
+		  ["../dbd/myMsql.c", "myMsql.c"],
+		  ["../nodbd/nodbd.xs.in", "~DRIVER~.xs"],
+		  ["../nodbd/pmsql.in",
+		   ($DRIVER eq 'Msql') ? 'pmsql' : 'pmysql', 1],
+		  ["../nodbd/typemap", "typemap"],
+		  ["../tests/lib.pl", "t/lib.pl"],
+		  ["../tests/msql1.t", "t/msql1.t"],
+		  ["../tests/msql2.t", "t/msql2.t"],
+		  ["../tests/akmisc.t", "t/akmisc.t"]) {
 	$pa .= _MY::Config::XtractF($ref, "~DRIVER~", "~DBD_DRIVER~",
 				    "../xtract");
     }

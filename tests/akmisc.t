@@ -41,7 +41,10 @@ $::listTablesHook = $::listTablesHook = sub ($) {
 # are configured wrong in this respect. But you're welcome to test it
 # out.
 
-my $host = shift @ARGV || "";
+my $host = shift @ARGV || $ENV{'DBI_HOST'} || "";
+my $user = shift @ARGV || $ENV{'DBI_USER'} || "";
+my $password = shift @ARGV || $ENV{'DBI_PASS'} || "";
+my $dbname = shift @ARGV || $ENV{'DBI_DB'} || "test";
 
 use vars qw($mdriver $verbose $state $COL_NULLABLE $COL_KEY $testNum);
 if ($mdriver eq 'mysql') {
@@ -114,11 +117,11 @@ sub drop {shift->query("drop table $_[0]"); }
 while (Testing()) {
     # You may connect in two steps: (1) Connect and (2) SelectDB...
 
-    Test($state or ($dbh = $class->connect($host)), undef,
+    Test($state or ($dbh = $class->connect($host, $dbname, $user, $password)), undef,
 	 "First connect to server")
 	or ServerError();
 
-    Test($state or $dbh->selectdb("test"))
+    Test($state or $dbh->selectdb($dbname))
 	or DatabaseError();
 
     Test($state or ((undef $dbh) or 1));
@@ -126,7 +129,8 @@ while (Testing()) {
     # Or you may call connect with two arguments, the first being the
     # host, and the second being the DB
 
-    Test($state or ($dbh = $class->connect($host,"test")), undef,
+    Test($state or
+	 ($dbh = $class->connect($host,$dbname, $user, $password)), undef,
 	 "Trying two argument connect")
 	or !$verbose or print("Error while connecting: $$errstrRef.\n");
 
@@ -264,7 +268,7 @@ while (Testing()) {
     
     # Are we able to just reconnect with the *same* scalar ($dbh) playing
     # the role of the db-handle?
-    Test($state or ($dbh = $class->connect($host,"test")))
+    Test($state or ($dbh = $class->connect($host,$dbname, $user, $password)))
 	or !$verbose or print("Error while reconnecting: $$errstrRef.\n");
     
     # We may have an arbitrary number of statementhandles. Each
@@ -385,15 +389,15 @@ while (Testing()) {
     # economically -- they cost you a slot in the server connection table,
     # and you can easily run out of available slots -- we, in the test
     # script want to know what happens with more than one handle
-    Test($state or ($dbh2 = $class->connect($host,"test")), undef,
+    Test($state or ($dbh2 = $class->connect($host,$dbname,$user,$password)), undef,
 	 'Reconnect')
 	or !$verbose or print("Error while reconnecting: $$errstrRef.\n");
     
     # Some quick checks about the contents of the handle...
-    Test($state or ($dbh2->database eq "test"))
+    Test($state or ($dbh2->database eq $dbname))
 	or !$verbose or printf("Error in database name, expected %s,"
 			       . " got %s.\n",
-			       "test", $dbh2->database);
+			       $dbname, $dbh2->database);
     if (!$state) {
 	$i = ($mdriver eq 'mysql') ? $dbh2->sockfd : $dbh2->sock;
     }
@@ -428,16 +432,16 @@ while (Testing()) {
     }
     
     # The third connection within a single script. I promise, this will do...
-    Test($state or ($dbh3 = Connect $class($host,"test")), undef,
+    Test($state or ($dbh3 = Connect $class($host,$dbname,$user,$password)), undef,
 	 'Third connection')
 	or test_error($dbh3, $testNum);
     
     Test($state or ($dbh3->host eq $host))
 	or !$verbose or printf("Wrong host name, expected %s, got %s.\n",
 			       $host, $dbh3->host);
-    Test($state or ($dbh3->database eq "test"))
+    Test($state or ($dbh3->database eq $dbname))
 	or !$verbose or printf("Wrong database name, expected %s, got %s.\n",
-			       "test", $dbh3->database);
+			       $dbname, $dbh3->database);
     
     # For what it's worth, we have a tough job for the server here. First
     # we define two simple subroutines. The goal of these is to make the
