@@ -21,7 +21,7 @@ ExtUtils::MakeMaker::WriteMakefile(CONFIGURE => \&~DRIVER~_config);
 sub MY::postamble {
     my $pa = "\n";
     my $ref;
-    foreach $ref (@_MY::Config::Files::~DBD_DRIVER~) {
+    foreach $ref (@_MY::Config::Files::~DRIVER~) {
 	my($from, $to) = @$ref;
 	$from = "../$from";
 	$to =~ s/~DRIVER~\///;

@@ -17,7 +17,7 @@ require Config;
 require Cwd;
 
 
-my $VERSION = 1.1817;
+my $VERSION = 1.1818;
 my $DBD_VERSION = 2.006;
 
 

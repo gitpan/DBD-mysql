@@ -28,7 +28,7 @@ sub maxlength  {
     my $result;
     if ($sth->isa("Mysql::Statement")) {
 	$result = $sth->fetchinternal('MAXLENGTH');
-    } else {
+    } elsif (!($result = $sth->{MAXLENGTH})) {
 	$result = [];
 	my ($l);
 	for (0..$sth->numfields-1) {
@@ -53,6 +53,7 @@ sub maxlength  {
 		++$i;
 	    }
 	}
+	$sth->{MAXLENGTH} = $result;
     }
     return wantarray ? @$result : $result;
 }
@@ -127,18 +128,19 @@ sub as_string {
     $sth->dataseek(0);
     my(@row);
     while (@row = $sth->fetchrow) {
-	my ($col, $pcol, @prow);
+	my ($col, $pcol, @prow, $i);
 	while ($col = shift @row) {
+	    $i = @prow;
 	    $pcol = defined $col ? unctrl($col) : "NULL";
 	    # New in 2.0: a string is longer than it should be
 	    if (!$sth->isa('Mysql::Statement')  &&
 		defined &Msql::TEXT_TYPE  &&
 		$sth->optimize &&
-		$sth->type->[$_] == &Msql::TEXT_TYPE &&
-		length($pcol) > $sth->length->[$_] + 5
+		$sth->type->[$i] == &Msql::TEXT_TYPE &&
+		length($pcol) > $sth->length->[$i] + 5
 		) {
 		my $l = length($col);
-		substr($pcol,$sth->length->[$_])="...($l)";
+		substr($pcol,$sth->length->[$i])="...($l)";
 	    }
 	    push(@prow, $pcol);
 	}

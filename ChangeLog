@@ -1,4 +1,16 @@
-Sat Oct 25 16:30:01 1997  Jochen Wiedmann  <joe@nt.ispsoft.de>
+Mon Oct 27 00:50:08 1997  Jochen Wiedmann  <joe@nt.ispsoft.de> (1.1818)
+
+	* nodbd/Makefile.PL.in: Fixed dependencies for "xtract" files.
+
+	* nodbd/nodbd.xs.in: Fixed ISNUM attribute in fetchinternal.
+
+	* nodbd/statement.pm.in: Yet one more fix in the new as_string
+	  method. :-(
+
+	* nodbd/statement.pm.in: Msql::Statement::maxlength caches
+	  its return value now
+
+Sat Oct 25 16:30:01 1997  Jochen Wiedmann  <joe@nt.ispsoft.de> (1.1817)
 
 	* Makefile.PL,dbd/Makefile.PL.in,nodbd/Makefile.PL.in: Added
 	  dependencies for files being created from dbd and nodbd
@@ -9,7 +21,7 @@ Sat Oct 25 16:30:01 1997  Jochen Wiedmann  <joe@nt.ispsoft.de>
 	  old connect methods.
 	* nodbd/statement.pm.in: Fixed bug in Msql::Statement::maxlength.
 
-Fri Oct 24 01:29:08 1997  Jochen Wiedmann  <joe@ispsoft.de>
+Fri Oct 24 01:29:08 1997  Jochen Wiedmann  <joe@ispsoft.de> (1.1816)
 
 	* dbd/myMsql.c (MyConnect): Fixed use of mysql_real_connect
 

@@ -198,7 +198,7 @@ fetchinternal(handle, key)
     } else if (strEQ(key, "ISPRIKEY")) {
 	MYPERL_FETCH_INTERNAL(av_push(av,(SV*)newSViv((IV)IS_PRI_KEY(curField->flags))););
     } else if (strEQ(key, "ISNUM")) {
-	MYPERL_FETCH_INTERNAL(av_push(av,(SV*)newSViv((IV)IS_NUM(curField->flags))););
+	MYPERL_FETCH_INTERNAL(av_push(av,(SV*)newSViv((IV)IS_NUM(curField->type))););
 #ifdef DBD_MYSQL
     } else if (strEQ(key, "ISUNIQUEKEY")) {
 	MYPERL_FETCH_INTERNAL(av_push(av,(SV*)newSViv((IV)IS_UNIQUE_KEY(curField->flags))););
