@@ -793,11 +793,16 @@ WIN32 INSTALLATION
     I have never attempted to install DBD::mSQL under Win32, so this is only
     for MySQL. If anyone succeeds, please let me know what you did.
 
-    If you are using the ActiveState port of Perl, there's a binary package
-    of DBD::mysql available at www.tcx.se, see the download page. This can
-    be installed with *ppm*. Otherwise it is recommended to use a binary
-    distribution of Perl that already includes DBD::mysql. For example you
-    find one at www.tcx.se.
+    If you are using ActivePerl, you may use ppm to install DBD-mysql. For
+    Perl 5.6, please do
+
+     ppm install http://www.perl.com/CPAN-local/authors/id/JWIED/DBD-mysql-1.2212.x86.ppd
+
+    That should do. For Perl 5.005, ActiveState offers a package and you can
+    simply do
+
+     ppm
+     install DBD-mysql
 
     Otherwise you definitely *need* a C compiler. And it *must* be the same
     compiler that was being used for compiling Perl itself. If you don't

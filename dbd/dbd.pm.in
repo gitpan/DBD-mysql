@@ -1244,8 +1244,8 @@ for MySQL. If anyone succeeds, please let me know what you did.
 If you are using ActivePerl, you may use ppm to install DBD-mysql.
 For Perl 5.6, please do
 
- ppm
- install ftp://ftp.de.uu.net/pub/CPAN/authors/id/JWIED/DBD-mysql-1.2212.x86.ppd
+ ppm install http://www.perl.com/CPAN-local/authors/id/JWIED/DBD-mysql-1.2212.x86.ppd
+
 
 That should do. For Perl 5.005, ActiveState offers a package and you can
 simply do

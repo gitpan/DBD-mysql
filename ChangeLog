@@ -1,3 +1,12 @@
+2000-05-10  Jochen Wiedmann  <joe@ispsoft.de> (1.2214)
+
+	* dbd/dbdimp.c: Fixed bug that timestamp fields weren't quoted.
+	  Chris Winters <cwinters@intes.net>
+
+2000-04-26  Jochen Wiedmann  <joe@ispsoft.de> (1.2213)
+
+	* dbd/dbimon.in: Fixed tags in pod.
+
 2000-04-15  Jochen Wiedmann  <joe@ispsoft.de> (1.2212)
 
 	* Makefile.PL: Fixed use of builder-provided passwords.

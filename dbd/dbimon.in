@@ -1423,7 +1423,7 @@ STDOUT.
 
 print usage summary
 
-=item C<dsn E<lt>dsnE<gt>
+=item C<dsn E<lt>dsnE<gt>>
 
 Connects to the given E<lt>dsnE<gt>, the old connection is closed.
 
@@ -1447,7 +1447,7 @@ The latter possibilities are not supported by the DBI - these work
 with private methods. Currently they are implemented for DBD::mSQL
 and DBD::mysql.
 
-=item C<se[t] [E<lt>varE<gt> [E<lt>valE<gt>]]
+=item C<se[t] [E<lt>varE<gt> [E<lt>valE<gt>]]>
 
 This command displays and modifies dbimon's internal variables.
 Without arguments, all variables and their current settings are

@@ -113,7 +113,7 @@ static const sql_type_info_t SQL_GET_TYPE_INFO_values[] = {
   /*
     FIELD_TYPE_NULL ?
   */
-  { "timestamp", SQL_TIMESTAMP,                    14, NULL, NULL, NULL,
+  { "timestamp", SQL_TIMESTAMP,                    14, "'", "'", NULL,
     0, 0, 1, 0, 0, 0, "timestamp",
     0, 0, 0, FIELD_TYPE_TIMESTAMP,   0
     /* 7 */
