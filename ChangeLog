@@ -1,8 +1,17 @@
-2001-10-31  Jochen Wiedmann  <joe@ispsoft.de> (1.2216)
+2001-11-04  Jochen Wiedmann  <joe@ispsoft.de> (2.1001)
 
-	* Portability changes for mSQL 3 and MySQL 4.
+	* Quoting now based on mysql_real_escape_string. Thanks
+	  to Dave Rolsky <autarch@urth.org> for suggesting this.
 
-2001-04-01  Jochen Wiedmann  <joe@ispsoft.de> (1.2216)
+2001-11-02  Jochen Wiedmann  <joe@ispsoft.de> (2.1000)
+
+	* Portability changes for MySQL 4.
+
+2001-05-25  Jochen Wiedmann  <joe@ispsoft.de> (2.0901)
+
+	* dbdimp.c: Fixed $dbh->{mysql_insertid}; added t/insertid.t
+
+2001-04-01  Jochen Wiedmann  <joe@ispsoft.de> (2.0900)
 
 	* Added transaction support for MySQL.
 	  (Bob Lyons <lyons@nextrials.com>)
