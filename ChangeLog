@@ -1,3 +1,8 @@
+1998-08-16  Jochen Wiedmann  <joe@ispsoft.de> (1.2001)
+
+	* dbd/dbdimp.c (dbd_st_FETCH_internal): Added a forgotten
+	  #ifdef TEXT_TYPE ... #endif around the mSQL 2 types.
+
 1998-08-15  Jochen Wiedmann  <joe@ispsoft.de> (1.2000)
 
 	* dbd/dbd.pm.in (connect): Fixed memory leak by removing the

@@ -1260,6 +1260,7 @@ SV* dbd_st_FETCH_internal(SV* sth, int what, result_t res, int cacheit) {
 		        case REAL_TYPE:   i = SQL_REAL;     break;
 		        case IDENT_TYPE:  i = SQL_VARCHAR;  break;
 		        case NULL_TYPE:   i = SQL_VARCHAR;  break;
+#ifdef TEXT_TYPE
 		        case TEXT_TYPE:   i = SQL_VARCHAR;  break;
 		        case DATE_TYPE:   i = SQL_DATE;     break;
 		        case UINT_TYPE:   i = SQL_BIGINT;   break;
@@ -1268,6 +1269,7 @@ SV* dbd_st_FETCH_internal(SV* sth, int what, result_t res, int cacheit) {
 		        case IDX_TYPE:    i = SQL_VARCHAR;  break;
 		        case SYSVAR_TYPE: i = SQL_VARCHAR;  break;
 		        case ANY_TYPE:    i = SQL_VARCHAR;  break;
+#endif
 		        default:          i = SQL_VARCHAR;  break;
 		    }
 #endif

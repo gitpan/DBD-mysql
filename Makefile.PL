@@ -20,8 +20,8 @@ use lib ".";
 
 use vars qw($MyConfig $VERSION $DBD_VERSION);
 
-$VERSION = "1.2000";
-$DBD_VERSION = "2.0200";
+$VERSION = "1.2001";
+$DBD_VERSION = "2.0201";
 
 
 ############################################################################
