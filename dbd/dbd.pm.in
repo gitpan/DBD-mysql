@@ -261,6 +261,10 @@ sub admin {
 			   '_admin_internal');
 }
 
+sub _SelectDB ($$) {
+    die "_SelectDB is removed from this module; use DBI->connect instead.";
+}
+
 
 package DBD::~DBD_DRIVER~::st; # ====== STATEMENT ======
 use strict;

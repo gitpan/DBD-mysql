@@ -16,7 +16,8 @@ $password = shift @ARGV || $ENV{'DBI_PASS'} || "";
 $dbname = shift @ARGV || $ENV{'DBI_DB'} || "test";
 
 $| = 1;
-do ((-f "lib.pl") ? "lib.pl" : "t/lib.pl");
+do ((-f "lib.pl") ? "lib.pl" :
+    (-f "t/lib.pl" ? "t/lib.pl" : "Mysql/t/lib.pl"));
 if ($mdriver ne "mysql") { print "1..0\n"; exit 0; }
 eval { require Mysql };
 my $db = Mysql->connect($host, $dbname, $user, $password);
@@ -52,6 +53,7 @@ print "ok 1\n";
 	for $j (0,1) {
 	    $q = qq{insert into $t[$j] values \('00$i',\'}.bytometer(2**$i).qq{\'\)};
 	    my $ok = 3 + $i*2 + $j;
+	    print "Query: $q\n";
 	    if ($db->query($q)->affected_rows == 1) {
 		print "ok $ok\n";
 	    } else {

@@ -16,7 +16,7 @@ use DynaLoader();
 use Carp ();
 @ISA = qw(DynaLoader);
 
-$VERSION = '2.01_17';
+$VERSION = '2.01_18';
 
 bootstrap DBD::mSQL $VERSION;
 
@@ -259,6 +259,10 @@ sub admin {
 	shift : '';
     $dbh->{'Driver'}->func($dbh, $command, $dbname, '', '', '',
 			   '_admin_internal');
+}
+
+sub _SelectDB ($$) {
+    die "_SelectDB is removed from this module; use DBI->connect instead.";
 }
 
 

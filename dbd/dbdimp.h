@@ -165,12 +165,13 @@ struct imp_sth_st {
  *
  * These defines avoid name clashes for multiple statically linked DBD's	*/
 #ifdef DBD_MYSQL
-#define dbd_init		mysql_init
+#define dbd_init		mysql_dr_init
 #define dbd_db_login		mysql_db_login
 #define dbd_db_do		mysql_db_do
 #define dbd_db_commit		mysql_db_commit
 #define dbd_db_rollback		mysql_db_rollback
 #define dbd_db_disconnect	mysql_db_disconnect
+#define dbd_discon_all		mysql_db_discon_all
 #define dbd_db_destroy		mysql_db_destroy
 #define dbd_db_STORE_attrib	mysql_db_STORE_attrib
 #define dbd_db_FETCH_attrib	mysql_db_FETCH_attrib
@@ -183,17 +184,22 @@ struct imp_sth_st {
 #define dbd_st_blob_read	mysql_st_blob_read
 #define dbd_st_STORE_attrib	mysql_st_STORE_attrib
 #define dbd_st_FETCH_attrib	mysql_st_FETCH_attrib
+#define dbd_st_FETCH_internal	mysql_st_FETCH_internal
 #define dbd_describe		mysql_describe
 #define dbd_bind_ph		mysql_bind_ph
+#define BindParam		mysql_st_bind_param
 #define dbd_st_internal_execute mysql_st_internal_execute
 #define mymsql_constant         mysql_constant
+#define do_warn			mysql_dr_warn
+#define do_error		mysql_dr_error
 #elif defined(DBD_MSQL1)
-#define dbd_init		msql1_init
+#define dbd_init		msql1_dr_init
 #define dbd_db_login		msql1_db_login
 #define dbd_db_do		msql1_db_do
 #define dbd_db_commit		msql1_db_commit
 #define dbd_db_rollback		msql1_db_rollback
 #define dbd_db_disconnect	msql1_db_disconnect
+#define dbd_discon_all		msql1_db_discon_all
 #define dbd_db_destroy		msql1_db_destroy
 #define dbd_db_STORE_attrib	msql1_db_STORE_attrib
 #define dbd_db_FETCH_attrib	msql1_db_FETCH_attrib
@@ -206,17 +212,22 @@ struct imp_sth_st {
 #define dbd_st_blob_read	msql1_st_blob_read
 #define dbd_st_STORE_attrib	msql1_st_STORE_attrib
 #define dbd_st_FETCH_attrib	msql1_st_FETCH_attrib
+#define dbd_st_FETCH_internal	msql1_st_FETCH_internal
 #define dbd_describe		msql1_describe
 #define dbd_bind_ph		msql1_bind_ph
+#define BindParam		msql1_st_bind_param
 #define dbd_st_internal_execute msql1_st_internal_execute
 #define mymsql_constant         msql1_constant
+#define do_warn			msql1_dr_warn
+#define do_error		msql1_dr_error
 #else
-#define dbd_init		msql_init
+#define dbd_init		msql_dr_init
 #define dbd_db_login		msql_db_login
 #define dbd_db_do		msql_db_do
 #define dbd_db_commit		msql_db_commit
 #define dbd_db_rollback		msql_db_rollback
 #define dbd_db_disconnect	msql_db_disconnect
+#define dbd_discon_all		msql_db_discon_all
 #define dbd_db_destroy		msql_db_destroy
 #define dbd_db_STORE_attrib	msql_db_STORE_attrib
 #define dbd_db_FETCH_attrib	msql_db_FETCH_attrib
@@ -229,10 +240,14 @@ struct imp_sth_st {
 #define dbd_st_blob_read	msql_st_blob_read
 #define dbd_st_STORE_attrib	msql_st_STORE_attrib
 #define dbd_st_FETCH_attrib	msql_st_FETCH_attrib
+#define dbd_st_FETCH_internal	msql_st_FETCH_internal
 #define dbd_describe		msql_describe
 #define dbd_bind_ph		msql_bind_ph
+#define BindParam		msql_st_bind_param
 #define dbd_st_internal_execute msql_st_internal_execute
 #define mymsql_constant         msql_constant
+#define do_warn			msql_dr_warn
+#define do_error		msql_dr_error
 #endif
 
 #include <dbd_xsh.h>

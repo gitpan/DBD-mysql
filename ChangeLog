@@ -1,4 +1,23 @@
-1998-05-16  Jochen Wiedmann  <joe@laptop.ispsoft.de> (1.19_17)
+1998-06-14  Jochen Wiedmann  <joe@ispsoft.de>
+
+	* Makefile.PL: dbdadmin.t was missing in the list of tests
+
+	* nodbd/nodbd.pm.in (query): Now really returning undef in
+	  case of errors. (Possible Perl bug?)
+
+	* Makefile.PL: Fixed realclean attribute of WriteMakefile.
+
+	* Makefile.PL (Init): Setting $Data::Dumper::Indent to 1.
+
+	* Makefile.PL (InitializeMsql): Fixed query for mSQL, if
+	  only one version gets installed.
+
+	* dbd/dbdimp.c: Now calling mysql_init before mysql_connect.
+
+	* dbd/dbdimp.c: For whatever reason, MyGetProtoInfo was
+	  treated like returning a char* under Mysql.
+
+1998-05-16  Jochen Wiedmann  <joe@ispsoft.de> (1.19_17)
 
 	* Makefile.PL: Fixed typo in InitializeMsql (dbiDriver = mSQL1).
 

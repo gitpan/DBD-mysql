@@ -16,7 +16,7 @@ use vars qw($QUIET @ISA @EXPORT @EXPORT_OK $VERSION $db_errstr);
 $db_errstr = '';
 $QUIET  = 0;
 @ISA    = qw(DBI); # Inherits Exporter and DynaLoader via DBI
-$VERSION = '1.19_17';
+$VERSION = '1.19_18';
 
 # @EXPORT is a relict from old times...
 @EXPORT = qw(
@@ -146,7 +146,7 @@ sub query ($$) {
     my($result);
     $sth->{'PrintError'} = !$Mysql::QUIET;
     if ($sth  &&  !($result = $sth->execute())) {
-	undef $sth;
+	return undef;
     }
     $sth->{'CompatMode'} = 1;
     $sth;

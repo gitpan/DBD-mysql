@@ -20,8 +20,8 @@ use lib ".";
 
 use vars qw($MyConfig $VERSION $DBD_VERSION);
 
-$VERSION = "1.19_17";
-$DBD_VERSION = "2.01_17";
+$VERSION = "1.19_18";
+$DBD_VERSION = "2.01_18";
 
 
 ############################################################################
@@ -331,6 +331,7 @@ sub InitializeMysql () {
 sub InitializeMsql ($) {
     my($ver) = @_;
     my($homeVar, $dbVar, $dbiDriver);
+    my($queryVar) = $ver ? "mSQL $ver" : "mSQL";
     if ($ver && $ver == 1) {
 	$homeVar = "MSQL1_HOME";
 	$dbVar = "-DDBD_MSQL -DDBD_MSQL1";
@@ -341,7 +342,6 @@ sub InitializeMsql ($) {
 	$dbiDriver = "mSQL";
 	$ver = 2;
     }
-    my($queryVar) = $ver ? "Msql $ver" : "Msql";
 
     my %X;
     my @msqldirs = qw{/usr/local/Hughes /usr/local/Minerva /usr/local
@@ -671,6 +671,7 @@ and can break existing code!}, "y");
           ["tests/50chopblanks.t", "Mysql/t/50chopblanks.t"],
           ["tests/50commit.t", "Mysql/t/50commit.t"],
           ["tests/ak-dbd.t", "Mysql/t/ak-dbd.t"],
+          ["tests/dbdadmin.t", "Mysql/t/dbdadmin.t"],
           ["tests/lib.pl", "Mysql/t/lib.pl"] ];
     $MyConfig->{'files_mysqlperl'} =
         [ ["tests/akmisc.t", "Mysql/t/akmisc.t"],
@@ -696,6 +697,7 @@ and can break existing code!}, "y");
           ["tests/50chopblanks.t", "Msql/t/50chopblanks.t"],
           ["tests/50commit.t", "Msql/t/50commit.t"],
           ["tests/ak-dbd.t", "Msql/t/ak-dbd.t"],
+          ["tests/dbdadmin.t", "Msql/t/dbdadmin.t"],
           ["tests/lib.pl", "Msql/t/lib.pl"] ];
     $MyConfig->{'files_msqlperl'} =
         [ ["tests/akmisc.t", "Msql/t/akmisc.t"],
@@ -721,6 +723,7 @@ and can break existing code!}, "y");
           ["tests/50chopblanks.t", "Msql1/t/50chopblanks.t"],
           ["tests/50commit.t", "Msql1/t/50commit.t"],
           ["tests/ak-dbd.t", "Msql1/t/ak-dbd.t"],
+          ["tests/dbdadmin.t", "Msql1/t/dbdadmin.t"],
           ["tests/lib.pl", "Msql1/t/lib.pl"] ];
     $MyConfig->{'files_msql1perl'} =
         [ ["tests/akmisc.t", "Msql1/t/akmisc.t"],
@@ -749,6 +752,7 @@ and can break existing code!}, "y");
     }
 
     MakeDirs();
+    $Data::Dumper::Indent = 1;
     if (!open(STATUS, ">.status")
         || !print STATUS Data::Dumper->Dump([$MyConfig], [qw($MyConfig)])
         || !close(STATUS)) {
@@ -850,7 +854,7 @@ ExtUtils::MakeMaker::WriteMakefile
 			 'DIST_DEFAULT' => 'all tardist',
 			 'COMPRESS'     => "gzip -9f" },
      'VERSION'      => $MyConfig->{'VERSION'},
-     'realclean'    => 'Mysql/Makefile.PL Msql/Makefile.PL Msql1/Makefile.PL'
-                       . ' .status'
+     'realclean'    => { FILES => 'Mysql/Makefile.PL Msql/Makefile.PL'
+			     . ' Msql1/Makefile.PL .status' }
      );
 

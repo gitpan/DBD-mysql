@@ -21,7 +21,7 @@
 DBISTATE_DECLARE;
 
 
-SV* _quote(SV* dbh, SV* str) {
+static SV* _quote(SV* dbh, SV* str) {
     SV* result;
     char* ptr;
     char* sptr;
@@ -239,7 +239,6 @@ _InsertID(dbh)
     SV *	dbh
   CODE:
     D_imp_dbh(dbh);
-    int id;
     MYSQL *sock = (MYSQL*) imp_dbh->svsock;
     EXTEND( sp, 1 );
     RETVAL = mysql_insert_id(sock);
@@ -354,14 +353,6 @@ ping(dbh)
   OUTPUT:
     RETVAL
 
-
-
-void
-_SelectDB(dbh, dbname)
-    SV *	dbh
-    char *	dbname
-  PPCODE:
-    croak("_SelectDB is removed from this module; use DBI->connect instead.");
 
 
 void

@@ -162,6 +162,7 @@ int MyConnect(dbh_t *sock, char* host, char* port, char* user,
 	}
 	return result;
 #elif defined(MYSQL_VERSION_ID)  &&  (MYSQL_VERSION_ID >= 32200)
+	mysql_init(*sock);
 	return mysql_real_connect(*sock, host, user, password, dbname,
 				  portNr, NULL, 0) ?
 	    TRUE : FALSE;
@@ -563,13 +564,7 @@ SV* dbd_db_FETCH_attrib(SV* dbh, imp_dbh_t* imp_dbh, SV* keysv) {
 #endif
       case 'p':
 	if (kl == 9  &&  strEQ(key, "protoinfo")) {
-#ifdef DBD_MYSQL
-	    char* protoinfo = MyGetProtoInfo(imp_dbh->svsock);
-	    return protoinfo ?
-	        sv_2mortal(newSVpv(protoinfo, strlen(protoinfo))) : &sv_undef;
-#else
 	    return sv_2mortal(newSViv(MyGetProtoInfo(imp_dbh->svsock)));
-#endif
 	}
 	break;
       case 's':
