@@ -1,6 +1,6 @@
 #   Our beloved Emacs will give us -*- perl -*- mode :-)
 #
-#   $Id: dbd.pm.in,v 1.2 1998/12/30 00:15:44 joe Exp $
+#   $Id: dbd.pm.in,v 1.1.1.1.2.2 1998/12/30 00:28:15 joe Exp $
 #
 #   Copyright (c) 1994,1995,1996,1997 Alligator Descartes, Tim Bunce
 #
@@ -16,7 +16,7 @@ use DynaLoader();
 use Carp ();
 @ISA = qw(DynaLoader);
 
-$VERSION = '2.0216-';
+$VERSION = '2.03_13';
 
 bootstrap DBD::mSQL $VERSION;
 
@@ -59,7 +59,7 @@ sub _OdbcParse($$$) {
 	if ($val =~ /([^=]*)=(.*)/) {
 	    $var = $1;
 	    $val = $2;
-	    if ($var eq 'hostname') {
+	    if ($var eq 'hostname'  ||  $var eq 'host') {
 		$hash->{'host'} = $val;
 	    } elsif ($var eq 'db'  ||  $var eq 'dbname') {
 		$hash->{'database'} = $val;
@@ -113,7 +113,7 @@ sub connect {
     # create a 'blank' dbh
     my($this, $privateAttrHash);
     $privateAttrHash = {
-	'dsn' => $dsn,
+	'Name' => $dsn,
 	'user' => $username,
 	'password' => $password
     };
@@ -157,27 +157,6 @@ sub admin {
 	       $port || '',
 	       $user, $password, '_admin_internal');
 }
-
-sub _CreateDB {
-    my($drh) = shift;
-    my($host) = (@_ > 1) ? shift : undef;
-    my($dbname) = shift;
-    if (!$DBD::mSQL::QUIET) {
-	warn "'_CreateDB' is deprecated, use 'admin' instead";
-    }
-    $drh->func('createdb', $dbname, $host, 'admin');
-}
-
-sub _DropDB {
-    my($drh) = shift;
-    my($host) = (@_ > 1) ? shift : undef;
-    my($dbname) = shift;
-    if (!$DBD::mSQL::QUIET) {
-	warn "'DropDB' is deprecated, use 'admin' instead";
-    }
-    $drh->func('dropdb', $dbname, $host, 'admin');
-}
-
 
 package DBD::mSQL::db; # ====== DATABASE ======
 use strict;
@@ -236,18 +215,6 @@ sub ANSI2db {
     return $DBD::mSQL::db::ANSI2db{"$type"};
 }
 
-sub _ListFields($$) {
-    my($self, $table) = @_;
-    if (!$DBD::mSQL::QUIET) {
-	warn "'_ListFields' is deprecated, use the SQL query 'LISTFIELDS \$table' instead.";
-    }
-    my($sth) = $self->prepare("LISTFIELDS $table");
-    if ($sth  &&  !$sth->execute()) {
-	undef $sth;
-    }
-    $sth;
-}
-
 sub admin {
     my($dbh) = shift;
     my($command) = shift;
@@ -261,24 +228,34 @@ sub _SelectDB ($$) {
     die "_SelectDB is removed from this module; use DBI->connect instead.";
 }
 
+{
+    my $names = ['TABLE_QUALIFIER', 'TABLE_OWNER', 'TABLE_NAME',
+		 'TABLE_TYPE', 'REMARKS'];
+
+    sub table_info ($) {
+	my $dbh = shift;
+	my @tables = map { [ undef, undef, $_, 'TABLE', undef ]
+			 } $dbh->func('_ListTables');
+	my $dbh2;
+	if (!($dbh2 = $dbh->{'~dbd_driver~_sponge_dbh'})) {
+	    $dbh2 = $dbh->{'~dbd_driver~_sponge_dbh'} =
+		DBI->connect("DBI:Sponge:");
+	    if (!$dbh2) {
+	        DBI::set_err($dbh, 1, $DBI::errstr);
+		return undef;
+	    }
+	}
+	my $sth = $dbh2->prepare("LISTTABLES", { 'rows' => \@tables,
+						 'NAMES' => $names });
+	if (!$sth) {
+	    DBI::set_err($sth, $dbh2->err(), $dbh2->errstr());
+	}
+	$sth;
+    }
+}
 
 package DBD::mSQL::st; # ====== STATEMENT ======
 use strict;
-
-# Just a stub for backward compatibility; use is deprecated
-sub _ListSelectedFields ($) {
-    if (!$DBD::mSQL::QUIET) {
-	warn "_ListSelectedFields is deprecated and superfluos";
-    }
-    shift;
-}
-
-sub _NumRows ($) {
-    if (!$DBD::mSQL::QUIET) {
-	warn "_NumRows is deprecated, use \$sth->rows instead.";
-    }
-    shift->rows;
-}
 
 1;
 
@@ -297,17 +274,17 @@ Interface (DBI)
     $driver = "mSQL"; # or "mSQL1";
     $dsn = "DBI:$driver:database=$database;host=$hostname";
 
-    $dbh = DBI->connect($dsn,	undef, undef);
+    $dbh = DBI->connect($dsn, undef, undef);
 
         or
 
     $driver = "mysql";
-    $dsn = "DBI:$driver:database=$database;$options";
+    $dsn = "DBI:$driver:database=$database;host=$hostname;port=$port";
 
     $dbh = DBI->connect($dsn, $user, $password);
 
 
-    $drh = DBI->install_driver("mysql");
+    $drh = DBI->install_driver("mSQL");
     @databases = $drh->func($host, $port, '_ListDBs');
     @tables = $dbh->func( '_ListTables' );
 
@@ -332,6 +309,19 @@ Interface (DBI)
     $rc = $dbh->func('reload', 'admin');
 
 
+=head1 EXPERIMENTAL SOFTWARE
+
+This package contains experimental software and should *not* be used
+in a production environment. We are following the Linux convention and
+treat the "even" releases (1.18xx as of this writing, perhaps 1.20xx,
+1.22xx, ... in the future) as stable. Only bug or portability fixes
+will go into these releases.
+
+The "odd" releases (1.19xx as of this writing, perhaps 1.21xx, 1.23xx
+in the future) will be used for testing new features or other serious
+code changes.
+
+
 =head1 DESCRIPTION
 
 <DBD::mysql> and <DBD::mSQL> are the Perl5 Database Interface drivers for
@@ -349,20 +339,19 @@ of the I<Msql-Mysql-modules> package.
 
     $driver = "mSQL";  #  or "mSQL1"
     $dsn = "DBI:$driver:$database";
-    $dsn = "DBI:$driver:database=$database;$options";
+    $dsn = "DBI:$driver:database=$database;host=$hostname";
 
     $dbh = DBI->connect($dsn, undef, undef);
 
         or
 
     $dsn = "DBI:mysql:$database";
-    $dsn = "DBI:mysql:database=$database;$options";
+    $dsn = "DBI:mysql:database=$database;host=$hostname";
+    $dsn = "DBI:mysql:database=$database;host=$hostname;port=$port";
 
     $dbh = DBI->connect($dsn, $user, $password);
 
 A C<database> must always be specified.
-
-Possible options are, separated by semicolon:
 
 =over 8
 
@@ -380,6 +369,7 @@ argument, by concatenating the I<hostname> and I<port number> together
 separated by a colon ( C<:> ) character or by using the  C<port> argument.
 This doesn't work for mSQL 2: You have to create an alternative config
 file and load it using the msql_configfile attribute, see below.
+
 
 =item msql_configfile
 
@@ -446,15 +436,16 @@ location for the socket than that built into the client.
 
 =back
 
+
 =head2 Private MetaData Methods
 
 =over 4
 
 =item B<ListDBs>
 
-    $drh = DBI->install_driver("~~");
-    @dbs = $drh->func("$hostname:$port", "_ListDBs");
-    @dbs = $drh->func($hostname, $port, "_ListDBs");
+    my $drh = DBI->install_driver("mSQL");
+    @dbs = $drh->func("$hostname:$port", '_ListDBs');
+    @dbs = $drh->func($hostname, $port, '_ListDBs');
     @dbs = $dbh->func('_ListDBs');
 
 Returns a list of all databases managed by the mysql daemon or
@@ -475,6 +466,8 @@ the only reason why we still support C<ListDBs>. :-(
 
 =item B<ListTables>
 
+*WARNING*: This method is obsolete due to DBI's $dbh->table_info().
+
     @tables = $dbh->func('_ListTables');
 
 Once connected to the desired database on the desired mysql or mSQL
@@ -490,23 +483,6 @@ an empty list is returned.
         print "Table: $table\n";
       }
 
-
-=item B<ListFields>
-
-Deprecated, see L</COMPATIBILITY ALERT> below. Used to be equivalent
-to
-
-    $sth = $dbh->prepare("LISTFIELDS $table");
-    $sth->execute;
-
-See L</SQL EXTENSIONS> below.
-
-
-=item B<ListSelectedFields>
-
-Deprecated, see L</COMPATIBILITY ALERT> below.
-
-=back
 
 
 =head2 Server Administration
@@ -571,25 +547,6 @@ important if you modify access privileges or create new users.
 =back
 
 
-=item B<_CreateDB>
-
-=item B<_DropDB>
-
-
-These methods are deprecated, see L</COMPATIBILITY ALERT> below.!
-
-    $rc = $drh->func( $database, '_CreateDB' );
-    $rc = $drh->func( $database, '_DropDB' );
-
-      or
-
-    $rc = $drh->func( $host, $database, '_CreateDB' );
-    $rc = $drh->func( $host, $database, '_DropDB' );
-
-These methods are equivalent to the admin method with "createdb" or
-"dropdb" commands, respectively. In particular note the warnings
-concerning the missing prompt for dropping a database!
-
 =back
 
 
@@ -600,8 +557,10 @@ handles (read only):
 
     $infoString = $dbh->{'info'};
     $threadId = $dbh->{'thread_id'};
+    $insertId = $dbh->{'mysql_insertid'}
 
-These correspond to mysql_info() and mysql_tread_id(), respectively.
+These correspond to mysql_info(), mysql_thread_id() and mysql_insertid(),
+respectively.
 
 
 =head1 STATEMENT HANDLES
@@ -669,7 +628,8 @@ have impact on the I<max_length> attribute.
 
 MySQL has the ability to choose unique key values automatically. If this
 happened, the new ID will be stored in this attribute. This attribute
-is not valid for DBD::mSQL.
+is not valid for DBD::mSQL. An alternative way for accessing this attribute
+is via $dbh->{'mysql_insertid'}. (Note we are using the $dbh in this case!)
 
 =item is_blob
 
@@ -738,13 +698,18 @@ If you need the native column types, use I<mysql_type> or I<msql_type>,
 respectively. See below.
 
 
-=item mysql_type
+=item msql_type
 
 A reference to an array of mSQL's native column types, for example
 DBD::mSQL::INT_TYPE() or DBD::mSQL::CHAR_TYPE().
 Use the I<TYPE> attribute, if you want portable types like
 DBI::SQL_INTEGER() or DBI::SQL_VARCHAR().
 
+
+=item msql_type_name
+
+Similar to msql, but type names and not numbers are returned.
+Whenever possible, the ANSI SQL name is preferred.
 
 =back
 
@@ -770,6 +735,7 @@ of table $table. See the docs of msqlListIndex for details.
 
 =back
 
+
 =head1 COMPATIBILITY ALERT
 
 The statement attribute I<TYPE> has changed its meaning, as of
@@ -778,75 +744,250 @@ of native engine's column types, but it is now an array of
 portable SQL column types. The old attribute is still available
 as I<mysql_type> or I<msql_type>, respectively.
 
-Certain attributes methods have been declared obsolete or deprecated,
-partially because there names are agains DBI's naming conventions,
-partially because they are just superfluous or obsoleted by other methods.
+The Msql-Mysql-modules are a moving target, due to a number of reasons:
 
-Obsoleted attributes and methods will be explicitly listed below. You cannot
-expect them to work in future versions, but they have not yet been scheduled
-for removal and currently they should be usable without any code modifications.
+=over 8
 
-Deprecated attributes and methods will currently issue a warning unless
-you set the variable $DBD::mSQL::QUIET to a true value. This will
-be the same for Msql-Mysql-modules 1.19xx and 1.20xx. They will be silently
-removed in 1.21xx.
+=item -
 
-Here is a list of obsoleted attributes and/or methods:
+Of course they have to conform the DBI guidelines and developments.
 
-=over 4
+=item -
+
+They have to keep track with the latest MySQL developments.
+
+=item -
+
+And, surprisingly, they have to be as close to ODBC as possible: This is
+due to the current direction of DBI.
+
+=item -
+
+And, last not least, as any tool they have a little bit of own life.
+
+=back
+
+This means that a lot of things had to and have to be changed. As I am not
+interested in maintaining a lot of compatibility kludges, which only
+increase the drivers code without being really usefull, I did and will
+remove some features, methods or attributes.
+
+To ensure a smooth upgrade, the following policy will be applied:
+
+=over 8
+
+=item Obsolete features
+
+The first step is to declare something obsolete. This means, that no code
+is changed, but the feature appears in the list of obsolete features. See
+L<Obsolete Features> below.
+
+=item Deprecated features
+
+If the feature has been obsolete for quite some time, typically in the
+next major stable release, warnings will be inserted in the code. You
+can suppress these warnings by setting
+
+    $DBD::mSQL = 1;
+
+In the docs the feature will be moved from the list of obsolete features
+to the list of deprecated features. See L<Deprecated Features> below.
+
+=item Removing features
+
+Finally features will be removed silently in the next major stable
+release. The feature will be shown in the list of historic features.
+See L<Historic Features> below.
+
+=back
+
+Example: The statement handle attribute
+
+    $sth->{'LENGTH'}
+
+was declared obsolete in Msql-Mysql-modules 1.18xy. It is considered
+deprecated in Msql-Mysql-modules 1.20xy (current as of this writing)
+and will finally be removed in Msql-Mysql-modules 1.22xy.
+
+=back
+
+
+=head2 Obsolete Features
+
+=over 8
+
+=item _ListTables
+
+This method is obsoleted by DBI's new method
+
+    $dbh->tables()
+
+See also $dbh->table_info(). Portable applications will prefer
+
+    @tables = map { $_ =~ s/.*\.//; $_ } $dbh->tables()
+
+because, depending on the engine, the string "user.table" will be
+returned, user being the table owner. The method will be deprecated
+in 1.23_xy and 1.24xy and removed in 1.25_xy and 1.26xy.
+
+=back
+
+
+=head2 Deprecated Features
+
+=over 8
+
+=item _InsertID
+
+The method
+
+    $dbh->func('_InsertID');
+
+can be replaced with
+
+    $dbh->{'mysql_insertid'};
+
+The method is deprecated as of 1.21_xy, thus it will be removed in
+1.23_xy and 1.24xy.
+
+=item Statement handle attributes:
+
+=over 12
+
+=item affected_rows
+
+=item IS_PRI_KEY
+
+=item is_pri_key
+
+=item IS_NOT_NULL
+
+=item is_not_null
+
+=item IS_KEY
+
+=item is_key
+
+=item IS_BLOB
+
+=item is_blob
+
+=item IS_NUM
+
+=item is_num
+
+=item LENGTH
+
+=item length
+
+=item MAXLENGTH
+
+=item maxlength
+
+=item NUMROWS
+
+=item numrows
+
+=item NUMFIELDS
+
+=item numfields
+
+=item RESULT
+
+=item result
+
+=item TABLE
+
+=item table
+
+=item format_max_size
+
+=item format_default_size
+
+=item format_type_name
+
+=back
+
+All of the above statement handle attributes are not conforming to DBI's
+naming conventions, thus they have been declared deprecated in 1.20xy.
+However, I forgot to insert warnings in the driver. These warnings have
+been inserted in 1.21_07, thus the attributes will be removed in 1.23_xy
+and 1.24xy.
+
+In most of the above cases the driver name has been added and the resulting
+name was lowercased. For example, you use
+
+    $sth->{'msql_is_num'};
+
+now. IS_NOT_NULL can be replaced with NULLABLE (note you need to invert
+the logical value!), LENGTH, format_max_size and format_default_size will
+be dropped in favour of PRECISION, affected_rows and NUMROWS are identical
+with
+
+    $sth->rows();
+
+and NUMFIELDS is the same as NUM_OF_FIELDS. Finally format_right_justify
+is the same as msql_type_name.
+
+=back
+
+
+
+=head2 Historic Features
+
+=over 8
 
 =item _CreateDB
 
 =item _DropDB
 
-deprecated, use
+The methods
+
+    $dbh->func($db, '_CreateDB');
+    $dbh->func($db, '_DropDB');
+
+have been used for creating or dropping databases. They have been removed
+in 1.21_07 in favour of
 
     $drh->func("createdb", $dbname, $host, "admin")
     $drh->func("dropdb", $dbname, $host, "admin")
 
 =item _ListFields
 
-deprecated, use
+The method
 
-    $sth = $dbh->prepare("LISTFIELDS $table")
-    $sth->execute;
+    $sth = $dbh->func($table, '_ListFields');
+
+has been used to list a tables columns names, types and other attributes.
+This method has been removed in 1.21_07 in favour of
+
+    $sth = $dbh->prepare("LISTFIELDS $table");
 
 =item _ListSelectedFields
 
-deprecated, just use the statement handles for accessing the same attributes.
+The method
+
+    $sth->func('_ListSelectedFields');
+
+use to return a hash ref of attributes like 'IS_NUM', 'IS_KEY' and so
+on. These attributes are now accessible via
+
+    $sth->{'msql_is_num'};
+    $sth->{'msql_is_key'};
+
+and so on. Thus the method has been removed in 1.21_07.
 
 =item _NumRows
 
-deprecated, use
+The method
 
-    $numRows = $sth->rows;
+    $sth->func('_NumRows');
 
-=item IS_PRI_KEY
+used to be equivalent to
 
-=item IS_NOT_NULL
+    $sth->rows();
 
-=item IS_KEY
-
-=item IS_BLOB
-
-=item IS_NUM
-
-=item LENGTH
-
-=item MAXLENGTH
-
-=item NUMROWS
-
-=item NUMFIELDS
-
-=item RESULT
-
-=item TABLE
-
-All these statement handle attributes are obsolete. They can be simply
-replaced by just downcasing the attribute names. You should expect them
-to be deprecated as of Msql-Mysql-modules 1.1821. (Whenever that will
-be.)
+and has been removed in 1.21_07.
 
 =back
 
@@ -884,8 +1025,8 @@ Msql-2.0.4 and 2.0.4.1 contain a bug that makes ORDER BY and hence
 the test script C<t/40bindparam> fail. To verify, if this is the
 case for you, do a
 
-      cd Msql
-      perl -w -I../blib/lib -I../blib/arch t/40bindparam.t
+	cd Msql
+	perl -w -I../blib/lib -I../blib/arch t/40bindparam.t
 
 If something is wrong, the script ought to print a number of id's and
 names. If the id's aren't in order, it is likely, that your mSQL has
@@ -917,7 +1058,7 @@ current version and all credits and copyright notices are retained (
 the I<AUTHOR> and I<COPYRIGHT> sections ).  Requests for other
 distribution rights, including incorporation into commercial products,
 such as books, magazine articles or CD-ROMs should be made to
-Alligator Descartes <I<descarte@arcana.co.uk>>.
+Alligator Descartes <I<descarte@arcana.so.uk>>.
 
 
 =head1 MAILING LIST SUPPORT

@@ -7,8 +7,8 @@
 # are configured wrong in this respect. But you're welcome to test it
 # out.
 
-my $host = shift @ARGV || "~test_host~";
-my $dbname = shift @ARGV || "~test_db~";
+my $host = shift @ARGV || "~~test_host~~";
+my $dbname = shift @ARGV || "~~test_db~~";
 
 # That's the standard perl way tostart a testscript. It announces that
 # that many tests are to follow. And it does so before anything can go
@@ -23,7 +23,7 @@ BEGIN {
     print "1..69\n";
 }
 
-use ~DRIVER~;
+use ~~nodbd_driver~~;
 
 # Force yourself to strict programming. See man strict for details.
 use strict;
@@ -45,16 +45,16 @@ my(
 
 # You may connect in two steps: (1) Connect and (2) SelectDB...
 
-if ($dbh = ~DRIVER~->connect($host)){
+if ($dbh = ~~nodbd_driver~~->connect($host)){
     print "ok 1\n";
 } else {
-    $~DRIVER~::db_errstr ||= "";
+    $~~nodbd_driver~~::db_errstr ||= "";
     my $onhost = $host ? " (on $host)" : "";
     printf STDERR (qq{not ok 1: %s
 \tIt looks as if your server$onhost is not up and running.
 \tThis test requires a running server.
 \tPlease make sure your server is running and retry.
-}, ~DRIVER~->errmsg());
+}, ~~nodbd_driver~~->errmsg());
     exit;
 }
 
@@ -70,10 +70,10 @@ if ($dbh->selectdb($dbname)){
 # Or you may call connect with two arguments, the first being the
 # host, and the second being the DB
 
-if ($dbh = ~DRIVER~->connect($host,$dbname)){
+if ($dbh = ~~nodbd_driver~~->connect($host,$dbname)){
     print("ok 3\n");
 } else {
-    die "not ok 3: " . ~DRIVER~->errmsg() . "\n";
+    die "not ok 3: " . ~~nodbd_driver~~->errmsg() . "\n";
 }
 
 # For the error messages we're going to produce within this script we
@@ -85,7 +85,7 @@ sub test_error {
     $id    ||= "?";               # Newer Test::Harness will accept that
     $query ||= "";                # query is optional
     $query = "\n\tquery $query" if $query;
-    $error ||= ~DRIVER~->errmsg;  # without error we ask Msql
+    $error ||= ~~nodbd_driver~~->errmsg;  # without error we ask Msql
     print qq{Not ok $id:\n\terrmsg $error$query\n};
 }
 
@@ -189,10 +189,10 @@ $sth->is_not_null->[1] > 0
 
 # Are we able to just reconnect with the *same* scalar ($dbh) playing
 # the role of the db-handle?
-if ($dbh = ~DRIVER~->connect($host,$dbname)){
+if ($dbh = ~~nodbd_driver~~->connect($host,$dbname)){
     print("ok 12\n");
 } else {
-    print "not ok 12: " . ~DRIVER~->errmsg() . "\n";
+    print "not ok 12: " . ~~nodbd_driver~~->errmsg() . "\n";
 }
 
 # We may have an arbitrary number of statementhandles. Each
@@ -237,7 +237,7 @@ if ($dbh = ~DRIVER~->connect($host,$dbname)){
     # if you want the -w switch but do NOT want to see Msql's error
     # messages, you can turn them off using $Msql::QUIET
 
-    local($~DRIVER~::QUIET) = 1;
+    local($~~nodbd_driver~~::QUIET) = 1;
     # In reality we would say "or die ...", but in this case we forgot it:
     $sth = $dbh->query  ("select * from $firsttable
 	     where him = 'Thomas')");
@@ -287,7 +287,7 @@ $row[2] eq "Pauline" and print ("ok 17\n") or print("not ok 17\n");
 # economically -- they cost you a slot in the server connection table,
 # and you can easily run out of available slots -- we, in the test
 # script want to know what happens with more than one handle
-if ($dbh2 = ~DRIVER~->connect($host,$dbname)){
+if ($dbh2 = ~~nodbd_driver~~->connect($host,$dbname)){
     print("ok 19\n");
 } else {
     print "not ok 19\n";
@@ -313,7 +313,7 @@ $dbh2->query("drop table $secondtable") and print("ok 22\n") or print("not ok 22
 }
 
 # The third connection within a single script. I promise, this will do...
-if ($dbh3 = Connect ~DRIVER~($host,$dbname)){
+if ($dbh3 = Connect ~~nodbd_driver~~($host,$dbname)){
     print("ok 25\n");
 } else {
     test_error(25,"connect->$host");
@@ -552,7 +552,7 @@ $dbh->query("drop table $firsttable") or test_error;
 # Although it is a bad idea to specify constants in lowercase,
 # I have to test if it is supported as it has been documented:
 
-if (~DRIVER~::int___type() == INT_TYPE) {
+if (~~nodbd_driver~~::int___type() == INT_TYPE) {
     print "ok 66\n";
 } else {
     print "not ok 66\n";
@@ -602,7 +602,7 @@ $dbh->query("drop table $firsttable") or test_error;
 
 {
     my @created = ();
-    local($~DRIVER~::QUIET) = 1;
+    local($~~nodbd_driver~~::QUIET) = 1;
 
     # create 8 tables
     for (1..8) {

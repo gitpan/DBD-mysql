@@ -22,7 +22,7 @@ my(
   );
 
 my($file);
-foreach $file ("lib.pl", "t/lib.pl", "~DRIVER~/t/lib.pl") {
+foreach $file ("lib.pl", "t/lib.pl", "~~nodbd_driver~~/t/lib.pl") {
     if (-f $file) {
 	do $file;
 	if ($@) { die "Cannot load 'lib.pl': $@.\n"; }
@@ -47,12 +47,12 @@ $::listTablesHook = $::listTablesHook = sub ($) {
 # are configured wrong in this respect. But you're welcome to test it
 # out.
 
-my $host = shift @ARGV || $ENV{'DBI_HOST'} || "~test_host~";
-my $user = shift @ARGV || $ENV{'DBI_USER'} || "~test_user~";
-my $password = shift @ARGV || $ENV{'DBI_PASS'} || "~test_pass~";
-my $dbname = shift @ARGV || $ENV{'DBI_DB'} || "~test_db~";
+my $host = shift @ARGV || $ENV{'DBI_HOST'} || "~~test_host~~";
+my $user = shift @ARGV || $ENV{'DBI_USER'} || "~~test_user~~";
+my $password = shift @ARGV || $ENV{'DBI_PASS'} || "~~test_pass~~";
+my $dbname = shift @ARGV || $ENV{'DBI_DB'} || "~~test_db~~";
 
-use vars qw($mdriver $verbose $state $COL_NULLABLE $COL_KEY $testNum);
+use vars qw($mdriver $state $COL_NULLABLE $COL_KEY $testNum);
 if ($mdriver eq 'mysql') {
     $class = 'Mysql';
     eval "use $class";
@@ -99,7 +99,7 @@ sub test_error {
     $query ||= "";                # query is optional
     $query = "\n\tquery $query" if $query;
     $error ||= $dbh->errmsg;      # without error we ask Msql
-    print "\terrmsg $error$query\n" if $verbose;
+    print "\terrmsg $error$query\n";
 }
 
 
@@ -170,7 +170,7 @@ while (Testing()) {
 				     ["she", "CHAR",  32, $COL_NULLABLE],
 				     ["him", "CHAR",  32, 0],
 				     ["who", "CHAR",  32, $COL_NULLABLE])))
-	or !$verbose or print("Cannot get table definition.\n");
+	or print("Cannot get table definition.\n");
 
     Test($state or $dbh->query($query), undef, "Creating first test table")
 	or (print "Cannot create first table: $$errstrRef.\n", exit);
@@ -179,7 +179,7 @@ while (Testing()) {
 				     ["she", "CHAR",  32, $COL_NULLABLE],
 				     ["him", "CHAR",  32, 0],
 				     ["who", "CHAR",  32, $COL_NULLABLE])))
-	or !$verbose or print("Cannot get table definition.\n");
+	or print("Cannot get table definition.\n");
 
     Test($state or $dbh->query($query))
 	or (print "Cannot create second table: $$errstrRef.\n", exit);
@@ -204,11 +204,11 @@ while (Testing()) {
     Test($state or ($sth = $dbh->query($query)), undef, "First SELECT")
 	or test_error($dbh,0,$query);
     Test($state or ($sth->numrows == 3))
-	or !$verbose or printf("Wrong number of rows, expected %d, got %d.\n",
+	or printf("Wrong number of rows, expected %d, got %d.\n",
 			      3, $sth->numrows);
     if ($mdriver eq 'mysql') {
 	Test($state or ($sth->numfields == 3))
-	    or !$verbose or printf("Wrong number of fields, expected %d,"
+	    or printf("Wrong number of fields, expected %d,"
 				   . " got %d.\n",
 				   3, $sth->numrows);
     }
@@ -217,22 +217,22 @@ while (Testing()) {
     # fields as $sth->numfields tells us
     Test($state or (@{$sth->name} == $sth->numfields), undef,
 	 'Checking $sth->name')
-	or !$verbose or printf("Wrong number of names, expected %d, got %d.\n",
-			       $sth->numfields, @{$sth->name});
+	or printf("Wrong number of names, expected %d, got %d.\n",
+		  $sth->numfields, @{$sth->name});
 
     # There is the array reference $sth->table. We expect, that all three
     # fields in the array have the same value, as we only selected from
     # $firsttable
     Test($state or ($sth->table->[0] eq $firsttable), undef,
 	 'Checking $sth->table')
-	or !$verbose or printf("Wrong table name, expected %s, got %s.\n",
-			       $firsttable, $sth->table->[0]);
+	or printf("Wrong table name, expected %s, got %s.\n",
+		  $firsttable, $sth->table->[0]);
     Test($state or ($sth->table->[1] eq $firsttable))
-	or !$verbose or printf("Wrong table name, expected %s, got %s.\n",
+	or printf("Wrong table name, expected %s, got %s.\n",
 			       $firsttable, $sth->table->[1]);
     Test($state or ($sth->table->[2] eq $firsttable))
-	or !$verbose or printf("Wrong table name, expected %s, got %s.\n",
-			       $firsttable, $sth->table->[2]);
+	or printf("Wrong table name, expected %s, got %s.\n",
+		  $firsttable, $sth->table->[2]);
 
     # CHAR_TYPE, NUM_TYPE and REAL_TYPE are exported functions from
     # Msql. That is why you have to say 'use Msql'. The functions are
@@ -250,8 +250,8 @@ while (Testing()) {
     }
     Test($state or ($sth->type->[0] eq $expected), undef,
 	 'Checking $sth->type')
-	or !$verbose or printf("Wrong result type, expected %d, got %d.\n",
-			       $expected, $sth->type->[0]);
+	or printf("Wrong result type, expected %d, got %d.\n",
+		  $expected, $sth->type->[0]);
     
     # Now we count the rows ourselves, we don't trust anybody
     my $rowcnt=0;
@@ -261,9 +261,9 @@ while (Testing()) {
 	}
     }
     Test($state or ($rowcnt == $sth->numrows))
-	or !$verbose or printf("Counted wrong number of rows, expected %d,"
-			       . " got %d.\n",
-			       $sth->numrows, $rowcnt);
+	or printf("Counted wrong number of rows, expected %d,"
+		  . " got %d.\n",
+		  $sth->numrows, $rowcnt);
     
     # We haven't yet tested DataSeek, so lets count again
     if (!$state) {
@@ -274,9 +274,9 @@ while (Testing()) {
 	}
     }
     Test($state or ($rowcnt == $sth->numrows))
-	or !$verbose or printf("Counted wrong number of rows after"
-			       . " dataseek, expected %d, got %d.\n",
-			       $sth->numrows, $rowcnt);
+	or printf("Counted wrong number of rows after"
+		  . " dataseek, expected %d, got %d.\n",
+		  $sth->numrows, $rowcnt);
 
     # let's see the second table
     Test($state or ($sth = $dbh->query("select * from $secondtable")))
@@ -285,13 +285,13 @@ while (Testing()) {
     # We set the second field "not null". Does the API know that?
     Test($state or ($sth->is_not_null->[1] > 0), undef,
 	 'Checking $sth->is_not_null')
-	or !$verbose or printf("NOT NULL not recognized (%s).\n",
-			       join(" ", @{$sth->is_not_null}));
+	or printf("NOT NULL not recognized (%s).\n",
+		  join(" ", @{$sth->is_not_null}));
     
     # Are we able to just reconnect with the *same* scalar ($dbh) playing
     # the role of the db-handle?
     Test($state or ($dbh = $class->connect($host,$dbname, $user, $password)))
-	or !$verbose or print("Error while reconnecting: $$errstrRef.\n");
+	or print("Error while reconnecting: $$errstrRef.\n");
     
     # We may have an arbitrary number of statementhandles. Each
     # statementhandle consumes memory, so in reality we try to scope them
@@ -304,11 +304,11 @@ while (Testing()) {
 	
 	Test($state or ($sth1 = $dbh->query("select * from $firsttable")),
 	     undef, 'Checking second sth')
-	    or !$verbose or print("Query had some problem:"
-				  . " $$errstrRef\n");
+	    or print("Query had some problem:"
+		     . " $$errstrRef\n");
 	Test($state or ($sth2 = $dbh->query("select * from $secondtable")))
-	    or !$verbose or print("Query had some problem:"
-				  . " $$errstrRef\n");
+	    or print("Query had some problem:"
+		     . " $$errstrRef\n");
 	
 	# You have seen this above, so NO COMMENT :)
 	$count=0;
@@ -318,9 +318,9 @@ while (Testing()) {
 	    }
 	}
 	Test($state or ($count == 2))
-	    or !$verbose or printf("Mismatch with two statement handles,"
-				   . " expected %d, got %d rows.\n",
-				   2, $count);
+	    or printf("Mismatch with two statement handles,"
+		      . " expected %d, got %d rows.\n",
+		      2, $count);
 	
 	# When we undef this handle, the memory associated with it is
 	# freed
@@ -333,9 +333,9 @@ while (Testing()) {
 	    }
 	}
 	Test($state or ($count == 1))
-	    or !$verbose or printf("Row mismatch with first statement handle,"
-				   . " expected %d, got %d.\n",
-				   1, $count);
+	    or printf("Row mismatch with first statement handle,"
+		      . " expected %d, got %d.\n",
+		      1, $count);
 
 	# When we leave this block, the memory associated with $sth1 is
 	# freed
@@ -361,7 +361,7 @@ while (Testing()) {
 	# $mysql::db_errstr should contain the word "error" now
 	Test($state or ($dbh->errmsg =~ /error/), undef,
 	     'Forcing error message')
-	    or !$verbose or printf("Expected error message.\n");
+	    or printf("Expected error message.\n");
     }
 
     # Now $sth should be undefined, because the query above failed. If we
@@ -372,19 +372,19 @@ while (Testing()) {
 	eval "\@row = \$sth->fetchrow;";
     }
     Test($state or $@)
-	or !$verbose or printf("Expected driver to die with error message.\n");
+	or printf("Expected driver to die with error message.\n");
 
     # Remember, we inserted a row into table $firsttable ('Sabine',
     # 'Thomas', 'Pauline'). Let's see, if they are still there.
     Test($state or ($sth = $dbh->query("select * from $firsttable"
 				       . " where him = 'Thomas'")))
-	or !$verbose or print("Query had some problem: $$errstrRef.\n");
+	or print("Query had some problem: $$errstrRef.\n");
     
     Test($state or (@row = $sth->fetchrow))
-	or !$verbose or print("$firsttable didn't find a matching row");
+	or print("$firsttable didn't find a matching row");
     
     Test($state or ($row[2] eq "Pauline"))
-	or !$verbose or print("Expected 'Pauline' being in the"
+	or print("Expected 'Pauline' being in the"
 			      . " second field.\n");
 
     {
@@ -401,7 +401,7 @@ while (Testing()) {
 	# So we do not have to hard-code the zero for "she" here
 
 	Test($state or ($row[$fieldnum{"she"}] eq 'Sabine'))
-	    or !$verbose or print("Expected 'she' being 'Sabine'.\n");
+	    or print("Expected 'she' being 'Sabine'.\n");
     }
 
     # After 18 tests, the database handle may feel the desire to rest. Or
@@ -414,26 +414,26 @@ while (Testing()) {
     # script want to know what happens with more than one handle
     Test($state or ($dbh2 = $class->connect($host,$dbname,$user,$password)), undef,
 	 'Reconnect')
-	or !$verbose or print("Error while reconnecting: $$errstrRef.\n");
+	or print("Error while reconnecting: $$errstrRef.\n");
     
     # Some quick checks about the contents of the handle...
     Test($state or ($dbh2->database eq $dbname))
-	or !$verbose or printf("Error in database name, expected %s,"
-			       . " got %s.\n",
-			       $dbname, $dbh2->database);
+	or printf("Error in database name, expected %s,"
+		  . " got %s.\n",
+		  $dbname, $dbh2->database);
     if (!$state) {
 	$i = ($mdriver eq 'mysql') ? $dbh2->sockfd : $dbh2->sock;
     }
 
     Test($state or ($i =~ /^\d+$/))
-	or !$verbose or printf("Expected socket number being an integer,"
+	or printf("Expected socket number being an integer,"
 			       . " got %s.\n", $i);
 
     # Is $dbh2 able to drop a table, while we are connected with $dbh?
     # Sure it can...
     Test($state or $dbh2->query("drop table $secondtable"), undef,
 	 'Second dbh')
-	or !$verbose or print("Error while dropping table with second handle:"
+	or print("Error while dropping table with second handle:"
 			      . " $$errstrRef.\n");
     
     {
@@ -442,16 +442,16 @@ while (Testing()) {
 	if (!$state) {
 	    @array = $dbh2->listdbs;
 	}
-	
+
 	Test($state or (grep( /^test$/, @array )), undef, 'ListDBs')
-	    or !$verbose or print("'test' database not in db list.\n");
+	    or print("'test' database not in db list.\n");
 	
 	# Does ListTables now find our $firsttable?
 	if (!$state) {
 	    @array = $dbh2->listtables;
 	}
 	Test($state or (grep( /^$firsttable$/, @array )))
-	    or !$verbose or printf("'$firsttable' not in table list.\n");
+	    or printf("'$firsttable' not in table list.\n");
     }
     
     # The third connection within a single script. I promise, this will do...
@@ -460,10 +460,10 @@ while (Testing()) {
 	or test_error($dbh3, $testNum);
     
     Test($state or ($dbh3->host eq $host))
-	or !$verbose or printf("Wrong host name, expected %s, got %s.\n",
+	or printf("Wrong host name, expected %s, got %s.\n",
 			       $host, $dbh3->host);
     Test($state or ($dbh3->database eq $dbname))
-	or !$verbose or printf("Wrong database name, expected %s, got %s.\n",
+	or printf("Wrong database name, expected %s, got %s.\n",
 			       $dbname, $dbh3->database);
     
     # For what it's worth, we have a tough job for the server here. First
@@ -502,8 +502,8 @@ while (Testing()) {
 
     Test($state or (($i = $dbh2->query("select * from $firsttable")->numrows)
 		    == 10))
-	 or !$verbose or printf("Expected parallel query to produce %d rows,"
-				. " got %d.\n", 10, $i);
+	 or printf("Expected parallel query to produce %d rows,"
+		   . " got %d.\n", 10, $i);
 	 
     # Interesting the following test. Creating and dropping of tables via
     # two different database handles in quick alteration. There was really
@@ -520,8 +520,8 @@ while (Testing()) {
 	}
     }
     Test($state or drop($dbh2,$firsttable))
-	 or !$verbose or print("Error in create/drop alteration:"
-			       . " $$errstrRef\n");
+	 or print("Error in create/drop alteration:"
+		  . " $$errstrRef\n");
 
     # A quick check, if the array @{$sth->length} is available and
     # correct. See man perlref for an explanation of this kind of
@@ -531,7 +531,7 @@ while (Testing()) {
     # still have it available
     Test($state or ("@{$sth->length}" eq "32 32 32"), undef,
 	 'Checking $sth->length')
-	 or !$verbose or printf("Error in length array, expected %s,"
+	 or printf("Error in length array, expected %s,"
 				. " got %s.\n",
 				"32 32 32", "@{$sth->length}");
 
@@ -541,7 +541,7 @@ while (Testing()) {
 				     ["she", "CHAR",    14, 0],
 				     ["him", "INTEGER", 4,  $COL_NULLABLE],
 				     ["who", "CHAR",    1,  $COL_NULLABLE])))
-	or !$verbose or print("Cannot get table definition.\n");
+	or print("Cannot get table definition.\n");
     Test($state or $dbh->query($query))  or  test_error($dbh, 0, $query);
 
     # As you see, we don't insert a value for "him" and "who", so we can
@@ -556,24 +556,25 @@ while (Testing()) {
 
     # "she" is "jazz", thusly defined
     Test($state or defined($row[0]))
-	or !$verbose or printf("Expected 'she' being 'jazz', got 'undef'.\n");
+	or printf("Expected 'she' being 'jazz', got 'undef'.\n");
 
     # field "him", a character field, should not be defined
 
     Test($state or !defined($row[1]))
-	or !$verbose or printf("Expected 'him' being 'undef', got '%s'.\n",
+	or printf("Expected 'him' being 'undef', got '%s'.\n",
 			       $row[1]);
 
     # field "who", an integer field, should not be defined
 
     Test($state or !defined($row[2]))
-	or !$verbose or printf("Expected 'who' being 'undef', got '%s'.\n",
+	or printf("Expected 'who' being 'undef', got '%s'.\n",
 			       $row[1]);
 
     # If we only select a field that will be undefined when we
     # call fetchrow, we should nontheless have a TRUE fetchrow
 
     my $sth3;
+    print "Verifying whether fetchrow returns TRUE for results.\n";
     $query = "select him from $firsttable";
     Test($state or ($sth3 = $dbh->query($query)))
 	 or test_error($dbh, 0, $query);
@@ -581,10 +582,10 @@ while (Testing()) {
     # "him" is undef, but fetchrow is TRUE
 
     Test($state or defined(($him) = $sth3->fetchrow))
-	or !$verbose or print("Expected fetchrow() returning TRUE:"
+	or print("Expected fetchrow() returning TRUE:"
 			      . " $$errstrRef.\n");
     Test($state or !defined($him))
-	or !$verbose or printf("Expected 'him' being 'undef', got '%s'.\n",
+	or printf("Expected 'him' being 'undef', got '%s'.\n",
 			       $him);
 
     # So far we have evaluated metadata in scalar context. Let's see,
@@ -596,38 +597,42 @@ while (Testing()) {
 	    @arr = $sth->$_();
 	}
 	Test($state or (@arr == 3))
-	    or !$verbose or printf("Error in array context of $_: got %s.\n",
+	    or printf("Error in array context of $_: got %s.\n",
 				   "@arr");
     }
 
     # A non-select should return TRUE, and if anybody tries to use this
     # return value as an object reference, we should not core dump
 
-    Test($state or (($sth) = $dbh->query("insert into $firsttable values"
-				       . " (\047x\047,2,\047y\047)")))
-	or test_error($dbh);
-    use vars qw($ref);
-    if (!$state) {
+    {
 	local($Mysql::QUIET, $Msql::QUIET, $Msql1::QUIET) = (1, 1, 1);
-	eval '$ref = $sth->fetchrow;';
-    }
-    if ($mdriver eq 'mysql') {
-	Test($state or ($@ eq ''), undef,
-	     "Fetchrow from non-select handle $sth")
-	    or printf("Died while fetching a row from a"
-		      . " non-result handle, error was $@.\n");
-    } else {
-	Test($state or ($@ ne ''), undef, "Fetchrow from non-select handle")
-	    or print("Fetching a row from a non-result handle",
-		     " without dying.\n");
-	Test($state or ($@ =~ /without a package or object/))
-	    or printf("Fetching row from a non-result handle"
-		      . " produced wrong error message $@.\n");
-    }
+	
+	Test($state or (($sth) = $dbh->query("insert into $firsttable values"
+					     . " (\047x\047,2,\047y\047)")))
+	    or test_error($dbh);
+	use vars qw($ref);
+	if (!$state) {
+	    eval '$ref = $sth->fetchrow;';
+	}
+	if ($mdriver eq 'mysql') {
+	    Test($state or ($@ eq ''), undef,
+		 "Fetchrow from non-select handle $sth")
+		or printf("Died while fetching a row from a"
+			  . " non-result handle, error was $@.\n");
+	} else {
+	    Test($state or ($@ ne ''), undef,
+		 "Fetchrow from non-select handle")
+		or print("Fetching a row from a non-result handle",
+			 " without dying.\n");
+	    Test($state or ($@ =~ /without a package or object/))
+		or printf("Fetching row from a non-result handle"
+			  . " produced wrong error message $@.\n");
+	}
 
-    Test($state or !defined($ref))
-	or printf("Fetching a row from a non-result handle"
-		  . " returned TRUE ($ref).\n");
+	Test($state or !defined($ref))
+	    or printf("Fetching a row from a non-result handle"
+		      . " returned TRUE ($ref).\n");
+    }
 
     {
 	my($sth_query, $sth_listf, $method, $ok);
@@ -652,7 +657,7 @@ while (Testing()) {
 		}
 	    }
 	    Test($state or $ok)
-		or !$verbose or printf("Error in listfields->%s, %s <-> %s.\n",
+		or printf("Error in listfields->%s, %s <-> %s.\n",
 				       $method, $sth_query->$method()->[$_],
 				       $sth_listf->$method()->[$_]);
 	}
@@ -665,10 +670,10 @@ while (Testing()) {
 	    $got = $sth_listf->numrows;
 	}
 	Test($state or (!defined($got) or $got == 0 or $got eq "N/A"))
-	    or !$verbose or printf("Rows present (%s) in listfields sth.\n",
+	    or printf("Rows present (%s) in listfields sth.\n",
 				   $sth_listf->numrows);
 	Test($state or ($sth_query->numrows > 0))
-	    or !$verbose or printf("Missing rows in sth_query.\n");
+	    or printf("Missing rows in sth_query.\n");
 	     
 	# Please understand that features that were added later to the module
 	# are tested later. Here's a very nice test. Should be easier to
@@ -688,7 +693,7 @@ while (Testing()) {
 	    }
 	}
 	Test($state or $ok)
-	    or !$verbose or printf("Error in fetchhash, got %s.\n",
+	    or printf("Error in fetchhash, got %s.\n",
 				   $hash{she});
     }
 
@@ -701,7 +706,7 @@ while (Testing()) {
 
     if ($mdriver ne 'mysql') {
 	Test($state or ($class->int___type() == $class->INT_TYPE()))
-	    or !$verbose or printf("Expected int___type to be %d, got %d.\n",
+	    or printf("Expected int___type to be %d, got %d.\n",
 				   $class->INT_TYPE(), $class->int___type);
     }
 
@@ -720,7 +725,7 @@ while (Testing()) {
 	    $query = "insert into $firsttable values ($nchar, $chr)";
 	}
 	Test($state or $dbh->query($query))
-	    or !$verbose or ($query = unctrl($query),
+	    or ($query = unctrl($query),
 			     print("Ctrl character $nchar: q[$query]"
 				   . " err[$$errstrRef])\n"));
     }
@@ -728,7 +733,7 @@ while (Testing()) {
     Test($state or ($sth = $dbh->query("select * from $firsttable")))
 	or test_error($dbh);
     Test($state or ($sth->numrows() == 255))
-	or !$verbose or print("Expected control characters to produce"
+	or print("Expected control characters to produce"
 			      . " 255 rows, got $sth->numrows.\n");
 
     my $ok = 1;
@@ -745,7 +750,7 @@ while (Testing()) {
     }
 
     Test($state or $ok)
-	or !$verbose or printf("Error in control character hash at %d,"
+	or printf("Error in control character hash at %d,"
 			       . " %s <-> %s.\n", $hash{'ascii'},
 			       $hash{'chr'}, chr($hash{'ascii'}));
 
@@ -753,7 +758,7 @@ while (Testing()) {
 	or test_error($dbh);
     if ($mdriver eq 'mysql') {
 	Test($state or ($sth->numfields == 0))
-	    or !$verbose or printf("Expected num fields being zero, not %s.\n",
+	    or printf("Expected num fields being zero, not %s.\n",
 				   $sth->numfields);
     }
 
@@ -785,7 +790,7 @@ while (Testing()) {
 	}
 
 	Test($state or ($dbh->listfields($created[0])->numfields != 0))
-	    or !$verbose or ($mdriver eq 'mysql')
+	    or ($mdriver eq 'mysql')
 	    or printf STDERR ("Your version %s of the msqld has a"
 			      . " serious bug,\n"
 			      . "upgrade the server to something"

@@ -1,6 +1,6 @@
 #!/usr/local/bin/perl
 #
-#   $Id: 30insertfetch.t,v 1.1.1.1 1998/12/22 14:29:52 joe Exp $
+#   $Id: 30insertfetch.t,v 1.1.1.1.2.1 1998/12/22 15:01:39 joe Exp $
 #
 #   This is a simple insert/fetch test.
 #
@@ -19,7 +19,7 @@ $test_password = '';
 #
 use DBI;
 $mdriver = "";
-foreach $file ("lib.pl", "t/lib.pl", "DBD-~DBD_DRIVER~/t/lib.pl") {
+foreach $file ("lib.pl", "t/lib.pl", "DBD-~~dbd_driver~~/t/lib.pl") {
     do $file; if ($@) { print STDERR "Error while executing lib.pl: $@\n";
 			   exit 10;
 		      }

@@ -1,8 +1,8 @@
 /* Hej, Emacs, this is -*- C -*- mode!
 
-   $Id: dbd.xs.in,v 1.4 1999/01/19 11:58:17 joe Exp $
+   $Id: dbd.xs.in,v 1.1.1.1.2.1 1998/12/22 15:01:31 joe Exp $
 
-   Copyright (c) 1997 Jochen Wiedmann
+   Copyright (c) 1997, 1998 Jochen Wiedmann
 
    You may distribute under the terms of either the GNU General Public
    License or the Artistic License, as specified in the Perl README file,
@@ -11,76 +11,24 @@
 
 */
 
+
+#if defined(POORIFY)
+#include "poorify.h"
+#endif
+
+
 #include "dbdimp.h"
 #include "../dbd/constants.h"
-
-
-/* --- Variables --- */
 
 
 DBISTATE_DECLARE;
 
 
-static SV* _quote(SV* dbh, SV* str) {
-    SV* result;
-    char* ptr;
-    char* sptr;
-    STRLEN len;
+MODULE = DBD::~~dbd_driver~~	PACKAGE = DBD::~~dbd_driver~~
 
-    if (!SvOK(str)) {
-        result = newSVpv("NULL", 4);
-    } else {
-        ptr = SvPV(str, len);
-	result = newSV(len*2+3);
-	sptr = SvPVX(result);
+INCLUDE: ~~dbd_driver~~.xsi
 
-	*sptr++ = '\'';
-	while (len--) {
-	    switch (*ptr) {
-	      case '\'':
-		*sptr++ = '\\';
-		*sptr++ = '\'';
-		break;
-	      case '\\':
-		*sptr++ = '\\';
-		*sptr++ = '\\';
-		break;
-#if defined(DBD_MYSQL)
-	      case '\n':
-		*sptr++ = '\\';
-		*sptr++ = 'n';
-		break;
-	      case '\r':
-		*sptr++ = '\\';
-		*sptr++ = 'r';
-		break;
-	      case '\0':
-		*sptr++ = '\\';
-		*sptr++ = '0';
-		break;
-#endif
-	      default:
-		*sptr++ = *ptr;
-		break;
-	    }
-	    ++ptr;
-	}
-	*sptr++ = '\'';
-	SvPOK_on(result);
-	SvCUR_set(result, sptr - SvPVX(result));
-	*sptr++ = '\0';  /*  Never hurts NUL terminating a Perl
-			  *	 string ...
-			  */
-    }
-    return result;
-}
-
-
-MODULE = DBD::~DBD_DRIVER~	PACKAGE = DBD::~DBD_DRIVER~
-
-INCLUDE: ~DBD_DRIVER~.xsi
-
-MODULE = DBD::~DBD_DRIVER~	PACKAGE = DBD::~DBD_DRIVER~
+MODULE = DBD::~~dbd_driver~~	PACKAGE = DBD::~~dbd_driver~~
 
 double
 constant(name, arg)
@@ -130,7 +78,7 @@ timetounixtime(package = Package, clock)
 #endif /* defined(DBD_MSQL) && defined(IDX_TYPE) && defined(HAVE_STRPTIME) */
 
 
-MODULE = DBD::~DBD_DRIVER~	PACKAGE = DBD::~DBD_DRIVER~::dr
+MODULE = DBD::~~dbd_driver~~	PACKAGE = DBD::~~dbd_driver~~::dr
 
 void
 _ListDBs(drh, host, port=NULL)
@@ -224,7 +172,27 @@ _admin_internal(drh,dbh,command,dbname=NULL,host=NULL,port=NULL,user=NULL,passwo
    }
 
 
-MODULE = DBD::~DBD_DRIVER~    PACKAGE = DBD::~DBD_DRIVER~::db
+MODULE = DBD::~~dbd_driver~~    PACKAGE = DBD::~~dbd_driver~~::db
+
+
+void
+type_info_all(dbh)
+    SV* dbh
+  PPCODE:
+    {
+/* 	static AV* types = NULL; */
+/* 	if (!types) { */
+/* 	    D_imp_dbh(dbh); */
+/* 	    if (!(types = dbd_db_type_info_all(dbh, imp_dbh))) { */
+/* 	        croak("Cannot create types array (out of memory?)"); */
+/* 	    } */
+/* 	} */
+/* 	ST(0) = sv_2mortal(newRV_inc((SV*) types)); */
+        D_imp_dbh(dbh);
+	ST(0) = sv_2mortal(newRV_noinc((SV*) dbd_db_type_info_all(dbh,
+								  imp_dbh)));
+	XSRETURN(1);
+    }
 
 
 #if defined(DBD_MYSQL)
@@ -234,7 +202,11 @@ _InsertID(dbh)
     SV *	dbh
   CODE:
     D_imp_dbh(dbh);
+    SV* sv = perl_get_sv("DBD::mysql::QUIET", FALSE);
     MYSQL *sock = (MYSQL*) imp_dbh->svsock;
+    if (!sv  ||  !SvTRUE(sv)) {  /* 1.21_07 */
+        warn("This method is deprecated. Use $dbh->{'mysql_insertid'}.");
+    }
     EXTEND( sp, 1 );
     RETVAL = mysql_insert_id(sock);
   OUTPUT:
@@ -309,11 +281,7 @@ do(dbh, statement, attr=Nullsv, ...)
 	}
     }
     retval = dbd_st_internal_execute(dbh, statement, attr, numParams,
-				     params, &cda, imp_dbh->svsock
-#ifdef DBD_MYSQL
-				     , 0
-#endif
-				     );
+				     params, &cda, imp_dbh->svsock, 0);
     Safefree(params);
     if (cda) {
 	MyFreeResult(cda);
@@ -337,19 +305,10 @@ ping(dbh)
         int result;
 	D_imp_dbh(dbh);
 #if defined(DBD_MYSQL)
-#if defined(MYSQL_VERSION_ID)  &&  (MYSQL_VERSION_ID >= 32203)
 	result = (mysql_ping(imp_dbh->svsock) == 0);
 	if (!result  &&  MyReconnect(imp_dbh->svsock, dbh)) {
-	    result = (mysql_errno(imp_dbh->svsock) == 0);
+	    result = (mysql_ping(imp_dbh->svsock) == 0);
 	}
-#else
-	(void) mysql_stat(imp_dbh->svsock);
-	result = (mysql_errno(imp_dbh->svsock) == 0);
-	if (!result  &&  MyReconnect(imp_dbh->svsock, dbh)) {
-	    (void) mysql_stat(imp_dbh->svsock);
-	    result = (mysql_errno(imp_dbh->svsock) == 0);
-	}
-#endif
 #elif defined(DBD_MSQL)
 	result = TRUE;
 #endif
@@ -361,14 +320,17 @@ ping(dbh)
 
 
 void
-quote(dbh, str)
+quote(dbh, str, type=NULL)
     SV* dbh
     SV* str
-  PROTOTYPE: $$
-  PPCODE: 
-    EXTEND(sp, 1);
-    ST(0) = sv_2mortal(_quote(dbh, str));
-    XSRETURN(1);
+    SV* type
+  PROTOTYPE: $$;$
+  PPCODE:
+    {
+        SV* quoted = dbd_db_quote(dbh, str, type);
+	ST(0) = quoted ? quoted : str;
+	XSRETURN(1);
+    }
 
 
 #if defined(DBD_MSQL) && defined(IDX_TYPE)
@@ -397,7 +359,7 @@ getsequenceinfo(dbh, table)
 
 #endif /* defined(DBD_MSQL) && defined(IDX_TYPE) */
 
-MODULE = DBD::~DBD_DRIVER~    PACKAGE = DBD::~DBD_DRIVER~::st
+MODULE = DBD::~~dbd_driver~~    PACKAGE = DBD::~~dbd_driver~~::st
 
 int
 dataseek(sth, pos)
