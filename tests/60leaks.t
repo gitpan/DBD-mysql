@@ -123,33 +123,6 @@ while (Testing()) {
 
 
     if (!$state) {
-	print "Testing memory leaks in prepare/execute\n";
-	$msg = "Possible memory leak in prepare/execute detected";
-
-	$ok = 0;
-	$notOk = 0;
-	undef $prevSize;
-	for (my $i = 0;  $i < $COUNT_PREPARE;  $i++) {
-	    my $sth = $dbh->prepare("SELECT * FROM $table");
-	    $sth->execute();
-	    undef $sth;
-
-	    if ($i % 100  ==  99) {
-		$size = size();
-		if (defined($prevSize)  &&  $size == $prevSize) {
-		    ++$ok;
-		} else {
-		    ++$notOk;
-		}
-		$prevSize = $size;
-	    }
-	}
-    }
-    Test($state or ($ok > $notOk))
-	or print "$msg\n";
-
-
-    if (!$state) {
 	print "Testing memory leaks in prepare/execute/finish\n";
 	$msg = "Possible memory leak in prepare/execute/finish detected";
 

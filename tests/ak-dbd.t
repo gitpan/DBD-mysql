@@ -25,7 +25,7 @@ use DBI;
 use strict;
 $dbdriver = "";
 {   my $file;
-    foreach $file ("lib.pl", "t/lib.pl", "DBD-~DBD_DRIVER~/t/lib.pl") {
+    foreach $file ("lib.pl", "t/lib.pl", "DBD-~~dbd_driver~~/t/lib.pl") {
 	do $file; if ($@) { print STDERR "Error while executing lib.pl: $@\n";
 			    exit 10;
 			}
@@ -155,8 +155,13 @@ while (Testing()) {
          or ErrMsg("Cannot select: $dbh->errstr.\n");
 
     # This should fail with error message: We "forgot" execute.
-    Test($state or !$sth->fetchrow)
-         or ErrMsg("Missing error report from fetchrow.\n");
+    {
+	my $pe = $sth->{'PrintError'};
+	$sth->{'PrintError'} = 0;
+	Test($state or !$sth->fetchrow)
+	    or ErrMsg("Missing error report from fetchrow.\n");
+	$sth->{'PrintError'} = $pe;
+    }
 
     Test($state or $sth->execute)
          or ErrMsg("execute SELECT failed: $dbh->errstr.\n");
@@ -260,15 +265,6 @@ while (Testing()) {
 	or ErrMsg("prepare failed: query $query, error $dbh->errstr.\n");
     Test($state or $sth->execute)
 	or ErrMsg("execute failed: query $query, error $dbh->errstr.\n");
-    if ($mdriver eq 'mysql'  ||  $mdriver eq 'mSQL'  ||  $mdriver eq 'mSQL1') {
-	my($warning);
-	$SIG{__WARN__} = sub { $warning = shift; };
-	Test($state or ($ref = $sth->func('_ListSelectedFields')))
-	    or ErrMsg("_ListSelectedFields failed, error $sth->errstr.\n");
-	Test($state or ($warning =~ /deprecated/))
-	    or ErrMsg("Expected warning from _ListSelectedFields");
-	$SIG{__WARN__} = 'DEFAULT';
-    }
     Test($state or $sth->execute)
 	or ErrMsg("re-execute failed: query $query, error $dbh->errstr.\n");
     Test($state or (@row = $sth->fetchrow))
@@ -326,7 +322,7 @@ while (Testing()) {
 	    or printf("Error while preparing query: %s\n", $dbh->errstr);
 	Test($state or $sth->execute)
 	    or printf("Error while executing query: %s\n", $sth->errstr);
-	Test($state or $sth->{insertid} =~ /\d+/)
+	Test($state or $sth->{'mysql_insertid'} =~ /\d+/)
 	    or printf("insertid generated incorrect result: %s\n",
 		      $sth->insertid);
 	Test($state or $sth->finish)
@@ -336,3 +332,4 @@ while (Testing()) {
 	    or ErrMsg("disconnect failed: $dbh->errstr.\n");
     }
 }
+

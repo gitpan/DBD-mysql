@@ -7,7 +7,7 @@ package Msql::Statement;
 use strict;
 use vars qw($OPTIMIZE $VERSION $AUTOLOAD);
 
-$VERSION = '1.2010';
+$VERSION = '1.21_08';
 
 $OPTIMIZE = 0; # controls, which optimization we default to
 
@@ -46,26 +46,27 @@ sub dataseek ($$) {
 
 sub numrows { my($self) = shift; $self->rows() }
 sub numfields { my($self) = shift; $self->{'NUM_OF_FIELDS'} }
-sub affectedrows { my($self) = shift; $self->{'affected_rows'} }
-sub insertid { my($self) = shift; $self->{'insertid'} }
 sub arrAttr ($$) {
     my($self, $attr) = @_;
-    my($arr) = $self->{$attr};
+    my $arr = $self->{$attr};
     wantarray ? @$arr : $arr
 }
-sub table ($) { shift->arrAttr('table') }
+sub table ($) { shift->arrAttr('msql_table') }
 sub name ($) { shift->arrAttr('NAME') }
 sub type ($) { shift->arrAttr('msql_type') }
-sub isnotnull ($) { shift->arrAttr('is_not_null') }
-sub isprikey ($) { shift->arrAttr('is_pri_key') }
-sub isnum ($) { shift->arrAttr('is_num') }
-sub isblob ($) { shift->arrAttr('is_blob') }
-sub length ($) { shift->arrAttr('length') }
+sub isnotnull ($) {
+    my $arr = [map {!$_} @{shift()->{'NULLABLE'}}];
+    wantarray ? @$arr : $arr;
+}
+sub isprikey ($) { shift->arrAttr('msql_is_pri_key') }
+sub isnum ($) { shift->arrAttr('msql_is_num') }
+sub isblob ($) { shift->arrAttr('msql_is_blob') }
+sub length ($) { shift->arrAttr('PRECISION') }
 
 sub maxlength  {
     my $sth = shift;
     my $result;
-    if (!($result = $sth->{'maxlength'})) {
+    if (!($result = $sth->{'msql_maxlength'})) {
 	$result = [];
 	my ($l);
 	for (0..$sth->numfields-1) {
@@ -89,7 +90,6 @@ sub maxlength  {
 		}
 	    }
 	}
-	$sth->{MAXLENGTH} = $result;
     }
     return wantarray ? @$result : $result;
 }
@@ -132,10 +132,9 @@ sub unctrl {
 sub optimize {
     my($self,$arg) = @_;
     if (defined $arg) {
-	return $self->{'OPTIMIZE'} = $arg;
-    } else {
-	return $self->{'OPTIMIZE'} ||= $OPTIMIZE;
+	$OPTIMIZE = $arg;
     }
+    $OPTIMIZE;
 }
 
 sub as_string {

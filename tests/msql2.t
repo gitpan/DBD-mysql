@@ -4,7 +4,7 @@ use strict;
 use vars qw($mdriver);
 
 my($file);
-foreach $file ("lib.pl", "t/lib.pl", "~DRIVER~/t/lib.pl") {
+foreach $file ("lib.pl", "t/lib.pl", "~~nodbd_driver~~/t/lib.pl") {
     if (-f $file) {
 	do $file;
 	last;
@@ -14,8 +14,8 @@ if (!$mdriver || ($mdriver ne "mSQL" && $mdriver ne "mSQL1")) {
     print "1..0\n"; exit 0;
 }
 $| = 1;
-eval "use ~DRIVER~";
-my $db = ~DRIVER~->connect("~test_host~", "~test_db~");
+eval "use ~~nodbd_driver~~";
+my $db = ~~nodbd_driver~~->connect("~~test_host~~", "~~test_db~~");
 if ($db->getserverinfo lt 2) {
     print "1..0\n";
     exit;
@@ -26,7 +26,7 @@ print "ok 1\n";
 
 {
     my($q,$what,@t,$i,$j);
-    my $db = ~DRIVER~->connect("~test_host~","~test_db~");
+    my $db = ~~nodbd_driver~~->connect("~~test_host~~","~~test_db~~");
     $t[0] = create(
 		   $db,
 		   "TABLE00",
@@ -89,7 +89,7 @@ print "ok 1\n";
 sub create {
     my($db,$tablename,$createexpression) = @_;
     my($query) = "create table $tablename $createexpression";
-    local($~DRIVER~::QUIET) = 1;
+    local($~~nodbd_driver~~::QUIET) = 1;
     my $limit = 0;
     while (! $db->query($query)){
 	die "Cannot create table: query [$query] message ["
@@ -103,11 +103,11 @@ sub create {
 sub cre_index {
     my($db,$indexname,$createexpression,$uniq) = @_;
     my($query) = "create $uniq index $indexname $createexpression";
-    local($~DRIVER~::QUIET) = 1;
+    local($~~nodbd_driver~~::QUIET) = 1;
     my $limit = 0;
     while (! $db->query($query)){
 	die "Cannot create index: query [$query] message ["
-	    . ~DRIVER~->errmsg() . "]\n" if $limit++ > 1000;
+	    . ~~nodbd_driver~~->errmsg() . "]\n" if $limit++ > 1000;
 	$indexname++;
 	$query = "create $uniq index $indexname $createexpression";
     }

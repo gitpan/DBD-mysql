@@ -65,10 +65,6 @@ static imp_sth_ph_t* AllocParam(int numParam) {
 
     if (numParam) {
         Newz(908, params, numParam, imp_sth_ph_t);
-#ifdef DEBUGGING_MEMLEAK
-	printf("AllocParam: %08x, %d bytes\n", (unsigned int) params,
-	       numParam * sizeof(imp_sth_ph_t));
-#endif
     } else {
         params = NULL;
     }
@@ -85,9 +81,6 @@ static void FreeParam(imp_sth_ph_t* params, int numParam) {
 		ph->value = NULL;
 	    }
 	}
-#ifdef DEBUGGING_MEMLEAK
-	printf("FreeParam: %08x\n", (unsigned int) params);
-#endif
 	Safefree(params);
     }
 }
@@ -136,10 +129,6 @@ static char* ParseParam(char* statement, STRLEN *slenPtr,
      *  Allocate memory
      */
     New(908, salloc, alen+1, char);
-#ifdef DEBUGGING_MEMLEAK
-    printf("ParseParam: %08x, %d bytes\n", (unsigned int) salloc,
-	   alen+1);
-#endif
     ptr = salloc;
 
     /*
