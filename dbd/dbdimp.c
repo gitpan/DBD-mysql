@@ -1,12 +1,14 @@
 /*
  *  DBD::mysql - DBI driver for the mysql database
  *
- *  Copyright (c) 1997, 1998  Jochen Wiedmann
+ *  Copyright (c) 1997  Jochen Wiedmann
+ *
+ *  Based on DBD::Oracle; DBD::Oracle is
+ *
+ *  Copyright (c) 1994,1995  Tim Bunce
  *
  *  You may distribute this under the terms of either the GNU General Public
- *  License or the Artistic License, as specified in the Perl README file,
- *  with the exception that it cannot be placed on a CD-ROM or similar media
- *  for commercial distribution without the prior approval of the author.
+ *  License or the Artistic License, as specified in the Perl README file.
  *
  *  Author:  Jochen Wiedmann
  *           Am Eisteich 9
@@ -17,24 +19,11 @@
  *           Fax: +49 7123 / 14892
  *
  *
- *  $Id: dbdimp.c 1.1 Tue, 30 Sep 1997 01:28:08 +0200 joe $
+ *  $Id: dbdimp.c,v 1.4 1999/01/05 22:30:54 joe Exp $
  */
 
 
-#ifdef WIN32
-#include "windows.h"
-#include "winsock.h"
-#endif
-
 #include "dbdimp.h"
-
-#if defined(WIN32)  &&  defined(WORD)
-    /*  Don't exactly know who's responsible for defining WORD ... :-(  */
-#undef WORD
-typedef short WORD;
-#endif
-
-
 #include "bindparam.h"
 
 
@@ -46,316 +35,6 @@ DBISTATE_DECLARE;
 #define DO_ERROR(h, c, s) do_error(h, c, MyError(s))
 #endif
 
-
-typedef struct sql_type_info_s {
-    const char* type_name;
-    int data_type;
-    int precision;
-    const char* literal_prefix;
-    const char* literal_suffix;
-    const char* create_params;
-    int nullable;
-    int case_sensitive;
-    int searchable;
-    int unsigned_attribute;
-    int money;
-    int auto_increment;
-    const char* local_type_name;
-    int minimum_scale;
-    int maximum_scale;
-    int native_type;
-    int is_num;
-} sql_type_info_t;
-
-#if defined(DBD_MYSQL)
-
-/*
- *  The order of the following is important: The first column of a given
- *  data_type is choosen to represent all columns of the same type.
- */
-static const sql_type_info_t SQL_GET_TYPE_INFO_values[] = {
-  { "varchar",    SQL_VARCHAR,                    255, "'",  "'",  "max length",
-    1, 0, 1, 0, 0, 0, "variable length string",
-    0, 0, FIELD_TYPE_VAR_STRING,  0
-    /* 0 */
-  },
-  { "decimal",   SQL_DECIMAL,                      15, NULL, NULL, "precision,scale",
-    1, 0, 1, 0, 0, 0, "double",
-    0, 6, FIELD_TYPE_DECIMAL,     1
-    /* 1 */
-  },
-  { "tinyint",   SQL_TINYINT,                       3, NULL, NULL, NULL,
-    1, 0, 1, 0, 0, 0, "Tiny integer",
-    0, 0, FIELD_TYPE_TINY,        1
-    /* 2 */
-  },
-  { "smallint",  SQL_SMALLINT,                      5, NULL, NULL, NULL,
-    1, 0, 1, 0, 0, 0, "Short integer",
-    0, 0, FIELD_TYPE_SHORT,       1
-    /* 3 */
-  },
-  { "integer",   SQL_INTEGER,                      10, NULL, NULL, NULL,
-    1, 0, 1, 0, 0, 0, "integer",
-    0, 0, FIELD_TYPE_LONG,        1
-    /* 4 */
-  },
-  { "float",     SQL_REAL,                          7,  NULL, NULL, NULL,
-    1, 0, 0, 0, 0, 0, "float",
-    0, 2, FIELD_TYPE_FLOAT,       1
-    /* 5 */
-  },
-  { "double",    SQL_DOUBLE,                       15,  NULL, NULL, NULL,
-    1, 0, 1, 0, 0, 0, "double",
-    0, 4, FIELD_TYPE_DOUBLE,      1
-    /* 6 */
-  },
-  /*
-    FIELD_TYPE_NULL ?
-  */
-  { "timestamp", SQL_TIMESTAMP,                    14, NULL, NULL, NULL,
-    0, 0, 1, 0, 0, 0, "timestamp",
-    0, 0, FIELD_TYPE_TIMESTAMP,   0
-    /* 7 */
-  },
-  { "bigint",    SQL_BIGINT,                       20, NULL, NULL, NULL,
-    1, 0, 1, 0, 0, 0, "Longlong integer",
-    0, 0, FIELD_TYPE_LONGLONG,    1
-    /* 8 */
-  },
-  { "middleint", SQL_INTEGER,                       8, NULL, NULL, NULL,
-    1, 0, 1, 0, 0, 0, "Medium integer",
-    0, 0, FIELD_TYPE_INT24,       1
-    /* 9 */
-  },
-  { "date",      SQL_DATE,                         10, NULL, NULL,  NULL,
-    1, 0, 1, 0, 0, 0, "date",
-    0, 0, FIELD_TYPE_DATE,        0
-    /* 10 */
-  },
-  { "time",      SQL_TIME,                          6, NULL, NULL, NULL,
-    1, 0, 1, 0, 0, 0, "time",
-    0, 0, FIELD_TYPE_TIME,        0
-    /* 11 */
-  },
-  { "datetime",  SQL_TIMESTAMP,                    21, NULL, NULL, NULL,
-    1, 0, 1, 0, 0, 0, "datetime",
-    0, 0, FIELD_TYPE_DATETIME,    0
-    /* 12 */
-  },
-  { "year",      SQL_SMALLINT,                      4, NULL, NULL, NULL,
-    1, 0, 1, 0, 0, 0, "year",
-    0, 0, FIELD_TYPE_YEAR,        0
-    /* 13 */
-  },
-  { "date",      SQL_DATE,                         10, NULL, NULL, NULL,
-    1, 0, 1, 0, 0, 0, "date",
-    0, 0, FIELD_TYPE_NEWDATE,     0
-    /* 14 */
-  },
-  { "enum",      SQL_VARCHAR,                     255, "'",  "'",  NULL,
-    1, 0, 1, 0, 0, 0, "enum(value1,value2,value3...)",
-    0, 0, FIELD_TYPE_ENUM,        0
-    /* 15 */
-  },
-  { "set",       SQL_VARCHAR,                     255, "'",  "'",  NULL,
-    1, 0, 1, 0, 0, 0, "set(value1,value2,value3...)",
-    0, 0, FIELD_TYPE_SET,         0
-    /* 16 */
-  },
-  { "blob",       SQL_LONGVARCHAR,              65535, "'",  "'",  NULL,
-    1, 0, 1, 0, 0, 0, "binary large object (0-65535)",
-    0, 0, FIELD_TYPE_BLOB,        0
-    /* 17 */
-  },
-  { "tinyblob",  SQL_LONGVARCHAR,                 255, "'",  "'",  NULL,
-    1, 0, 1, 0, 0, 0, "binary large object (0-255) ",
-    0, 0, FIELD_TYPE_TINY_BLOB,   0
-    /* 18 */
-  },
-  { "mediumblob", SQL_LONGVARCHAR,           16777215, "'",  "'",  NULL,
-    1, 0, 1, 0, 0, 0, "binary large object",
-    0, 0, FIELD_TYPE_MEDIUM_BLOB, 0
-    /* 19 */
-  },
-  { "longblob",   SQL_LONGVARCHAR,         2147483647, "'",  "'",  NULL,
-    1, 0, 1, 0, 0, 0, "binary large object, use mediumblob instead",
-    0, 0, FIELD_TYPE_LONG_BLOB,   0
-    /* 20 */
-  },
-  { "char",       SQL_CHAR,                       255, "'",  "'",  "max length",
-    1, 0, 1, 0, 0, 0, "string",
-    0, 0, FIELD_TYPE_STRING,      0
-    /* 21 */
-  },
-
-  { "decimal",            SQL_NUMERIC,            15,  NULL, NULL, "precision,scale",
-    1, 0, 1, 0, 0, 0, "double",
-    0, 6, FIELD_TYPE_DECIMAL,     1
-  },
-  /*
-  { "tinyint",            SQL_BIT,                  3, NULL, NULL, NULL,
-    1, 0, 1, 0, 0, 0, "Tiny integer",
-    0, 0, FIELD_TYPE_TINY,        1
-  },
-  */
-  { "tinyint unsigned",   SQL_TINYINT,              3, NULL, NULL, NULL,
-    1, 0, 1, 1, 0, 0, "Tiny integer unsigned",
-    0, 0, FIELD_TYPE_TINY,        1
-  },
-  { "smallint unsigned",  SQL_SMALLINT,             5, NULL, NULL, NULL,
-    1, 0, 1, 1, 0, 0, "Short integer unsigned",
-    0, 0, FIELD_TYPE_SHORT,       1
-  },
-  { "middleint unsigned", SQL_INTEGER,              8, NULL, NULL, NULL,
-    1, 0, 1, 1, 0, 0, "Medium integer unsigned",
-    0, 0, FIELD_TYPE_INT24,       1
-  },
-  { "int unsigned",       SQL_INTEGER,             10, NULL, NULL, NULL,
-    1, 0, 1, 1, 0, 0, "integer unsigned",
-    0, 0, FIELD_TYPE_LONG,        1
-  },
-  { "int",                SQL_INTEGER,             10, NULL, NULL, NULL,
-    1, 0, 1, 0, 0, 0, "integer",
-    0, 0, FIELD_TYPE_LONG,        1
-  },
-  { "integer unsigned",   SQL_INTEGER,             10, NULL, NULL, NULL,
-    1, 0, 1, 1, 0, 0, "integer",
-    0, 0, FIELD_TYPE_LONG,        1
-  },
-  { "bigint unsigned",    SQL_BIGINT,              20, NULL, NULL, NULL,
-    1, 0, 1, 1, 0, 0, "Longlong integer unsigned",
-    0, 0, FIELD_TYPE_LONGLONG,    1
-  },
-  { "text",               SQL_LONGVARCHAR,      65535, "'",  "'",  NULL,
-    1, 0, 1, 0, 0, 0, "large text object (0-65535)",
-    0, 0, FIELD_TYPE_BLOB,        0
-  },
-  { "mediumtext",         SQL_LONGVARCHAR,   16777215, "'",  "'",  NULL,
-    1, 0, 1, 0, 0, 0, "large text object",
-    0, 0, FIELD_TYPE_MEDIUM_BLOB, 0
-  }
-};
-
-
-static const sql_type_info_t* native2sql (int t) {
-    switch (t) {
-      case FIELD_TYPE_VAR_STRING:  return &SQL_GET_TYPE_INFO_values[0];
-      case FIELD_TYPE_DECIMAL:     return &SQL_GET_TYPE_INFO_values[1];
-      case FIELD_TYPE_TINY:        return &SQL_GET_TYPE_INFO_values[2];
-      case FIELD_TYPE_SHORT:       return &SQL_GET_TYPE_INFO_values[3];
-      case FIELD_TYPE_LONG:        return &SQL_GET_TYPE_INFO_values[4];
-      case FIELD_TYPE_FLOAT:       return &SQL_GET_TYPE_INFO_values[5];
-      case FIELD_TYPE_DOUBLE:      return &SQL_GET_TYPE_INFO_values[6];
-      case FIELD_TYPE_TIMESTAMP:   return &SQL_GET_TYPE_INFO_values[7];
-      case FIELD_TYPE_LONGLONG:    return &SQL_GET_TYPE_INFO_values[8];
-      case FIELD_TYPE_INT24:       return &SQL_GET_TYPE_INFO_values[9];
-      case FIELD_TYPE_DATE:        return &SQL_GET_TYPE_INFO_values[10];
-      case FIELD_TYPE_TIME:        return &SQL_GET_TYPE_INFO_values[11];
-      case FIELD_TYPE_DATETIME:    return &SQL_GET_TYPE_INFO_values[12];
-      case FIELD_TYPE_YEAR:        return &SQL_GET_TYPE_INFO_values[13];
-      case FIELD_TYPE_NEWDATE:     return &SQL_GET_TYPE_INFO_values[14];
-      case FIELD_TYPE_ENUM:        return &SQL_GET_TYPE_INFO_values[15];
-      case FIELD_TYPE_SET:         return &SQL_GET_TYPE_INFO_values[16];
-      case FIELD_TYPE_BLOB:        return &SQL_GET_TYPE_INFO_values[17];
-      case FIELD_TYPE_TINY_BLOB:   return &SQL_GET_TYPE_INFO_values[18];
-      case FIELD_TYPE_MEDIUM_BLOB: return &SQL_GET_TYPE_INFO_values[19];
-      case FIELD_TYPE_LONG_BLOB:   return &SQL_GET_TYPE_INFO_values[20];
-      case FIELD_TYPE_STRING:      return &SQL_GET_TYPE_INFO_values[21];
-      default:                     return &SQL_GET_TYPE_INFO_values[0];
-    }
-}
-
-#else
-
-const sql_type_info_t SQL_GET_TYPE_INFO_values[] = {
-  { "int",       SQL_INTEGER,                      10, NULL, NULL, NULL,
-    1, 0, 1, 0, 0, 0, "integer",
-    0, 0, INT_TYPE,    1
-    /* 0 */
-  },
-  { "char",    SQL_VARCHAR,                       255, "'",  "'",  "max length",
-    1, 0, 1, 0, 0, 0, "variable length string",
-    0, 0, CHAR_TYPE,   0
-    /* 1 */
-  },
-  { "real",     SQL_REAL,                           7,  NULL, NULL, NULL,
-    1, 0, 0, 0, 0, 0, "float",
-    0, 2, REAL_TYPE,   1
-    /* 2 */
-  },
-  { "ident",    SQL_VARCHAR,                      255, "'",  "'",  "max length",
-    1, 0, 1, 0, 0, 0, "identifier",
-    0, 0, IDENT_TYPE,  0
-    /* 3 */
-  },
-  { "null",     SQL_VARCHAR,                      255, "'",  "'",  "max length",
-    1, 0, 1, 0, 0, 0, "null type",
-    0, 0, NULL_TYPE,   0
-    /* 4 */
-  },
-#if defined(TEXT_TYPE)
-  { "text",     SQL_LONGVARCHAR,                  255, "'",  "'",  "max length",
-    1, 0, 1, 0, 0, 0, "text type",
-    0, 0, TEXT_TYPE,   0
-    /* 5 */
-  },
-  { "date",      SQL_DATE,                         10, "'",  "'",  NULL,
-    1, 0, 1, 0, 0, 0, "date",
-    0, 0, DATE_TYPE,   0
-    /* 6 */
-  },
-  { "uint",      SQL_INTEGER,                      10, NULL, NULL, NULL,
-    1, 0, 1, 1, 0, 0, "integer unsigned",
-    0, 0, UINT_TYPE,   1
-    /* 7 */
-  },
-  { "money",     SQL_VARCHAR,                      10, "'",  "'",  NULL,
-    1, 0, 1, 0, 1, 0, "money type",
-    0, 0, MONEY_TYPE,  0
-    /* 8 */
-  },
-  { "time",      SQL_TIME,                          6, NULL, NULL, NULL,
-    1, 0, 1, 0, 0, 0, "time",
-    0, 0, TIME_TYPE,   0
-    /* 9 */
-  },
-  { "idx",     SQL_VARCHAR,                       255, "'",  "'",  "max length",
-    1, 0, 1, 0, 0, 0, "index type",
-    0, 0, IDX_TYPE,    0
-    /* 10 */
-  },
-  { "sysvar",  SQL_VARCHAR,                       255, "'",  "'",  "max length",
-    1, 0, 1, 0, 0, 0, "sysvar type",
-    0, 0, SYSVAR_TYPE, 0
-    /* 11 */
-  },
-#endif
-};
-
-const sql_type_info_t* native2sql (int t) {
-    switch (t) {
-      case INT_TYPE:     return &SQL_GET_TYPE_INFO_values[0];
-      case CHAR_TYPE:    return &SQL_GET_TYPE_INFO_values[1];
-      case REAL_TYPE:    return &SQL_GET_TYPE_INFO_values[2];
-      case IDENT_TYPE:   return &SQL_GET_TYPE_INFO_values[3];
-      case NULL_TYPE:    return &SQL_GET_TYPE_INFO_values[4];
-#if defined(TEXT_TYPE)
-      case TEXT_TYPE:    return &SQL_GET_TYPE_INFO_values[5];
-      case DATE_TYPE:    return &SQL_GET_TYPE_INFO_values[6];
-      case UINT_TYPE:    return &SQL_GET_TYPE_INFO_values[7];
-      case MONEY_TYPE:   return &SQL_GET_TYPE_INFO_values[8];
-      case TIME_TYPE:    return &SQL_GET_TYPE_INFO_values[9];
-      case IDX_TYPE:     return &SQL_GET_TYPE_INFO_values[10];
-      case SYSVAR_TYPE:  return &SQL_GET_TYPE_INFO_values[11];
-#endif
-      default:           return &SQL_GET_TYPE_INFO_values[1];
-    }
-}
-
-#endif
-
-#define SQL_GET_TYPE_INFO_num \
-	(sizeof(SQL_GET_TYPE_INFO_values)/sizeof(sql_type_info_t))
 
 
 /***************************************************************************
@@ -393,32 +72,30 @@ void dbd_init(dbistate_t* dbistate) {
 
 void do_error(SV* h, int rc, char* what) {
     D_imp_xxh(h);
+    STRLEN lna;
+
     SV *errstr = DBIc_ERRSTR(imp_xxh);
     sv_setiv(DBIc_ERR(imp_xxh), (IV)rc);	/* set err early	*/
     sv_setpv(errstr, what);
     DBIh_EVENT2(h, ERROR_event, DBIc_ERR(imp_xxh), errstr);
     if (dbis->debug >= 2)
 	fprintf(DBILOGFP, "%s error %d recorded: %s\n",
-		what, rc, SvPV(errstr,na));
+		what, rc, SvPV(errstr,lna));
 }
 void do_warn(SV* h, int rc, char* what) {
     D_imp_xxh(h);
+    STRLEN lna;
+
     SV *errstr = DBIc_ERRSTR(imp_xxh);
     sv_setiv(DBIc_ERR(imp_xxh), (IV)rc);	/* set err early	*/
     sv_setpv(errstr, what);
     DBIh_EVENT2(h, WARN_event, DBIc_ERR(imp_xxh), errstr);
     if (dbis->debug >= 2)
 	fprintf(DBILOGFP, "%s warning %d recorded: %s\n",
-		what, rc, SvPV(errstr,na));
+		what, rc, SvPV(errstr,lna));
     warn("%s", what);
 }
-#define doquietwarn(s)                                            \
-    {                                                             \
-        SV* sv = perl_get_sv("DBD::~dbd_driver~::QUIET", FALSE);  \
-        if (!sv  ||  !SvTRUE(sv)) {                               \
-	    warn s;                                               \
-	}                                                         \
-    }
+
 
 
 
@@ -450,6 +127,7 @@ void do_warn(SV* h, int rc, char* what) {
 int MyConnect(dbh_t *sock, char* unixSocket, char* host, char* port,
 	      char* user, char* password, char* dbname, imp_dbh_t *imp_dbh) {
     int portNr;
+    STRLEN lna;
 
     if (host && !*host) host = NULL;
     if (port && *port) {
@@ -470,34 +148,66 @@ int MyConnect(dbh_t *sock, char* unixSocket, char* host, char* port,
 
 #ifdef DBD_MYSQL
     {
+#ifndef HAVE_MYSQL_REAL_CONNECT
+        /*
+	 *  Setting a port for mysql's client is ugly: We have to use
+	 *  the not documented variable mysql_port.
+	 */
+        int result, oldPort = 0;
+	if (portNr) {
+	    oldPort = mysql_port;
+	    mysql_port = portNr;
+	}
+        result = mysql_connect(*sock, host, user, password) ? TRUE : FALSE;
+	if (oldPort) {
+	    mysql_port = oldPort;
+	}
+	return result;
+#elif defined(MYSQL_VERSION_ID)  &&  (MYSQL_VERSION_ID >= 32200)
+
 	mysql_init(*sock);
+#if defined(MYSQL_VERSION_ID)  &&  (MYSQL_VERSION_ID >= 32203)
 	if (imp_dbh) {
 	    SV* sv = DBIc_IMP_DATA(imp_dbh);
 	    if (sv  &&  SvROK(sv)) {
-	        HV* hv = (HV*) SvRV(sv);
-		SV** svp;
-
-		if ((svp = hv_fetch(hv, "mysql_compression", 17, FALSE))  &&
-		    *svp  &&  SvTRUE(*svp)) {
-		    mysql_options(*sock, MYSQL_OPT_COMPRESS, NULL);
-		}
-		if ((svp = hv_fetch(hv, "mysql_read_default_file", 23,
-				    FALSE))  &&
-		    *svp  &&  SvTRUE(*svp)) {
-		  mysql_options(*sock, MYSQL_READ_DEFAULT_FILE,
-				SvPV(*svp, na));
-		}
-		if ((svp = hv_fetch(hv, "mysql_read_default_group", 24,
-				    FALSE))  &&
-		    *svp  &&  SvTRUE(*svp)) {
-		    mysql_options(*sock, MYSQL_READ_DEFAULT_GROUP,
-				  SvPV(*svp, na));
+	        SV** svp;
+		HV* hv;
+		hv = (HV*) SvRV(sv);
+		if (SvTYPE(hv) == SVt_PVHV) {
+		    if ((svp = hv_fetch(hv, "mysql_compression", 17, FALSE))
+			&&  *svp  &&  SvTRUE(*svp)) {
+		        mysql_options(*sock, MYSQL_OPT_COMPRESS, NULL);
+		    }
+#if MYSQL_VERSION_ID >= 32210
+		    if ((svp = hv_fetch(hv, "mysql_read_default_group", 24,
+					FALSE))  &&
+			*svp  &&  SvTRUE(*svp)) {
+		        mysql_options(*sock, MYSQL_READ_DEFAULT_GROUP,
+				      SvPV(*svp, lna));
+		    }
+		    if ((svp = hv_fetch(hv, "mysql_read_default_file", 23,
+					FALSE))  &&
+			*svp  &&  SvTRUE(*svp)) {
+		        mysql_options(*sock, MYSQL_READ_DEFAULT_FILE,
+				      SvPV(*svp, lna));
+		    }
+#endif /* MYSQL_VERSION_ID >= 32210 */
 		}
 	    }
-        }
-        return mysql_real_connect(*sock, host, user, password, dbname,
+	}
+#endif
+	return mysql_real_connect(*sock, host, user, password, dbname,
 				  portNr, unixSocket, 0) ?
-	  TRUE : FALSE;
+	    TRUE : FALSE;
+#elif defined(MYSQL_VERSION_ID)  &&  (MYSQL_VERSION_ID >= 32115)
+	return mysql_real_connect(*sock, host, user, password, portNr,
+				  unixSocket, 0) ?
+	    TRUE : FALSE;
+#else
+	return mysql_real_connect(*sock, host, user, password, portNr,
+				  unixSocket) ?
+	    TRUE : FALSE;
+#endif
     }
 #else
     {
@@ -528,10 +238,6 @@ int MyConnect(dbh_t *sock, char* unixSocket, char* host, char* port,
 	    my_setenv("MSQL_TCP_PORT", oldPort);
 	    if (oldPort) { free(oldPort); }
 	}
-	if (*sock != -1  &&  dbname  &&  MySelectDb(*sock, dbname)) {
-	    MyClose(*sock);
-	    *sock = -1;
-	}
 	return (*sock == -1) ? FALSE : TRUE;
     }
 #endif
@@ -547,7 +253,7 @@ static int _MyLogin(imp_dbh_t *imp_dbh) {
     char* user;
     char* password;
     char* unixSocket = NULL;
-    STRLEN len;
+    STRLEN len, lna;
 
     sv = DBIc_IMP_DATA(imp_dbh);
     if (!sv  ||  !SvROK(sv)) {
@@ -566,7 +272,7 @@ static int _MyLogin(imp_dbh_t *imp_dbh) {
         host = NULL;
     }
     if ((svp = hv_fetch(hv, "port", 4, FALSE))) {
-        port = SvPV(*svp, na);
+        port = SvPV(*svp, lna);
     } else {
         port = NULL;
     }
@@ -587,30 +293,30 @@ static int _MyLogin(imp_dbh_t *imp_dbh) {
         password = NULL;
     }
     if ((svp = hv_fetch(hv, "database", 8, FALSE))) {
-        dbname = SvPV(*svp, na);
+        dbname = SvPV(*svp, lna);
     } else {
         dbname = NULL;
     }
 #ifdef DBD_MYSQL
     if ((svp = hv_fetch(hv, "mysql_socket", 12, FALSE))  &&
-        *svp  &&  SvTRUE(*svp)) {
-        unixSocket = SvPV(*svp, na);
+	*svp  &&  SvTRUE(*svp)) {
+        unixSocket = SvPV(*svp, lna);
     }
 #elif defined(IDX_TYPE)
     if ((svp = hv_fetch(hv, "msql_configfile", 15, FALSE))  &&
-        *svp  &&  SvOK(*svp)) {
-        char* cf = SvPV(*svp, na);
-        if (dbis->debug >= 2) {
-            fprintf(DBILOGFP, "imp_dbh->MyLogin: Loading config file %s\n",
-                    cf);
-        }
-        if (msqlLoadConfigFile(cf) == -1) {
-            croak("Failed to load config file %s", cf);
-        }
+	*svp  &&  SvOK(*svp)) {
+        char* cf = SvPV(*svp, lna);
+	if (dbis->debug >= 2) {
+	    fprintf(DBILOGFP, "imp_dbh->MyLogin: Loading config file %s\n",
+		    cf);
+	}
+	if (msqlLoadConfigFile(cf) == -1) {
+	    croak("Failed to load config file %s", cf);
+	}
     }
     if (port != 0) {
-        doquietwarn(("Port settings are meaningless with mSQL 2." \
-		     " Use msql_configfile instead."));  /* 1.21_07 */
+        warn("Port settings are meaningless with mSQL 2." \
+	     " Use msql_configfile instead.\n");
     }
 #endif
 
@@ -628,8 +334,24 @@ static int _MyLogin(imp_dbh_t *imp_dbh) {
     imp_dbh->svsock = &imp_dbh->mysql;
 #endif
 
-    return MyConnect(&imp_dbh->svsock, unixSocket, host, port, user, password,
-		     dbname, imp_dbh);
+#if defined(DBD_MYSQL)  &&  (MYSQL_VERSION_ID >= 32200)
+    if (!MyConnect(&imp_dbh->svsock, unixSocket, host, port, user, password,
+		   dbname, imp_dbh)) {
+        return FALSE;
+    }
+#else
+    if (!MyConnect(&imp_dbh->svsock, unixSocket, host, port, user, password,
+		   NULL, imp_dbh)) {
+        return FALSE;
+    }
+
+    if (MySelectDb(imp_dbh->svsock, dbname)) {
+        MyClose(imp_dbh->svsock);
+	return FALSE;
+    }
+#endif
+
+    return TRUE;
 }
 
 
@@ -907,11 +629,6 @@ SV* dbd_db_FETCH_attrib(SV* dbh, imp_dbh_t* imp_dbh, SV* keysv) {
 	    return info ? sv_2mortal(newSVpv(info, strlen(info))) : &sv_undef;
 	}
 	break;
-      case 'm':
-	if (kl == 14  &&  strEQ(key, "mysql_insertid")) {
-	    return sv_2mortal(newSViv(mysql_insert_id(imp_dbh->svsock)));
-	}
-	break;
 #endif
       case 'p':
 	if (kl == 9  &&  strEQ(key, "protoinfo")) {
@@ -971,7 +688,6 @@ SV* dbd_db_FETCH_attrib(SV* dbh, imp_dbh_t* imp_dbh, SV* keysv) {
 int dbd_st_prepare(SV* sth, imp_sth_t* imp_sth, char* statement, SV* attribs) {
     int i;
 
-
     /*
      *  Count the number of parameters
      */
@@ -984,26 +700,17 @@ int dbd_st_prepare(SV* sth, imp_sth_t* imp_sth, char* statement, SV* attribs) {
     imp_sth->cda = NULL;
     imp_sth->currow = 0;
 #if defined(DBD_MYSQL)
-    imp_sth->use_mysql_use_result = 0;
+    {
+        SV** svp = DBD_ATTRIB_GET_SVP(attribs, "mysql_use_result", 16);
+        imp_sth->use_mysql_use_result = svp && SvTRUE(*svp);
+	if (dbis->debug >= 2)
+	    fprintf(DBILOGFP, "Setting mysql_use_result to %d\n",
+		    imp_sth->use_mysql_use_result);
+    }
 #endif
     for (i = 0;  i < AV_ATTRIB_LAST;  i++) {
 	imp_sth->av_attr[i] = Nullav;
     }
-
-#if defined(DBD_MYSQL)
-    /*
-     *  Check attributes
-     */
-    if (attribs  &&  SvTYPE(attribs) == SVt_RV) {
-        SV* sv = SvRV(attribs);
-	if (SvTYPE(sv) == SVt_PVHV) {
-	    SV** svp = hv_fetch((HV*) sv, "mysql_use_result", 16, FALSE);
-	    if (svp) {
-	        imp_sth->use_mysql_use_result = SvTRUE(*svp);
-	    }
-	}
-    }
-#endif
 
     /*
      *  Allocate memory for parameters
@@ -1034,7 +741,11 @@ int dbd_st_prepare(SV* sth, imp_sth_t* imp_sth, char* statement, SV* attribs) {
 
 int dbd_st_internal_execute(SV* h, SV* statement, SV* attribs, int numParams,
 			    imp_sth_ph_t* params, result_t* cdaPtr,
-			    dbh_t svsock, int use_mysql_use_result) {
+			    dbh_t svsock
+#ifdef DBD_MYSQL
+			    , int use_mysql_use_result
+#endif
+			    ) {
     STRLEN slen;
     char* sbuf = SvPV(statement, slen);
     char* salloc = ParseParam(sbuf, &slen, params, numParams);
@@ -1145,20 +856,33 @@ int dbd_st_internal_execute(SV* h, SV* statement, SV* attribs, int numParams,
     if ((MyQuery(svsock, sbuf, slen) == -1)  &&
 	(!MyReconnect(svsock, h)
 	 ||	 (MyQuery(svsock, sbuf, slen) == -1))) {
+#ifdef DEBUGGING_MEMLEAK
+	if (salloc) printf("Freeing ParseParam: %08x\n", (unsigned int) salloc);
+#endif
         Safefree(salloc);
+
 	DO_ERROR(h, JW_ERR_QUERY, svsock);
 	return -2;
     }
+#ifdef DEBUGGING_MEMLEAK
+    if (salloc) printf("Freeing ParseParam: %08x\n", (unsigned int) salloc);
+#endif
     Safefree(salloc);
 
     /** Store the result from the Query */
 #if defined(DBD_MYSQL)
+#ifdef DEBUGGING_MEMLEAK
+    printf("Allocating result, old = %08x\n", *cdaPtr);
+#endif
     if (!(*cdaPtr = (use_mysql_use_result ?
 		     mysql_use_result(svsock) : mysql_store_result(svsock)))) {
         return mysql_affected_rows(svsock);
 #elif defined(DBD_MSQL)
     if (!(*cdaPtr = MyStoreResult(svsock))) {
         return -1;
+#endif
+#ifdef DEBUGGING_MEMLEAK
+    printf("Allocated result %08x\n", *cdaPtr);
 #endif
     }
 
@@ -1217,8 +941,11 @@ int dbd_st_execute(SV* sth, imp_sth_t* imp_sth) {
 				     DBIc_NUM_PARAMS(imp_sth),
 				     imp_sth->params,
 				     &imp_sth->cda,
-				     imp_dbh->svsock,
-				     imp_sth->use_mysql_use_result))
+				     imp_dbh->svsock
+#ifdef DBD_MYSQL
+				     ,imp_sth->use_mysql_use_result
+#endif
+				     ))
 	!= -2) {
 	if (!imp_sth->cda) {
 #if defined(DBD_MYSQL)
@@ -1284,7 +1011,7 @@ AV* dbd_st_fetch(SV* sth, imp_sth_t* imp_sth) {
     AV *av;
     row_t cols;
 #if defined(DBD_MYSQL)
-#if (defined(MYSQL_VERSION_ID))  &&  (MYSQL_VERSION_ID > 32204)
+#if (defined(MYSQL_VERSION_ID)  &&  (MYSQL_VERSION_ID > 32204))
     unsigned long* lengths;
 #else
     unsigned int* lengths;
@@ -1298,7 +1025,6 @@ AV* dbd_st_fetch(SV* sth, imp_sth_t* imp_sth) {
     }
 
     if (!imp_sth->cda) {
-        do_error(sth, JW_ERR_SEQUENCE, "fetch() without execute()");
         return Nullav;
     }
 
@@ -1377,6 +1103,9 @@ int dbd_st_finish(SV* sth, imp_sth_t* imp_sth) {
     /* We don't close the cursor till DESTROY.                  */
     /* The application may re execute it.                       */
     if (imp_sth && imp_sth->cda) {
+#ifdef DEBUGGING_MEMLEAK
+        printf("Freeing result, old = %08x\n", imp_sth->cda);
+#endif
         MyFreeResult(imp_sth->cda);
 	imp_sth->cda = NULL;
     }
@@ -1458,6 +1187,14 @@ int dbd_st_STORE_attrib(SV* sth, imp_sth_t* imp_sth, SV* keysv, SV* valuesv) {
 #if defined(DBD_MYSQL)
     if (strEQ(key, "mysql_use_result")) {
         imp_sth->use_mysql_use_result = SvTRUE(valuesv);
+	result = TRUE;
+    }
+#else
+    if (DBIc_COMPAT(imp_sth)) {
+        if (strEQ(key, "OPTIMIZE")) {
+	    imp_sth->optimize = SvTRUE(valuesv);
+	    result = TRUE;
+	}
     }
 #endif
 
@@ -1483,7 +1220,6 @@ int dbd_st_STORE_attrib(SV* sth, imp_sth_t* imp_sth, SV* keysv, SV* valuesv) {
  *  Input:   sth - statement handle; may even be a database handle,
  *               in which case this will be used for storing error
  *               messages only. This is only valid, if cacheit (the
-
  *               last argument) is set to TRUE.
  *           what - internal attribute number
  *           res - pointer to a DBMS result
@@ -1497,6 +1233,17 @@ int dbd_st_STORE_attrib(SV* sth, imp_sth_t* imp_sth, SV* keysv, SV* valuesv) {
 
 #ifndef IS_KEY
 #define IS_KEY(A) (((A) & (PRI_KEY_FLAG | UNIQUE_KEY_FLAG | MULTIPLE_KEY_FLAG)) != 0)
+#endif
+#ifndef IS_NUM
+#if defined(DBD_MYSQL)
+#define IS_NUM(A) ((A) >= (int) FIELD_TYPE_DECIMAL && (A) <= FIELD_TYPE_DATETIME)
+#elif defined(DBD_MSQL)
+#ifdef UINT_TYPE
+#define IS_NUM(A) ((A) == INT_TYPE || (A) == REAL_TYPE || (A) == UINT_TYPE)
+#else
+#define IS_NUM(A) ((A) == INT_TYPE || (A) == REAL_TYPE)
+#endif
+#endif
 #endif
 
 SV* dbd_st_FETCH_internal(SV* sth, int what, result_t res, int cacheit) {
@@ -1543,7 +1290,60 @@ SV* dbd_st_FETCH_internal(SV* sth, int what, result_t res, int cacheit) {
 		sv = newSViv((int) curField->type);
 		break;
 	      case AV_ATTRIB_SQL_TYPE:
-		sv = newSViv((int) native2sql(curField->type)->data_type);
+		{   int i;
+#ifdef DBD_MYSQL
+		    switch (curField->type) {
+		      case FIELD_TYPE_DECIMAL:     i = SQL_DECIMAL;     break;
+		      case FIELD_TYPE_TINY:        i = SQL_TINYINT;     break;
+		      case FIELD_TYPE_SHORT:       i = SQL_SMALLINT;    break;
+		      case FIELD_TYPE_LONG:        i = SQL_INTEGER;     break;
+		      case FIELD_TYPE_FLOAT:       i = SQL_REAL;        break;
+		      case FIELD_TYPE_DOUBLE:      i = SQL_DOUBLE;      break;
+		      case FIELD_TYPE_TIMESTAMP:   i = SQL_TIMESTAMP;   break;
+		      case FIELD_TYPE_LONGLONG:    i = SQL_BIGINT;      break;
+		      case FIELD_TYPE_INT24:       i = SQL_BIGINT;      break;
+		      case FIELD_TYPE_DATE:        i = SQL_DATE;        break;
+		      case FIELD_TYPE_TIME:        i = SQL_TIME;        break;
+#if defined(MYSQL_VERSION_ID)  &&  (MYSQL_VERSION_ID >= 32200)
+		      case FIELD_TYPE_NEWDATE:     i = SQL_DATE;        break;
+#endif
+		      case FIELD_TYPE_TINY_BLOB:   i = SQL_VARCHAR;     break;
+		      case FIELD_TYPE_MEDIUM_BLOB: i = SQL_LONGVARCHAR; break;
+		      case FIELD_TYPE_LONG_BLOB:   i = SQL_LONGVARCHAR; break;
+		      case FIELD_TYPE_BLOB:        i = SQL_LONGVARCHAR; break;
+		      case FIELD_TYPE_VAR_STRING:  i = SQL_VARCHAR;     break;
+		      case FIELD_TYPE_STRING:      i = SQL_CHAR;        break;
+		      case FIELD_TYPE_DATETIME:    i = SQL_TIMESTAMP;   break;
+		      case FIELD_TYPE_NULL:        i = SQL_VARCHAR;     break;
+#if defined(MYSQL_VERSION_ID)  &&  (MYSQL_VERSION_ID >= 32200)
+		      case FIELD_TYPE_YEAR:        i = SQL_SMALLINT;    break;
+#endif
+		      case FIELD_TYPE_ENUM:        i = SQL_CHAR;        break;
+		      case FIELD_TYPE_SET:         i = SQL_CHAR;        break;
+		      default:                     i = SQL_VARCHAR;     break;
+		    }
+#else
+		    switch (curField->type) {
+		        case INT_TYPE:    i = SQL_INTEGER;  break;
+		        case CHAR_TYPE:   i = SQL_VARCHAR;  break;
+		        case REAL_TYPE:   i = SQL_REAL;     break;
+		        case IDENT_TYPE:  i = SQL_VARCHAR;  break;
+		        case NULL_TYPE:   i = SQL_VARCHAR;  break;
+#ifdef TEXT_TYPE
+		        case TEXT_TYPE:   i = SQL_VARCHAR;  break;
+		        case DATE_TYPE:   i = SQL_DATE;     break;
+		        case UINT_TYPE:   i = SQL_BIGINT;   break;
+		        case MONEY_TYPE:  i = SQL_VARCHAR;  break;
+		        case TIME_TYPE:   i = SQL_TIME;     break;
+		        case IDX_TYPE:    i = SQL_VARCHAR;  break;
+		        case SYSVAR_TYPE: i = SQL_VARCHAR;  break;
+		        case ANY_TYPE:    i = SQL_VARCHAR;  break;
+#endif
+		        default:          i = SQL_VARCHAR;  break;
+		    }
+#endif
+		    sv = newSViv(i);
+		}
 		break;
 	      case AV_ATTRIB_IS_PRI_KEY:
 		sv = boolSV(IS_PRI_KEY(curField->flags));
@@ -1558,10 +1358,77 @@ SV* dbd_st_FETCH_internal(SV* sth, int what, result_t res, int cacheit) {
 		sv = newSViv((int) curField->length);
 		break;
 	      case AV_ATTRIB_IS_NUM:
-		sv = newSViv((int) native2sql(curField->type)->is_num);
+		sv = boolSV(IS_NUM(curField->flags));
 		break;
 	      case AV_ATTRIB_TYPE_NAME:
-		sv = newSVpv((char*) native2sql(curField->type)->type_name, 0);
+	        {
+		    static struct db_types {
+			int id;
+			const char* name;
+		    } types [] = {
+#if defined(DBD_MYSQL)
+			{ FIELD_TYPE_BLOB, "blob" },
+			{ FIELD_TYPE_CHAR, "char" },
+			{ FIELD_TYPE_DECIMAL, "decimal" },
+			{ FIELD_TYPE_DATE, "date" },
+			{ FIELD_TYPE_DATETIME, "datetime" },
+			{ FIELD_TYPE_DOUBLE, "double" },
+			{ FIELD_TYPE_FLOAT, "float" },
+			{ FIELD_TYPE_INT24, "int24" },
+			{ FIELD_TYPE_LONGLONG, "longlong" },
+			{ FIELD_TYPE_LONG_BLOB, "longblob" },
+			{ FIELD_TYPE_LONG, "long" },
+			{ FIELD_TYPE_NULL, "null" },
+			{ FIELD_TYPE_SHORT, "short" },
+			{ FIELD_TYPE_STRING, "string" },
+			{ FIELD_TYPE_TINY_BLOB, "tinyblob" },
+			{ FIELD_TYPE_TIMESTAMP, "timestamp" },
+			{ FIELD_TYPE_TIME, "time" },
+			{ FIELD_TYPE_VAR_STRING, "varstring" }
+#elif defined(DBD_MSQL)
+			{ INT_TYPE, "int" },
+			{ CHAR_TYPE, "char" },
+			{ REAL_TYPE, "real" },
+			{ IDENT_TYPE, "ident" },
+#ifdef IDX_TYPE
+			{ IDX_TYPE, "index" },
+#endif
+#ifdef TEXT_TYPE
+			{ TEXT_TYPE, "text" },
+#endif
+#ifdef DATE_TYPE
+			{ DATE_TYPE, "date" },
+#endif
+#ifdef UINT_TYPE
+			{ UINT_TYPE, "uint" },
+#endif
+#ifdef MONEY_TYPE
+			{ MONEY_TYPE, "money" },
+#endif
+#ifdef TIME_TYPE
+			{ TIME_TYPE, "time" },
+#endif
+#ifdef SYSVAR_TYPE
+			{ SYSVAR_TYPE, "sys" }
+#endif
+#endif
+		    };
+		    int i, found = FALSE;
+
+		    sv = &sv_undef;
+		    for (i = 0;  i < sizeof(types) / sizeof(struct db_types);
+			 i++) {
+			if (curField->type == types[i].id) {
+			    sv = newSVpv((char*) types[i].name,
+					 strlen(types[i].name));
+			    found = TRUE;
+			    break;
+			}
+		    }
+		    if (!found) {
+			sv = newSVpv((char*) "unknown", 7);
+		    }
+		}
 	        break;
 #if defined(DBD_MYSQL)
 	      case AV_ATTRIB_MAX_LENGTH:
@@ -1573,24 +1440,7 @@ SV* dbd_st_FETCH_internal(SV* sth, int what, result_t res, int cacheit) {
 	      case AV_ATTRIB_IS_BLOB:
 		sv = boolSV(IS_BLOB(curField->flags));
 		break;
-	      case AV_ATTRIB_SCALE:
-		sv = newSViv((int) curField->decimals);
-		break;
-	      case AV_ATTRIB_PRECISION:
-		sv = newSViv((int) (curField->length > curField->max_length) ?
-			     curField->length : curField->max_length);
-		break;
-#else
-	      case AV_ATTRIB_SCALE:
-		sv = newSViv((int) curField->length);
-		break;
-	      case AV_ATTRIB_PRECISION:
-		sv = newSViv((int) curField->length);
-		break;
 #endif
-	      default:
-		sv = &sv_undef;
-		break;
 	    }
 
 	    av_push(av, sv);
@@ -1633,12 +1483,10 @@ SV* dbd_st_FETCH_internal(SV* sth, int what, result_t res, int cacheit) {
     dbd_st_FETCH_internal(sth, (what), imp_sth->cda, TRUE)
 
 SV* dbd_st_FETCH_attrib(SV* sth, imp_sth_t* imp_sth, SV* keysv) {
-    STRLEN(kl);
+    STRLEN kl;
     char* key = SvPV(keysv, kl);
     SV* retsv = Nullsv;
-    if (kl < 2) {
-        return Nullsv;
-    }
+    STRLEN lna;
 
     if (dbis->debug >= 2) {
         fprintf(DBILOGFP,
@@ -1651,9 +1499,6 @@ SV* dbd_st_FETCH_attrib(SV* sth, imp_sth_t* imp_sth, SV* keysv) {
       case 'a':
 	if (strEQ(key, "affected_rows")) {
 	    D_imp_dbh_from_sth;
-	    /* 1.21_07 */ 
-	    doquietwarn(("$sth->{'affected_rows'} is deprecated," \
-			 " use $sth->rows()"));
 	    retsv = sv_2mortal(newSViv((IV)mysql_affected_rows(imp_dbh->svsock)));
 	}
 	break;
@@ -1663,31 +1508,16 @@ SV* dbd_st_FETCH_attrib(SV* sth, imp_sth_t* imp_sth, SV* keysv) {
 	 *  Deprecated, use lower case versions.
 	 */
 	if (strEQ(key, "IS_PRI_KEY")) {
-	    /* 1.21_07 */ 
-	    doquietwarn(("$sth->{'IS_PRI_KEY'} is deprecated," \
-			 " use $sth->{'~~lc_dbd_driver~~_is_pri_key'}"));
 	    retsv = ST_FETCH_AV(AV_ATTRIB_IS_PRI_KEY);
 	} else if (strEQ(key, "IS_NOT_NULL")) {
-	    /* 1.21_07 */ 
-	    doquietwarn(("$sth->{'IS_NOT_NULL'} is deprecated," \
-			 " use $sth->{'NULLABLE'}"));
 	    retsv = ST_FETCH_AV(AV_ATTRIB_IS_NOT_NULL);
 #if defined(DBD_MYSQL)
 	} else if (strEQ(key, "IS_KEY")) {
-	    /* 1.21_07 */
-	    doquietwarn(("$sth->{'IS_KEY'} is deprecated," \
-			 " use $sth->{'~~lc_dbd_driver~~_is_key'}"));
 	    retsv = ST_FETCH_AV(AV_ATTRIB_IS_KEY);
 	} else if (strEQ(key, "IS_BLOB")) {
-	    /* 1.21_07 */
-	    doquietwarn(("$sth->{'IS_BLOB'} is deprecated," \
-			 " use $sth->{'~~lc_dbd_driver~~_is_blob'}"));
 	    retsv = ST_FETCH_AV(AV_ATTRIB_IS_BLOB);
 #endif
 	} else if (strEQ(key, "IS_NUM")) {
-	    /* 1.21_07 */
-	    doquietwarn(("$sth->{'IS_NUM'} is deprecated," \
-			 " use $sth->{'~~lc_dbd_driver~~_is_num'}"));
 	    retsv = ST_FETCH_AV(AV_ATTRIB_IS_NUM);
 	}
 	break;
@@ -1696,23 +1526,15 @@ SV* dbd_st_FETCH_attrib(SV* sth, imp_sth_t* imp_sth, SV* keysv) {
 	 *  Deprecated, use lower case versions.
 	 */
 	if (strEQ(key, "LENGTH")) {
-	    /* 1.21_07 */
-#ifdef DBD_MYSQL
-	    doquietwarn(("$sth->{'LENGTH'} is deprecated," \
-			 " use $sth->{'~~lc_dbd_driver~~_length'}"));
-#else
-	    doquietwarn(("$sth->{'LENGTH'} is deprecated," \
-			 " use $sth->{'PRECISION'}"));
-#endif
 	    retsv = ST_FETCH_AV(AV_ATTRIB_LENGTH);
 	}
 	break;
 #if defined(DBD_MYSQL)
       case 'M':
+	/*
+	 *  Deprecated, use max_length
+	 */
 	if (strEQ(key, "MAXLENGTH")) {
-	    /* 1.21_07 */
-	    doquietwarn(("$sth->{'MAXLENGTH'} is deprecated," \
-			 " use $sth->{'~~lc_dbd_driver~~__maxlength'}"));
 	    retsv = ST_FETCH_AV(AV_ATTRIB_MAX_LENGTH);
 	}
 	break;
@@ -1723,214 +1545,103 @@ SV* dbd_st_FETCH_attrib(SV* sth, imp_sth_t* imp_sth, SV* keysv) {
 	} else if (strEQ(key, "NULLABLE")) {
 	    retsv = ST_FETCH_AV(AV_ATTRIB_NULLABLE);
 	} else if (strEQ(key, "NUMROWS")) {
-	    /* 1.21_07 */
-	    doquietwarn(("$sth->{'NUMROWS'} is deprecated, use $sth->rows"));
 	    retsv = sv_2mortal(newSViv((IV)imp_sth->row_num));
 	} else if (strEQ(key, "NUMFIELDS")) {
-	    /* 1.21_07 */
-	    doquietwarn(("$sth->{'NUMFIELDS'} is deprecated," \
-			  " use $sth->{'NUM_OF_FIELDS'"));
 	    retsv = sv_2mortal(newSViv((IV) DBIc_NUM_FIELDS(imp_sth)));
 	}
 	break;
-      case 'P':
-	if (strEQ(key, "PRECISION")) {
-	    retsv = ST_FETCH_AV(AV_ATTRIB_PRECISION);
+#if defined(DBD_MSQL)
+      case 'O':
+	if (strEQ(key, "OPTIMIZE")  &&  DBIc_COMPAT(imp_sth)) {
+	    retsv = boolSV(imp_sth->optimize);	    
 	}
 	break;
+#endif
       case 'R':
+	/*
+	 * Deprecated, use 'result'
+	 */
 	if (strEQ(key, "RESULT")) {
-	    /* 1.21_07 */
-	    doquietwarn(("$sth->{'RESULT'} is deprecated," \
-			 " use $sth->{'~~lc_dbd_driver~~_result'}"));
 	    retsv = sv_2mortal(newSViv((IV) imp_sth->cda));
-	}
-	break;
-      case 'S':
-	if (strEQ(key, "SCALE")) {
-	    retsv = ST_FETCH_AV(AV_ATTRIB_SCALE);
 	}
 	break;
       case 'T':
 	if (strEQ(key, "TYPE")) {
 	    retsv = ST_FETCH_AV(AV_ATTRIB_SQL_TYPE);
-	} else if (strEQ(key, "TABLE")) {
-	    /* 1.21_07 */
-	    doquietwarn(("$sth->{'TABLE'} is deprecated," \
-			 " use $sth->{'~~lc_dbd_driver~~_table'}"));
+	}
+	/*
+	 *  Deprecated, use lower case version.
+	 */
+	else if (strEQ(key, "TABLE")) {
 	    retsv = ST_FETCH_AV(AV_ATTRIB_TABLE);
 	}
 	break;
       case 'f':
 	if (strEQ(key, "format_max_size")) {
-	    /* 1.21_07 */
-	    doquietwarn(("$sth->{'format_max_size'} is deprecated," \
-			 " use $sth->{'PRECISION'}"));
 	    retsv = ST_FETCH_AV(AV_ATTRIB_LENGTH);
 #if defined(DBD_MYSQL)
 	} else if (strEQ(key, "format_default_size")) {
-	    /* 1.21_07 */
-	    doquietwarn(("$sth->{'format_max_size'} is deprecated," \
-			 " use $sth->{'PRECISION'}"));
 	    retsv = ST_FETCH_AV(AV_ATTRIB_MAX_LENGTH);
 #endif
 	} else if (strEQ(key, "format_right_justify")) {
-	    /* 1.21_07 */
-	    doquietwarn(("$sth->{'format_max_size'} is deprecated," \
-			 " use $sth->{'~~lc_dbd_driver~~_is_num'}"));
 	    retsv = ST_FETCH_AV(AV_ATTRIB_IS_NUM);
 	} else if (strEQ(key, "format_type_name")) {
-	    /* 1.21_07 */
-	    doquietwarn(("$sth->{'format_type_name'} is deprecated," \
-			 " use $sth->{'TYPE'}"));
 	    retsv = ST_FETCH_AV(AV_ATTRIB_TYPE_NAME);
 	}
 	break;
       case 'i':
 	if (strEQ(key, "insertid")) {
-	    /* 1.21_07 */
-	    doquietwarn(("$sth->{'insertid'} is deprecated," \
-			 " use $sth->{'mysql_insertid'}"));
 	    retsv = sv_2mortal(newSViv(imp_sth->insertid));
 	} else if (strEQ(key, "is_pri_key")) {
-	    /* 1.21_07 */ 
-	    doquietwarn(("$sth->{'is_pri_key'} is deprecated," \
-			 " use $sth->{'~~lc_dbd_driver~~_is_pri_key'}"));
 	    retsv = ST_FETCH_AV(AV_ATTRIB_IS_PRI_KEY);
 	} else if (strEQ(key, "is_not_null")) {
-	    /* 1.21_07 */ 
-	    doquietwarn(("$sth->{'is_not_null'} is deprecated," \
-			 " use $sth->{'NULLABLE'}"));
 	    retsv = ST_FETCH_AV(AV_ATTRIB_IS_NOT_NULL);
 #if defined(DBD_MYSQL)
 	} else if (strEQ(key, "is_key")) {
-	    /* 1.21_07 */
-	    doquietwarn(("$sth->{'is_key'} is deprecated," \
-			 " use $sth->{'~~lc_dbd_driver~~_is_key'}"));
 	    retsv = ST_FETCH_AV(AV_ATTRIB_IS_KEY);
 	} else if (strEQ(key, "is_blob")) {
-	    /* 1.21_07 */
-	    doquietwarn(("$sth->{'is_blob'} is deprecated," \
-			 " use $sth->{'~~lc_dbd_driver~~_is_blob'}"));
 	    retsv = ST_FETCH_AV(AV_ATTRIB_IS_BLOB);
 #endif
 	} else if (strEQ(key, "is_num")) {
-	    /* 1.21_07 */
-	    doquietwarn(("$sth->{'is_num'} is deprecated," \
-			 " use $sth->{'~~lc_dbd_driver~~_is_num'}"));
 	    retsv = ST_FETCH_AV(AV_ATTRIB_IS_NUM);
 	}
 	break;
       case 'l':
 	if (strEQ(key, "length")) {
-	    /* 1.21_07 */
-	    doquietwarn(("$sth->{'length'} is deprecated," \
-			 " use $sth->{'PRECISION'}"));
 	    retsv = ST_FETCH_AV(AV_ATTRIB_LENGTH);
 	}
 	break;
       case 'm':
 #if defined(DBD_MYSQL)
-	switch (kl) {
-	  case 10:
-	    if (strEQ(key, "max_length")) {
-	        /* 1.21_07 */
-	        doquietwarn(("$sth->{'max_length'} is deprecated," \
-			     " use $sth->{'~~lc_dbd_driver~~_max_length'}"));
-		retsv = ST_FETCH_AV(AV_ATTRIB_MAX_LENGTH);
-	    } else if (strEQ(key, "mysql_type")) {
-	        retsv = ST_FETCH_AV(AV_ATTRIB_TYPE);
-	    }
-	    break;
-	  case 11:
-	    if (strEQ(key, "mysql_table")) {
-	        retsv = ST_FETCH_AV(AV_ATTRIB_TABLE);
-	    }
-	    break;
-	  case 12:
-	    if (       strEQ(key, "mysql_is_key")) {
-	        retsv = ST_FETCH_AV(AV_ATTRIB_IS_KEY);
-	    } else if (strEQ(key, "mysql_is_num")) {
-	        retsv = ST_FETCH_AV(AV_ATTRIB_IS_NUM);
-	    } else if (strEQ(key, "mysql_length")) {
-	        retsv = ST_FETCH_AV(AV_ATTRIB_LENGTH);
-	    } else if (strEQ(key, "mysql_result")) {
-	        retsv = sv_2mortal(newSViv((IV) imp_sth->cda));
-	    }
-	    break;
-	  case 13:
-	    if (strEQ(key, "mysql_is_blob")) {
-	        retsv = ST_FETCH_AV(AV_ATTRIB_IS_BLOB);
-	    }
-	    break;
-	  case 14:
-	    if (strEQ(key, "mysql_insertid")) {
-	        retsv = sv_2mortal(newSViv(imp_sth->insertid));
-	    }
-	    break;
-	  case 15:
-	    if (strEQ(key, "mysql_type_name")) {
-	        retsv = ST_FETCH_AV(AV_ATTRIB_TYPE_NAME);
-	    }
-	    break;
-	  case 16:
-	    if (       strEQ(key, "mysql_is_pri_key")) {
-	        retsv = ST_FETCH_AV(AV_ATTRIB_IS_PRI_KEY);
-	    } else if (strEQ(key, "mysql_max_length")) {
-	        retsv = ST_FETCH_AV(AV_ATTRIB_MAX_LENGTH);
-	    } else if (strEQ(key, "mysql_use_result")) {
-	        retsv = boolSV(imp_sth->use_mysql_use_result);
-	    }
-	    break;
+	if (strEQ(key, "max_length")) {
+	    retsv = ST_FETCH_AV(AV_ATTRIB_MAX_LENGTH);
+	} else if (strEQ(key, "mysql_use_result")) {
+	    retsv = boolSV(imp_sth->use_mysql_use_result);
+	} else if (strEQ(key, "mysql_type")) {
+	    retsv = ST_FETCH_AV(AV_ATTRIB_TYPE);
 	}
 #else
-	switch (kl) {
-	  case 9:
-	    if (strEQ(key, "msql_type")) {
-	        retsv = ST_FETCH_AV(AV_ATTRIB_TYPE);
-	    }
-	    break;
-	  case 10:
-	    if (strEQ(key, "msql_table")) {
-	        retsv = ST_FETCH_AV(AV_ATTRIB_TABLE);
-	    }
-	    break;
-	  case 11:
-	    if (strEQ(key, "msql_is_num")) {
-	        retsv = ST_FETCH_AV(AV_ATTRIB_IS_NUM);
-	    } else if (strEQ(key, "msql_result")) {
-	        retsv = sv_2mortal(newSViv((IV) imp_sth->cda));
-	    }
-	    break;
-	  case 14:
-	    if (strEQ(key, "msql_type_name")) {
-	        retsv = ST_FETCH_AV(AV_ATTRIB_TYPE_NAME);
-	    }
-	    break;
-	  case 15:
-	    if (kl == 15  &&  strEQ(key, "msql_is_pri_key")) {
-	        retsv = ST_FETCH_AV(AV_ATTRIB_IS_PRI_KEY);
-	    }
-	    break;
+	if (strEQ(key, "msql_type")) {
+	    retsv = ST_FETCH_AV(AV_ATTRIB_TYPE);
 	}
 #endif
 	break;
       case 'r':
 	if (strEQ(key, "result")) {
-	    /* 1.21_07 */
-	    doquietwarn(("$sth->{'result'} is deprecated," \
-			 " use $sth->{'~~lc_dbd_driver~~_result'}"));
 	    retsv = sv_2mortal(newSViv((IV) imp_sth->cda));
 	}
 	break;
       case 't':
 	if (strEQ(key, "table")) {
-	    /* 1.21_07 */
-	    doquietwarn(("$sth->{'table'} is deprecated," \
-			 " use $sth->{'~~lc_dbd_driver~~_table'}"));
 	    retsv = ST_FETCH_AV(AV_ATTRIB_TABLE);
 	}
 	break;
+    }
+
+    if (dbis->debug >= 2) {
+        fprintf(DBILOGFP,
+		"    <- dbd_st_FETCH_attrib for %08lx, key %s: result %s\n",
+		(u_long) sth, key, retsv ? SvPV(retsv, lna) : "NULL");
     }
 
     return retsv;
@@ -2057,163 +1768,11 @@ int MysqlReconnect(SV* h) {
     return TRUE;
 }
 
+#if !defined(_UNIX_)  &&  defined(WIN32)
+int pthread_cond_init()
+{
+  return 0;
+}
 #endif
 
-
-/***************************************************************************
- *
- *  Name:    dbd_db_type_info_all
- *
- *  Purpose: Implements $dbh->type_info_all
- *
- *  Input:   dbh - database handle
- *           imp_sth - drivers private database handle data
- *
- *  Returns: RV to AV of types
- *
- **************************************************************************/
-
-#define PV_PUSH(c)                              \
-    if (c) {                                    \
-	sv = newSVpv((char*) (c), 0);           \
-	SvREADONLY_on(sv);                      \
-    } else {                                    \
-        sv = &sv_undef;                         \
-    }                                           \
-    av_push(row, sv);
-
-#define IV_PUSH(i) sv = newSViv((i)); SvREADONLY_on(sv); av_push(row, sv);
-
-AV* dbd_db_type_info_all(SV* dbh, imp_dbh_t* imp_dbh) {
-    AV* av = newAV();
-    AV* row;
-    HV* hv;
-    SV* sv;
-    int i;
-    const char* cols[] = {
-        "TYPE_NAME",
-	"DATA_TYPE",
-	"PRECISION",
-	"LITERAL_PREFIX",
-	"LITERAL_SUFFIX",
-	"CREATE_PARAMS",
-	"NULLABLE",
-	"CASE_SENSITIVE",
-	"SEARCHABLE",
-	"UNSIGNED_ATTRIBUTE",
-	"MONEY",
-	"AUTO_INCREMENT",
-	"LOCAL_TYPE_NAME",
-	"MINIMUM_SCALE",
-	"MAXIMUM_SCALE",
-	"~lc_dbd_driver~_native_type",
-	"~lc_dbd_driver~_is_num"
-    };
-
-    hv = newHV();
-    av_push(av, newRV_noinc((SV*) hv));
-    for (i = 0;  i < (sizeof(cols) / sizeof(const char*));  i++) {
-        if (!hv_store(hv, (char*) cols[i], strlen(cols[i]), newSViv(i), 0)) {
-	    SvREFCNT_dec((SV*) av);
-	    return Nullav;
-	}
-    }
-    for (i = 0;  i < SQL_GET_TYPE_INFO_num;  i++) {
-        const sql_type_info_t* t = &SQL_GET_TYPE_INFO_values[i];
-
-	row = newAV();
-	av_push(av, newRV_noinc((SV*) row));
-	PV_PUSH(t->type_name);
-	IV_PUSH(t->data_type);
-	IV_PUSH(t->precision);
-	PV_PUSH(t->literal_prefix);
-	PV_PUSH(t->literal_suffix);
-	PV_PUSH(t->create_params);
-	IV_PUSH(t->nullable);
-	IV_PUSH(t->case_sensitive);
-	IV_PUSH(t->searchable);
-	IV_PUSH(t->unsigned_attribute);
-	IV_PUSH(t->money);
-	IV_PUSH(t->auto_increment);
-	PV_PUSH(t->local_type_name);
-	IV_PUSH(t->minimum_scale);
-	IV_PUSH(t->maximum_scale);
-	IV_PUSH(t->native_type);
-	IV_PUSH(t->is_num);
-    }
-    return av;
-}
-
-
-SV* dbd_db_quote(SV* dbh, SV* str, SV* type) {
-    SV* result;
-    char* ptr;
-    char* sptr;
-    STRLEN len;
-
-    if (!SvOK(str)) {
-        static SV* nullStrSv = NULL;
-	if (!nullStrSv) {
-	    nullStrSv = newSVpv("NULL", 4);
-	}
-	SvREFCNT_inc(nullStrSv);
-	result = nullStrSv;
-    } else {
-        if (type  &&  SvOK(type)) {
-	    int i;
-	    int tp = SvIV(type);
-	    for (i = 0;  i < SQL_GET_TYPE_INFO_num;  i++) {
-	        const sql_type_info_t* t = &SQL_GET_TYPE_INFO_values[i];
-		if (t->data_type == tp) {
-		    if (!t->literal_prefix) {
-		        return Nullsv;
-		    }
-		    break;
-		}
-	    }
-	}
-
-        ptr = SvPV(str, len);
-	result = newSV(len*2+3);
-	sptr = SvPVX(result);
-
-	*sptr++ = '\'';
-	while (len--) {
-	    switch (*ptr) {
-	      case '\'':
-		*sptr++ = '\\';
-		*sptr++ = '\'';
-		break;
-	      case '\\':
-		*sptr++ = '\\';
-		*sptr++ = '\\';
-		break;
-#if defined(DBD_MYSQL)
-	      case '\n':
-		*sptr++ = '\\';
-		*sptr++ = 'n';
-		break;
-	      case '\r':
-		*sptr++ = '\\';
-		*sptr++ = 'r';
-		break;
-	      case '\0':
-		*sptr++ = '\\';
-		*sptr++ = '0';
-		break;
 #endif
-	      default:
-		*sptr++ = *ptr;
-		break;
-	    }
-	    ++ptr;
-	}
-	*sptr++ = '\'';
-	SvPOK_on(result);
-	SvCUR_set(result, sptr - SvPVX(result));
-	*sptr++ = '\0';  /*  Never hurts NUL terminating a Perl
-			  *	 string ...
-			  */
-    }
-    return result;
-}

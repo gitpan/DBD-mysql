@@ -1,6 +1,6 @@
 #   Hej, Emacs, give us -*- perl mode here!
 #
-#   $Id: lib.pl 1.1 Tue, 30 Sep 1997 01:28:08 +0200 joe $
+#   $Id: lib.pl,v 1.1.1.1 1998/12/22 14:29:52 joe Exp $
 #
 #   lib.pl is the file where database specific things should live,
 #   whereever possible. For example, you define certain constants
@@ -15,7 +15,7 @@ use vars qw($mdriver $dbdriver $childPid $test_dsn $test_user $test_password);
 #
 #   Driver names; EDIT THIS!
 #
-$mdriver = '~~dbd_driver~~';
+$mdriver = '~DBD_DRIVER~';
 $dbdriver = $mdriver; # $dbdriver is usually just the same as $mdriver.
                       # The exception is DBD::pNET where we have to
                       # to separate between local driver (pNET) and
@@ -25,9 +25,9 @@ $dbdriver = $mdriver; # $dbdriver is usually just the same as $mdriver.
 #
 #   DSN being used; do not edit this, edit "$dbdriver.dbtest" instead
 #
-$test_dsn      = $ENV{'DBI_DSN'}   ||  "~~test_dsn~~";
-$test_user     = $ENV{'DBI_USER'}  ||  "~~test_user~~";
-$test_password = $ENV{'DBI_PASS'}  ||  "~~test_pass~~";
+$test_dsn      = $ENV{'DBI_DSN'}   ||  "~test_dsn~";
+$test_user     = $ENV{'DBI_USER'}  ||  "~test_user~";
+$test_password = $ENV{'DBI_PASS'}  ||  "~test_pass~";
 
 
 $::COL_NULLABLE = 1;

@@ -5,17 +5,15 @@ package Msql::Statement;
 @Msql::Statement::ISA = qw(DBI::st);
 
 use strict;
-use vars qw($OPTIMIZE $VERSION $AUTOLOAD);
+use vars qw($VERSION $AUTOLOAD);
 
-$VERSION = '1.21_08';
-
-$OPTIMIZE = 0; # controls, which optimization we default to
+$VERSION = '1.2016';
 
 sub fetchrow ($) {
-    my($self) = shift;
-    my($ref) = $self->fetchrow_arrayref;
+    my $self = shift;
+    my $ref = $self->fetchrow_arrayref;
     if ($ref) {
-	@$ref;
+	wantarray ? @$ref : $ref->[0];
     } else {
 	();
     }
@@ -46,27 +44,25 @@ sub dataseek ($$) {
 
 sub numrows { my($self) = shift; $self->rows() }
 sub numfields { my($self) = shift; $self->{'NUM_OF_FIELDS'} }
+sub affectedrows { my($self) = shift; $self->{'affected_rows'} }
+sub insertid { my($self) = shift; $self->{'insertid'} }
 sub arrAttr ($$) {
     my($self, $attr) = @_;
-    my $arr = $self->{$attr};
+    my($arr) = $self->{$attr};
     wantarray ? @$arr : $arr
 }
-sub table ($) { shift->arrAttr('msql_table') }
+sub table ($) { shift->arrAttr('table') }
 sub name ($) { shift->arrAttr('NAME') }
 sub type ($) { shift->arrAttr('msql_type') }
-sub isnotnull ($) {
-    my $arr = [map {!$_} @{shift()->{'NULLABLE'}}];
-    wantarray ? @$arr : $arr;
-}
-sub isprikey ($) { shift->arrAttr('msql_is_pri_key') }
-sub isnum ($) { shift->arrAttr('msql_is_num') }
-sub isblob ($) { shift->arrAttr('msql_is_blob') }
-sub length ($) { shift->arrAttr('PRECISION') }
+sub isnotnull ($) { shift->arrAttr('is_not_null') }
+sub isprikey ($) { shift->arrAttr('is_pri_key') }
+sub isnum ($) { shift->arrAttr('is_num') }
+sub isblob ($) { shift->arrAttr('is_blob') }
+sub length ($) { shift->arrAttr('length') }
 
 sub maxlength  {
     my $sth = shift;
     my $result;
-    if (!($result = $sth->{'msql_maxlength'})) {
 	$result = [];
 	my ($l);
 	for (0..$sth->numfields-1) {
@@ -90,7 +86,6 @@ sub maxlength  {
 		}
 	    }
 	}
-    }
     return wantarray ? @$result : $result;
 }
 
@@ -129,12 +124,15 @@ sub unctrl {
     $x;
 }
 
+use vars qw($OPTIMIZE); # controls, which optimization we default to
+$OPTIMIZE = 0;
 sub optimize {
     my($self,$arg) = @_;
     if (defined $arg) {
-	$OPTIMIZE = $arg;
+	$self->{'OPTIMIZE'} = $arg;
+    } else {
+	$self->{'OPTIMIZE'} ||= $OPTIMIZE;
     }
-    $OPTIMIZE;
 }
 
 sub as_string {

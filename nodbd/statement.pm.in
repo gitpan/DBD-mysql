@@ -1,21 +1,19 @@
 # -*- perl -*-
 
-package ~~nodbd_driver~~::Statement;
+package ~DRIVER~::Statement;
 
-@~~nodbd_driver~~::Statement::ISA = qw(DBI::st);
+@~DRIVER~::Statement::ISA = qw(DBI::st);
 
 use strict;
-use vars qw($OPTIMIZE $VERSION $AUTOLOAD);
+use vars qw($VERSION $AUTOLOAD);
 
-$VERSION = '~~nodbd_version~~';
-
-$OPTIMIZE = 0; # controls, which optimization we default to
+$VERSION = '~NODBD_VERSION~';
 
 sub fetchrow ($) {
-    my($self) = shift;
-    my($ref) = $self->fetchrow_arrayref;
+    my $self = shift;
+    my $ref = $self->fetchrow_arrayref;
     if ($ref) {
-	@$ref;
+	wantarray ? @$ref : $ref->[0];
     } else {
 	();
     }
@@ -46,33 +44,32 @@ sub dataseek ($$) {
 
 sub numrows { my($self) = shift; $self->rows() }
 sub numfields { my($self) = shift; $self->{'NUM_OF_FIELDS'} }
+sub affectedrows { my($self) = shift; $self->{'affected_rows'} }
+sub insertid { my($self) = shift; $self->{'insertid'} }
 sub arrAttr ($$) {
     my($self, $attr) = @_;
-    my $arr = $self->{$attr};
+    my($arr) = $self->{$attr};
     wantarray ? @$arr : $arr
 }
-sub table ($) { shift->arrAttr('~~lc_dbd_driver~~_table') }
+sub table ($) { shift->arrAttr('table') }
 sub name ($) { shift->arrAttr('NAME') }
-~#if#~ ('~~dbd_driver~~' eq 'mysql')
-*affectedrows = \&numrows;
-sub insertid { my($self) = shift; $self->{'mysql_insertid'} }
+#xtract Mysql
 sub type ($) { shift->arrAttr('mysql_type') }
-~#else#~
+#xtract Msql
 sub type ($) { shift->arrAttr('msql_type') }
-~#endif#~
-sub isnotnull ($) {
-    my $arr = [map {!$_} @{shift()->{'NULLABLE'}}];
-    wantarray ? @$arr : $arr;
-}
-sub isprikey ($) { shift->arrAttr('~~lc_dbd_driver~~_is_pri_key') }
-sub isnum ($) { shift->arrAttr('~~lc_dbd_driver~~_is_num') }
-sub isblob ($) { shift->arrAttr('~~lc_dbd_driver~~_is_blob') }
-sub length ($) { shift->arrAttr('PRECISION') }
+#endxtract
+sub isnotnull ($) { shift->arrAttr('is_not_null') }
+sub isprikey ($) { shift->arrAttr('is_pri_key') }
+sub isnum ($) { shift->arrAttr('is_num') }
+sub isblob ($) { shift->arrAttr('is_blob') }
+sub length ($) { shift->arrAttr('length') }
 
 sub maxlength  {
     my $sth = shift;
     my $result;
-    if (!($result = $sth->{'~~lc_dbd_driver~~_maxlength'})) {
+#xtract Mysql
+    $result = $sth->fetchinternal('msql_maxlength');
+#xtract Msql
 	$result = [];
 	my ($l);
 	for (0..$sth->numfields-1) {
@@ -96,16 +93,16 @@ sub maxlength  {
 		}
 	    }
 	}
-    }
+#endxtract
     return wantarray ? @$result : $result;
 }
 
 sub listindices {
     my($sth) = shift;
     my(@result,$i);
-~#if#~ ('~~dbd_driver~~' eq 'mysql')
+#xtract Mysql
     return ();
-~#else#~
+#xtract Msql
     if (!&Msql::IDX_TYPE()) {
 	return ();
     }
@@ -114,7 +111,7 @@ sub listindices {
 	push @result, $sth->name->[$i];
     }
     @result;
-~#endif#~
+#endxtract
 }
 
 sub AUTOLOAD {
@@ -139,13 +136,18 @@ sub unctrl {
     $x;
 }
 
+#xtract Msql
+use vars qw($OPTIMIZE); # controls, which optimization we default to
+$OPTIMIZE = 0;
 sub optimize {
     my($self,$arg) = @_;
     if (defined $arg) {
-	$OPTIMIZE = $arg;
+	$self->{'OPTIMIZE'} = $arg;
+    } else {
+	$self->{'OPTIMIZE'} ||= $OPTIMIZE;
     }
-    $OPTIMIZE;
 }
+#endxtract
 
 sub as_string {
     my($sth) = @_;
@@ -156,15 +158,15 @@ sub as_string {
     }
     for (0..$sth->numfields-1) {
 	$l=CORE::length($sth->name->[$_]);
-~#if#~ ('~~dbd_driver~~' eq 'mysql')
+#xtract Mysql
 	if ($l < $sth->maxlength->[$_]) {
 	    $l= $sth->maxlength->[$_];
 	}
-~#else#~
+#xtract Msql
 	if ($sth->optimize  &&  $l < $sth->maxlength->[$_]) {
 	    $l= $sth->maxlength->[$_];
 	}
-~#endif#~
+#endxtract
 	if (!$sth->isnotnull  &&  $l < 4) {
 	    $l = 4;
 	}
@@ -183,7 +185,7 @@ sub as_string {
 	    $col = $row[$i];
 	    $j = @prow;
 	    $pcol = defined $col ? unctrl($col) : "NULL";
-~#if#~ ('~~dbd_driver~~' ne 'mysql')
+#xtract Msql
 	    # New in 2.0: a string is longer than it should be
 	    if (defined &Msql::TEXT_TYPE  &&
 		$sth->optimize &&
@@ -192,7 +194,7 @@ sub as_string {
 		my $l = CORE::length($col);
 		substr($pcol,$sth->length->[$j])="...($l)";
 	    }
-~#endif#~
+#endxtract
 	    push(@prow, $pcol);
 	}
 	$result .= sprintf $sprintf, @prow;

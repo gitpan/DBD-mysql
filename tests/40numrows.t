@@ -1,6 +1,6 @@
 #!/usr/local/bin/perl
 #
-#   $Id: 40numrows.t 1.1 Tue, 30 Sep 1997 01:28:08 +0200 joe $
+#   $Id: 40numrows.t,v 1.1.1.1 1998/12/22 14:29:52 joe Exp $
 #
 #   This tests, whether the number of rows can be retrieved.
 #
@@ -19,7 +19,7 @@ $test_password = '';
 #
 use DBI;
 $mdriver = "";
-foreach $file ("lib.pl", "t/lib.pl", "DBD-~~dbd_driver~~/t/lib.pl") {
+foreach $file ("lib.pl", "t/lib.pl", "DBD-~DBD_DRIVER~/t/lib.pl") {
     do $file; if ($@) { print STDERR "Error while executing lib.pl: $@\n";
 			   exit 10;
 		      }

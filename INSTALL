@@ -8,8 +8,8 @@ To install the package you usually just type
     make test          # optional
     make install
 
-See WIN32 INSTALLATION below for additional steps under Win32. If you
-have any problems in the test stage, see KNOWN PROBLEMS below.
+See WIN32 INSTALLATION below for additional steps under Win32.
+See KNOWN PROBLEMS below for troubleshooting.
 
 During the first step you will be asked some questions. First of all,
 you have to decide, which database engines you want to be supported:
@@ -56,34 +56,82 @@ WIN32 INSTALLATION
 I have never attempted to install DBD::mSQL under Win32, so this is only
 for MySQL. If anyone succeeds, please let me know what you did.
 
-I recommend using the MyODBC source package for installing DBD::mysql
-under Win32. The following steps have been required for me:
+First of all, unless you choose a binary distribution of the Msql-Mysql-
+modules as offered on www.tcx.se, you definitely *need* a C compiler.
+And it *must* be the same compiler that was being used for compiling
+Perl itself. If you don't have a C compiler, the file README.win32 from
+the Perl source distribution tells you where to obtain freely distributable
+C compilers like egcs or gcc. The Perl sources are available on any CPAN
+mirror in the src directory, for example
 
-  - Extract sources into C:\my
-  - Change directory to C:\my\myodbc\myodbc
-  - Create the libraries with
+    ftp://ftp.funet.fi/pub/languages/perl/CPAN/src/latest.tar.gz
 
-	nmake /f myodbc.mak
+I recommend using the win32clients package for installing DBD::mysql
+under Win32, available for download on www.tcx.se. The following steps
+have been required for me:
 
-  - Copied the following to C:\my\myodbc\lib_release:
+  - Extract sources into C:\. This will create a directory C:\mysql with
+    subdirectories include and lib.
 
-	C:\my\myodbc\lib\Release\lib.lib
-	C:\my\myodbc\mysys\Release\mysys.lib
-	C:\my\myodbc\strings\Release\strings.lib
+    IMPORTANT: Make sure this subdirectory is not shared by other TCX
+    files! In particular do *not* store the MySQL server in the same
+    directory. If the server is already installed in C:\mysql, choose
+    a location like C:\tmp, extract the win32clients there. Note that
+    you can remove this directory entirely once you have installed the
+    Msql-Mysql-modules.
+  - Extract the Msql-Mysql-modules sources into another directory, for
+    example C:\src\siteperl
+  - Open a DOS shell and change directory to C:\src\siteperl
+  - The next step is only required if you repeat building the modules: Make
+    sure that you have a clean build tree by running
 
-  - Copied the following to C:\my\myodbc\include:
+      nmake realclean
 
-	C:\my\myodbc\lib\errmsg.h
+    If you don't have VC++, replace nmake with your flavour of make.
+    If error messages are reported in this step, you may safely ignore
+    them.
+  - Run
 
-  - Extracted Msql-Mysql-modules-1.2005 into C:\src\site_perl
-  - Changed directory to C:\src\site_perl\Msql-Mysql-modules-1.2005
-  - Continued the usual way:
+      perl Makefile.PL
 
-	perl Makefile.PL
-	nmake
-	nmake install
+    which will prompt you for some settings. The really important ones are:
+
+      Which DBMS do you want to use?
+
+    enter a 1 here (MySQL only), and
+
+      Where is your mysql installed? Please tell me the directory that
+      contains the subdir include.
+
+    where you have to enter the win32clients directory, for example
+    C:\mysql or C:\tmp\mysql.
+  - Continued in the usual way:
+
+      nmake
+      nmake install
 
 See the first section of KNOWN PROBLEMS below.
+
+If you want to create a PPM package for the ActiveState Perl version, then
+modify the above steps as follows: Run
+
+      perl Makefile.PL NAME=DBD-mysql BINARY_LOCATION=DBD-mysql.tar.gz
+      nmake ppd
+      nmake
+
+Once that is done, use tar and gzip (for example those from the CygWin32
+distribution) to create an archive:
+
+      mkdir x86
+      tar cf x86/DBD-mysql.tar blib
+      gzip x86/DBD-mysql.tar
+
+Put the files x86/DBD-mysql.tar.gz and DBD-mysql.ppd onto some WWW server
+and install them by typing
+
+      install http://your.server.name/your/directory/DBD-mysql.ppd
+
+in the PPM program.
 
 
 KNOWN PROBLEMS
@@ -220,6 +268,23 @@ t/40bindparam.t:
 > -------------cut here------------------
 
 
+5.) There are known problems with shared versions of libmysqlclient, at
+least on some Linux boxes. If you receive an error message similar to
+
+    install_driver(mysql) failed: Can't load
+    '/usr/lib/perl5/site_perl/i586-linux/auto/DBD/mysql/mysql.so'
+    for module DBD::mysql: File not found at
+    /usr/lib/perl5/i586-linux/5.00404/DynaLoader.pm line 166
+
+then this error message can be misleading: It's not mysql.so that fails
+being loaded, but libmysqlclient.so!
+
+As a workaround, clean your source directory, for example by doing a
+"make realclean" or by removing and extracting it again, and then run
+
+	perl Makefile.PL -static
+
+This option forces linkage against the static libmysqlclient.a.
 
 
 Please let us know, if you have further questions that should be dealt

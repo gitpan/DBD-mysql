@@ -4,72 +4,51 @@ use strict;
 require ExtUtils::MakeMaker;
 require Config;
 require DBI::DBD;
-use lib "../lib";
+use lib "..";
 
-require DBD::~~dbd_driver~~::Install::Config;
-
-use vars qw($cfg);
-$cfg = $DBD::~~dbd_driver~~::Install::Config::configuration;
-if (!$cfg) {
-    die "Missing driver configuration";
+use vars qw($MyConfig $MyCfg);
+if (!defined($MyConfig)) {
+    require ".status";
 }
 
-my @pl_files = (%{$cfg->{'files'}});
-if ($cfg->{'install_nodbd'}) {
-    push(@pl_files, (%{$cfg->{'files_nodbd'}}));
-}
+$MyCfg = $MyConfig->{'~DRIVER~'};
 
-
-my %hash = %{$cfg->{'makemaker'}};
-$hash{'NAME'} = 'DBD::' . $cfg->{'dbd_driver'};
-$hash{'PL_FILES'} = { @pl_files };
+my($lcDriver) = lc '~DRIVER~';
+my(%hash) = %{$MyConfig->{"X_$lcDriver"}};
+$hash{'NAME'} = 'DBD::~DBD_DRIVER~';
 $hash{'OBJECT'} = '$(O_FILES)';
-$hash{'VERSION'} = $cfg->{'dbd_version'};
+$hash{'VERSION'} = $MyConfig->{'DBD_VERSION'};
 $hash{'clean'} = { 'FILES' => '*.xsi' };
-$hash{'CAPI'} = 'TRUE'
-    if ($ExtUtils::MakeMaker::VERSION >= 5.43
-	&&  $Config::Config{'archname'} =~ /-object\b/i);
+$hash{'PMLIBDIRS'} = $MyConfig->{"install_${lcDriver}perl"} ? ["lib"] : [];
+if ($ExtUtils::MakeMaker::VERSION >= 5.43) {
+    $hash{'CAPI'} = 'TRUE' if $Config::Config{'archname'} =~ /-object\b/i;
+}
 ExtUtils::MakeMaker::WriteMakefile(%hash);
 
 
 package MY;
 
-sub libscan {
-    my($self, $path) = @_;
-    ($path =~ /(Install\.pm|,v|~)$/) ? undef : $path;
-}
-
-sub processPL {
-    my($self) = shift;
-    my @output;
-    my $cfg = "../lib/DBD/~~dbd_driver~~/Install/Config.pm";
-    my($from, $to);
-    while (($from, $to) = each %{$self->{'PL_FILES'}}) {
-	$from = "../$from";
-	if ($to =~ /^~~dbd_driver~~\//) {
-	    $to =~ s/^~~dbd_driver~~\///;
-	} else {
-	    $to = "../$to";
-	}
-	push(@output, <<"PART");
-pm_to_blib: $to
-
-$to: $from
-	\$(PERL) -I\$(INST_ARCHLIB) -I\$(INST_LIB) -I\$(PERL_ARCHLIB) \\
-		-I\$(PERL_LIB) -I../lib -MExtUtils::PerlPP \\
-		-e "ppp('$from', '$to', '$cfg')"
-
-PART
-    }
-    join "", @output;
-}
-
-
 sub postamble {
-    my $self = shift;
+    my($self) = shift;
+    my($driver, $dbdDriver, $lcDriver);
+    if ($self->{'NAME'} eq 'DBD::mSQL') {
+	$driver = 'Msql';
+	$dbdDriver = 'mSQL';
+	$lcDriver = 'msql';
+    } elsif ($self->{'NAME'} eq 'DBD::mSQL1') {
+	$driver = 'Msql1';
+	$dbdDriver = 'mSQL1';
+	$lcDriver = 'msql1';
+    } elsif ($self->{'NAME'} eq 'DBD::mysql') {
+	$driver = 'Mysql';
+	$dbdDriver = 'mysql';
+	$lcDriver = 'mysql';
+    } else {
+	return '';
+    }
+    my($pa) = "\n" . $::MyConfig->{"postamble_$lcDriver"};
 
-    my $pa = "\n";
-
+    # we must be careful of quotes for Win32 here.
     my ($dir, $dbiDir);
     foreach $dir ($self->{INSTALLSITEARCH}, @INC) {
 	if (-f "$dir/auto/DBI/Driver.xst") {
@@ -97,13 +76,23 @@ $(BASEEXT).xsi: $(DBI_DRIVER_XST)
 }
 
 
+sub libscan {
+    my($self, $path) = @_;
+    if ($path =~ /\~$/) {
+	undef;
+    } else {
+	$path;
+    }
+}
+
+
 sub const_loadlibs {
     my $self = shift;
     my $str = $self->SUPER::const_loadlibs(@_);
-    if (my $el = $::cfg->{'static_libs'}) {
-        $str =~ s/((?:EXTRALIBS|LDLOADLIBS)\s+=\s+)/$1$el /sg;
+    if (my $el = $::MyCfg->{'EXTRA_LIBS'}) {
+	$str =~ s/((?:EXTRALIBS|LDLOADLIBS)\s+=\s+)/$1$el /sg;
     }
-    if (my $fl = $::cfg->{'final_libs'}) {
+    if (my $fl = $::MyCfg->{'FINAL_LIBS'}) {
         $str =~ s/((?:EXTRALIBS|LDLOADLIBS)\s+=\s+.*?)(\r?\n)/$1 $fl$2/sg;
     }
     $str;
