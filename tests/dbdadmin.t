@@ -17,7 +17,7 @@ $| = 1;
 $DBI::errstr = ''; # Make -w happy
 require DBI;
 $mdriver = "";
-foreach $file ("lib.pl", "t/lib.pl", "DBD-~~dbd_driver~~/t/lib.pl") {
+foreach $file ("lib.pl", "t/lib.pl", "DBD-~DBD_DRIVER~/t/lib.pl") {
     do $file; if ($@) { print STDERR "Error while executing lib.pl: $@\n";
 			   exit 10;
 		      }

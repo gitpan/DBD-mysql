@@ -145,6 +145,6 @@ extern int MysqlReconnect(SV*);
 #endif
 
 
-int MyConnect(dbh_t*, char*, char*, char*, char*, char*, imp_dbh_t*);
+int MyConnect(dbh_t*, char*, char*, char*, char*, char*, char*, imp_dbh_t*);
 
 #endif
