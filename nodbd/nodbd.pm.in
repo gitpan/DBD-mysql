@@ -360,17 +360,24 @@ $sth knows about all metadata that are provided by the API:
 	                     &Msql::INT_TYPE, &Msql::REAL_TYPE or
                              &Mysql::FIELD_TYPE_STRING,
                              &Mysql::FIELD_TYPE_LONG, ...
-  @arr  = $sth->is_not_null; array of boolean
-  @arr  = $sth->is_pri_key;  array of boolean
-  @arr  = $sth->length;      array of the length of each field in bytes
+  @arr  = $sth->isnotnull;   array of boolean
+  @arr  = $sth->isprikey;    array of boolean
+  @arr  = $sth->isnum;       array of boolean
+  @arr  = $sth->length;      array of the possibble maximum length of each
+                             field in bytes
+  @arr  = $sth->maxlength;   array of the actual maximum length of each field
+                             in bytes. Be careful when using this attribute
+                             under MsqlPerl: The server doesn't offer this
+                             attribute, thus it is calculated by fetching
+                             all rows. This might take a long time and you
+                             might need to call $sth->dataseek.
 
 Mysql additionally supports
 
-  $scalar  = $sth->affected_rows number of rows in database affected by query
-  $scalar  = $sth->insert_id     the unique id given to a auto_increment field.
+  $scalar  = $sth->affectedrows  number of rows in database affected by query
+  $scalar  = $sth->insertid      the unique id given to a auto_increment field.
   $string  = $sth->info()        more info from some queries (ALTER TABLE...)
-  $arrref  = $sth->is_num;       array of boolean
-  $arrref  = $sth->is_blob;      array of boolean
+  $arrref  = $sth->isblob;       array of boolean
 
 The array methods (table, name, type, is_not_null, is_pri_key, length,
 affected_rows, is_num and blob) return an array in array context and

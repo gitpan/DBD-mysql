@@ -6,7 +6,7 @@ my $version = '~NODBD_VERSION~';
 BEGIN {require 5.002;}
 # use strict;      # only for testing. Unfriendly for the user-eval()s
 # $^W = 1;         # too early for readline 0.8
-$driver = '@DRIVER@'; eval "use $driver ()";
+$driver = '~DRIVER~'; eval "use $driver ()";
 use Term::ReadLine;
 use Carp ();
 
@@ -76,7 +76,7 @@ if ($driver eq 'Mysql') {
     my (@typenames);
     for (qw/INT CHAR REAL IDENT IDX TEXT DATE UINT MONEY TIME SYSVAR/) {
 	my $type = 'Msql::' . $_ . '_TYPE';
-	push(@typenames, defined &{$type} ? &{$type} : 999);
+	push(@typenames, (eval "\&$type") || 999);
     }
     @typelabel{ @typenames } = qw(
         int

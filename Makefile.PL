@@ -18,8 +18,8 @@ require Config;
 require Cwd;
 
 
-my $VERSION = 1.1815;
-my $DBD_VERSION = 2.005;
+my $VERSION = 1.1816;
+my $DBD_VERSION = 2.006;
 
 
 $| = 1;
@@ -131,7 +131,7 @@ sub Extract ($$$$$$) {
     }
     close IN;
 
-    $contents =~ s/\q~startperl~\e/$Config::Config{startperl}/;
+    $contents =~ s/\~startperl\~/$Config::Config{startperl}/;
     $contents =~ s/\~DRIVER\~/$driver/g;
     $contents =~ s/\~DBD_DRIVER\~/$dbd_driver/g;
     $contents =~ s/\~NODBD_VERSION\~/$version/g;

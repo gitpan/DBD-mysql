@@ -496,6 +496,9 @@ int dbd_st_internal_execute(SV* h, SV* statement, SV* attribs, int numParams,
 	    if (!ph->value  ||  !SvOK(ph->value)) {
 		alen += 3;  /* Erase '?', insert 'NULL' */
 	    } else {
+	        if (!ph->type) {
+		    ph->type = SvNIOK(ph->value) ? SQL_INTEGER : SQL_VARCHAR;
+		}
 		valbuf = SvPV(ph->value, vallen);
 		alen += 2*vallen+1; /* Erase '?', insert (possibly quoted)
 				     * string.
@@ -571,7 +574,6 @@ int dbd_st_internal_execute(SV* h, SV* statement, SV* attribs, int numParams,
 			    break;
 			  case SQL_CHAR:
 			  case SQL_VARCHAR:
-			  default:
 			    /* case SQL_DATE:       These are commented out */
 			    /* case SQL_TIME:       in DBI's dbi_sql.h      */
 			    /* case SQL_TIMESTAMP:                          */
@@ -579,6 +581,9 @@ int dbd_st_internal_execute(SV* h, SV* statement, SV* attribs, int numParams,
 			    /* case BINARY:                                 */
 			    /* case VARBINARY:                              */
 			    /* case LONGVARBINARY                           */
+			    isNum = FALSE;
+			    break;
+			  default:
 			    isNum = FALSE;
 			    break;
 			}
@@ -1402,6 +1407,8 @@ int dbd_bind_ph (SV *sth, imp_sth_t *imp_sth, SV *param, SV *value,
         (void) SvREFCNT_dec(ph->value);
     }
     (void) SvREFCNT_inc(ph->value = value);
-    ph->type = sql_type;
+    if (sql_type) {
+        ph->type = sql_type;
+    }
     return TRUE;
 }

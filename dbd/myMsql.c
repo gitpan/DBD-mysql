@@ -102,7 +102,7 @@ int MyConnect(dbh_t sock, char* host, char* user, char* password) {
 	}
         return mysql_connect(sock, host, user, password) ? TRUE : FALSE;
 #else
-	return mysql_real_connect(sock, host, port, user, password) ?
+	return mysql_real_connect(sock, host, user, password, port, NULL) ?
 	    TRUE : FALSE;
 #endif
     }

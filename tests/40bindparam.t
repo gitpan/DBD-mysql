@@ -83,33 +83,33 @@ while (Testing()) {
 	   or DbiError($dbh->err, $dbh->errstr);
 
     #
-    #   Insert some values using bind_param
+    #   Insert some rows
     #
-    Test($state or $cursor->bind_param(1, 1, SQL_INTEGER()))
+
+    # Automatic type detection
+    my $numericVal = 1;
+    my $charVal = "Alligator Descartes";
+    Test($state or $cursor->execute($numericVal, $charVal))
+	   or DbiError($dbh->err, $dbh->errstr);
+
+    # Does the driver remember the automatically detected type?
+    Test($state or $cursor->execute("2", "Tim Bunce"))
+	   or DbiError($dbh->err, $dbh->errstr);
+    $numericVal = 3;
+    $charVal = "Jochen Wiedmann";
+    Test($state or $cursor->execute($numericVal, $charVal))
+	   or DbiError($dbh->err, $dbh->errstr);
+
+    # Now try the explicit type settings
+    Test($state or $cursor->bind_param(1, " 4", SQL_INTEGER()))
 	or DbiError($dbh->err, $dbh->errstr);
-    Test($state or $cursor->bind_param(2, "Alligator Descartes",
-				       {TEST => SQL_VARCHAR()}))
+    Test($state or $cursor->bind_param(2, "Andreas König"))
 	or DbiError($dbh->err, $dbh->errstr);
     Test($state or $cursor->execute)
 	   or DbiError($dbh->err, $dbh->errstr);
 
-    Test($state or $cursor->bind_param(1, 2, SQL_INTEGER()))
-	or DbiError($dbh->err, $dbh->errstr);
-    Test($state or $cursor->bind_param(2, "Tim Bunce",
-				       {TEST => SQL_VARCHAR()}))
-	or DbiError($dbh->err, $dbh->errstr);
-    Test($state or $cursor->execute)
-	or DbiError($dbh->err, $dbh->errstr);
-  
-    Test($state or $cursor->bind_param(1, 3, SQL_INTEGER()))
-	or DbiError($dbh->err, $dbh->errstr);
-    Test($state or $cursor->bind_param(2, "Jochen Wiedmann",
-				       SQL_VARCHAR()))
-	or DbiError($dbh->err, $dbh->errstr);
-    Test($state or $cursor->execute)
-	or DbiError($dbh->err, $dbh->errstr);
-
-    Test($state or $cursor->bind_param(1, 4, SQL_INTEGER()))
+    # Works undef -> NULL?
+    Test($state or $cursor->bind_param(1, 5, SQL_INTEGER()))
 	or DbiError($dbh->err, $dbh->errstr);
     Test($state or $cursor->bind_param(2, undef))
 	or DbiError($dbh->err, $dbh->errstr);
@@ -117,11 +117,10 @@ while (Testing()) {
  	or DbiError($dbh->err, $dbh->errstr);
   
 
-
     Test($state or undef $cursor  ||  1);
 
     #
-    #   And now retreive them using bind_columns
+    #   And now retreive the rows using bind_columns
     #
     Test($state or $cursor = $dbh->prepare("SELECT * FROM $table"
 					   . " ORDER BY id"))
@@ -153,8 +152,15 @@ while (Testing()) {
     if (!$state && $verbose) {
  	print "Query returned id = $id, name = $name, ref = $ref, @$ref\n";
     }
- 
+
     Test($state or (($ref = $cursor->fetch)  &&  $id == 4  &&
+		    $name eq 'Andreas König'))
+	or DbiError($dbh->err, $dbh->errstr);
+    if (!$state && $verbose) {
+ 	print "Query returned id = $id, name = $name, ref = $ref, @$ref\n";
+    }
+ 
+    Test($state or (($ref = $cursor->fetch)  &&  $id == 5  &&
  		    !defined($name)))
 	   or DbiError($dbh->err, $dbh->errstr);
     if (!$state && $verbose) {

@@ -1,6 +1,19 @@
+Fri Oct 24 01:29:08 1997  Jochen Wiedmann  <joe@ispsoft.de>
+
+	* dbd/myMsql.c (MyConnect): Fixed use of mysql_real_connect
+
+	* dbd/dbdimp.c: Added automatic type detection to bind_param
+
+	* nodbd/statement.pm.in: Modified as_string for more efficiency
+	  under MySQL. Added maxlength and isnum methods. (Direct attribute
+	  fetches under MySQL, calculated under mSQL.)
+
+	* nodbd/pmsql.pm.in: Fixed bug in creation of @typelabels:
+	  defined &Msql::TEXT_TYPE doesn't work before autoloading it.
+	
 1997-10-02  Jochen Wiedmann <joe@ispsoft.de> (1.1815)
 
-	* DBD/dbd.xs: Fixed bug in insertid; &svsock was used instead
+	* dbd/dbd.xs: Fixed bug in insertid; &svsock was used instead
 	  of svsock
 
 	* Fixed bug in nodbd.xs (formerly Mysql.xs): key INSERTID had

@@ -8,6 +8,17 @@
 #ifndef IS_PRI_KEY
 #define IS_PRI_KEY(a) IS_UNIQUE(a)
 #endif
+#ifndef IS_NUM
+#ifdef DBD_MYSQL
+#define IS_NUM(A) ((A) >= (int) FIELD_TYPE_DECIMAL && (A) <= FIELD_TYPE_DATETIME)
+#else
+#ifdef UINT_TYPE
+#define IS_NUM(A) ((A) == INT_TYPE || (A) == REAL_TYPE || (A) == UINT_TYPE)
+#else
+#define IS_NUM(A) ((A) == INT_TYPE || (A) == REAL_TYPE)
+#endif
+#endif
+#endif
 
 typedef int SysRet;
 typedef result_t My__Result;
@@ -184,33 +195,36 @@ fetchinternal(handle, key)
   case 'I':
     if (strEQ(key, "ISNOTNULL")){
 	MYPERL_FETCH_INTERNAL(av_push(av,(SV*)newSViv((IV)IS_NOT_NULL(curField->flags))););
-    }
-    else if (strEQ(key, "ISPRIKEY")) {
+    } else if (strEQ(key, "ISPRIKEY")) {
 	MYPERL_FETCH_INTERNAL(av_push(av,(SV*)newSViv((IV)IS_PRI_KEY(curField->flags))););
-    }
-#ifdef DBD_MYSQL
-    else if (strEQ(key, "ISUNIQUEKEY")) {
-	MYPERL_FETCH_INTERNAL(av_push(av,(SV*)newSViv((IV)IS_UNIQUE_KEY(curField->flags))););
-    }
-    else if (strEQ(key, "ISKEY")) {
-	MYPERL_FETCH_INTERNAL(av_push(av,(SV*)newSViv((IV)IS_KEY(curField->flags))););
-    }
-    else if (strEQ(key, "ISBLOB")) {
-	MYPERL_FETCH_INTERNAL(av_push(av,(SV*)newSViv((IV)IS_BLOB(curField->flags))););
-    }
-    else if (strEQ(key, "ISBLOB")) {
+    } else if (strEQ(key, "ISNUM")) {
 	MYPERL_FETCH_INTERNAL(av_push(av,(SV*)newSViv((IV)IS_NUM(curField->flags))););
-    }
-    else if (strEQ(key, "INSERTID")) {
+#ifdef DBD_MYSQL
+    } else if (strEQ(key, "ISUNIQUEKEY")) {
+	MYPERL_FETCH_INTERNAL(av_push(av,(SV*)newSViv((IV)IS_UNIQUE_KEY(curField->flags))););
+    } else if (strEQ(key, "ISKEY")) {
+	MYPERL_FETCH_INTERNAL(av_push(av,(SV*)newSViv((IV)IS_KEY(curField->flags))););
+    } else if (strEQ(key, "ISBLOB")) {
+	MYPERL_FETCH_INTERNAL(av_push(av,(SV*)newSViv((IV)IS_BLOB(curField->flags))););
+    } else if (strEQ(key, "INSERTID")) {
 	if ((svp = hv_fetch(handle, key, 8, 0))) {
 	    RETVAL = newSViv(SvIV(*svp));
 	}
-    }
 #endif
+    }
     break;
   case 'L':
     if (strEQ(key, "LENGTH")) {
 	MYPERL_FETCH_INTERNAL(av_push(av,(SV*)newSViv((IV)curField->length)););
+    }
+    break;
+  case 'M':
+    if (strEQ(key, "MAXLENGTH")) {
+#ifdef DBD_MYSQL
+	MYPERL_FETCH_INTERNAL(av_push(av,(SV*)newSViv((IV)curField->max_length)););
+#else
+	MYPERL_FETCH_INTERNAL(av_push(av,(SV*)newSViv((IV)curField->length)););
+#endif
     }
     break;
   case 'N':
@@ -722,7 +736,11 @@ reloadacls(handle)
       dRESULT;
       readMYSOCKET;
       if (validSOCKET) {
+#if defined(DBD_MYSQL)  &&  defined(REFRESH_GRANT)
+	checkRETVAL(mysql_refresh(sock,REFRESH_GRANT | REFRESH_LOG | REFRESH_TABLES));
+#else
 	checkRETVAL(MyReload(sock));
+#endif
       }
      }
      OUTPUT:

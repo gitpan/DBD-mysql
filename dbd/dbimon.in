@@ -1,26 +1,4 @@
-# -*- perl -*-
-use Config;
-use File::Basename qw(&basename &dirname);
-# This forces PL files to create target in same directory as PL file.
-# This is so that make depend always knows where to find PL derivatives.
-chdir(dirname($0));
-($file = basename($0)) =~ s/\.PL$//;
-$file =~ s/\.pl$//
-	if ($Config{osname} eq 'VMS' or $Config{osname} eq 'os2');  # "case-forgiving"
-
-open OUT,">$file" or die "Can\'t create $file: $!";
-
-print "Extracting $file (with variable substitutions)\n";
-
-#
-# Start of pmsql and pmysql
-#
-
-print OUT <<"!GROK!THIS!";
-$Config{'startperl'}
-!GROK!THIS!
-
-print OUT <<'!NO!SUBS!';
+~startperl~
 #
 #   dbimon - DBI monitor
 #
@@ -1320,13 +1298,3 @@ http://www.perl.com/CPAN).
 
 See L<pmsql (1)>, L<DBI (3)>, L<Term::ReadKey (3)>, L<Term::ReadLine (3)>,
 
-=cut
-
-!NO!SUBS!
-
-#
-# End of dbimon
-#
-
-close OUT or die "Can't close $file: $!";
-chmod 0755, $file or die "Can't reset permissions for $file: $!\n";
