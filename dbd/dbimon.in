@@ -246,8 +246,17 @@ sub Connect (@) {
     }
 
     if ($dbh) {
-	if ($ndsn =~ /^dbi\:([^\:]+)\:/i) {
+	if ($ndsn =~ /^dbi\:([^\:]+)\:(.*)/i) {
 	    $driver = $1;
+	    my($rdsn) = $2;
+	    if ($driver eq 'mSQL'  ||  $driver eq 'mysql') {
+		my($class) = "DBD::$driver";
+		my($hash) = {};
+		$class->_OdbcParse($rdsn, $hash, ["database"]);
+		if ($hash->{'database'}) {
+		    $prompt = "$driver:" . $hash->{'database'} . "> ";
+		}
+	    }
 	} else {
 	    $driver = undef;
 	}
@@ -301,17 +310,17 @@ sub Output ($) {
 	$quote = defined($quoteChar) ? $quoteChar : "";
 	if (defined($escapeChar)  &&  $escapeChar ne '') {
 	    $ePattern = $escapeChar;
-	    $ePattern =~ s/(.)/\\$1/g;
+	    $ePattern =~ s/(\W)/\\$1/g;
 	    if ($quote ne '') {
 		$qPattern = $quote;
-		$qPattern =~ s/(.)/\\$1/g;
+		$qPattern =~ s/(\W)/\\$1/g;
 		if ($ePattern) {
 		    $ePattern = "$ePattern|$qPattern";
 		} else {
 		    $ePattern = $qPattern;
 		}
 	    }
-	    $ePattern = "($ePattern|\\0)";
+	    $ePattern = "$ePattern|\\0";
 	} else {
 	    $ePattern = '';
 	}
@@ -325,7 +334,7 @@ sub Output ($) {
 		if ($ePattern) {
 		    $word =~ s/($ePattern)/$escapeChar$1/g;
 		}
-		printf ("%s%s%s%s", $quote, $word, $quote, $add);
+		printf ("%s%s%s%s", $add, $quote, $word, $quote);
 		$add = $sepChar;
 	    }
 	    print "\n";
@@ -1064,7 +1073,7 @@ dbimon $VERSION Copyright (C) 1997 Jochen Wiedmann
     if (!($dbh = Connect($dsn, $user, $password))) {
 	print STDERR "Cannot connect: $DBI::errstr\n";
 	exit 1;
-    }	
+    }
 
     if (!$batchMode) {
 	$term = Term::ReadLine->new("dbimon $VERSION");
@@ -1100,7 +1109,7 @@ dbimon $VERSION Copyright (C) 1997 Jochen Wiedmann
     # Main loop
     my $line;
     while ($batchMode ? defined($line = <STDIN>) :
-	   defined($line = $term->readline("dbimon> "))) {
+	   defined($line = $term->readline($prompt))) {
 	# Remove preceding and trailing blanks, ignore empty lines
 	$line =~ s/^\s+//;
 	$line =~ s/\s+$//;
@@ -1141,8 +1150,9 @@ dbimon $VERSION Copyright (C) 1997 Jochen Wiedmann
 	
 	if ($command =~ /^d(sn?)?$/i) {
 	    if (@args) {
-		my $ndbh;
-		if (!($ndbh = Connect(@args))) {
+		my($ndbh);
+		my($ndsn, $nuser, $npassword) = @args;
+		if (!($ndbh = Connect($ndsn, $nuser, $npassword))) {
 		    print "Cannot connect: $DBI::errstr\n";
 		} else {
 		    $dbh->disconnect;

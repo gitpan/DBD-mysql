@@ -20,8 +20,8 @@ use lib ".";
 
 use vars qw($MyConfig $VERSION $DBD_VERSION);
 
-$VERSION = "1.19_12";
-$DBD_VERSION = "2.01_12";
+$VERSION = "1.19_13";
+$DBD_VERSION = "2.01_13";
 
 
 ############################################################################
@@ -301,8 +301,7 @@ sub InitializeMysql () {
 	. " -I\$(INSTALLARCHLIB)";
     $X{H}        = \@headerfiles;
     if ($ENV{HOSTNAME} eq 'laptop.ispsoft.de'  &&  $ENV{'LOGNAME'} eq 'joe') {
-	$X{'DEFINE'} .= ' -Wall -Wno-comment -Wpointer-arith'
-            . ' -Wcast-align -Wtraditional -Wcast-qual';
+	$X{'DEFINE'} .= ' -Wall -Wstrict-prototypes';
     }
 
     my $dir;
@@ -421,6 +420,9 @@ the '-fPIC' flag to produce Position-Independent code.
     $X{macro} = {MSQL_HOME => $gooddir};
     $X{dynamic_lib} = { OTHERLDFLAGS => '-L$(MSQL_HOME)/lib ' . $linkwith } if $linkwith;
     $X{DEFINE}   = "-DDBD_MSQL -D$version$getconf -DMyConnect=mSQL_dr_connect -DMyLogin=mSQL_dr_login";
+    if ($ENV{HOSTNAME} eq 'laptop.ispsoft.de'  &&  $ENV{'LOGNAME'} eq 'joe') {
+	$X{'DEFINE'} .= ' -Wall -Wstrict-prototypes';
+    }
     $X{LIBS}     = $sysliblist;
     $X{INC}      = "-I../dbd -I$headerdir  -I\$(INSTALLSITEARCH)/auto/DBI"
 	. " -I\$(INSTALLARCHLIB)";

@@ -241,7 +241,7 @@ static int _MyLogin(imp_dbh_t *imp_dbh) {
     if ((svp = hv_fetch(hv, "password", 8, FALSE))) {
         password = SvPV(*svp, len);
 	if (!len) {
-	    user = NULL;
+	    password = NULL;
 	}
     } else {
         password = NULL;
@@ -543,9 +543,13 @@ SV* dbd_db_FETCH_attrib(SV* dbh, imp_dbh_t* imp_dbh, SV* keysv) {
 #endif
       case 'p':
 	if (kl == 9  &&  strEQ(key, "protoinfo")) {
+#ifdef DBD_MYSQL
 	    char* protoinfo = MyGetProtoInfo(imp_dbh->svsock);
 	    return protoinfo ?
 	        sv_2mortal(newSVpv(protoinfo, strlen(protoinfo))) : &sv_undef;
+#else
+	    return sv_2mortal(newSViv(MyGetProtoInfo(imp_dbh->svsock)));
+#endif
 	}
 	break;
       case 's':

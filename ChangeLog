@@ -1,3 +1,12 @@
+1998-03-16  Jochen Wiedmann  <joe@laptop.ispsoft.de> (1.19_13)
+
+	* dbd/dbdimp.c: msqlGetProtoInfo returns an int, not a
+	  char* (Erik Bertelsen, erik@mediator.uni-c.dk)
+
+	* dbd/dbdimp.c: Fixed type in _MyLogin: User was set to
+	  NULL when password had zero length. (Erik Bertelsen,
+	  erik@mediator.uni-c.dk)
+
 1998-03-15  Jochen Wiedmann  <joe@laptop.ispsoft.de> (1.19_11)
 
 	* Makefile.PL: Fixed Bugs in _OdbcParse and version numbers.
