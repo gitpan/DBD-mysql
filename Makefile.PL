@@ -19,8 +19,8 @@ use ExtUtils::PerlPP ();
 
 use vars qw($VERSION $DBD_VERSION $options);
 
-$VERSION = "1.2214";
-$DBD_VERSION = "2.0414";
+$VERSION = "1.2215";
+$DBD_VERSION = "2.0415";
 
 $options = { 'prompt' => 1 };
 

@@ -329,7 +329,7 @@ Interface (DBI)
 
   # Create a new table 'foo'. This must not fail, thus we don't
   # catch errors.
-  $dbh->do("CREATE TABLE foo (id INTEGER, name VARCHAR(20)");
+  $dbh->do("CREATE TABLE foo (id INTEGER, name VARCHAR(20))");
 
   # INSERT some data into 'foo'. We are using $dbh->quote() for
   # quoting the name.
@@ -525,8 +525,10 @@ I<localhost>. However, by using
         . "mysql_read_default_file=/home/joe/my.cnf";
     $dbh = DBI->connect($dsn, $user, $password);
 
-you'll be connected to I<perlhost>. See the (missing :-) documentation
-of the C function mysql_options() for details.
+you'll be connected to I<perlhost>. Note that if you specify a
+default group and do not specify a file, then the default config
+files will all be read.  See the (missing :-) documentation of
+the C function mysql_options() for details.
 
 =item mysql_socket
 

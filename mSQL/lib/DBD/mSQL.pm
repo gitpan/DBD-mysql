@@ -329,7 +329,7 @@ Interface (DBI)
 
   # Create a new table 'foo'. This must not fail, thus we don't
   # catch errors.
-  $dbh->do("CREATE TABLE foo (id INTEGER, name VARCHAR(20)");
+  $dbh->do("CREATE TABLE foo (id INTEGER, name VARCHAR(20))");
 
   # INSERT some data into 'foo'. We are using $dbh->quote() for
   # quoting the name.

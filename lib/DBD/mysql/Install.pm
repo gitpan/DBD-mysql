@@ -388,7 +388,7 @@ sub Initialize ($$) {
     } else {
 	$sysliblist = "-L$libdir -lmysqlclient";
     }
-    $sysliblist .= " -lm";
+    $sysliblist .= " -lm -lz -lgz";
     my $defines = "-DDBD_MYSQL";
     if ($options->{'mysql-use-client-found-rows'}) {
 	$defines .= " -DMYSQL_USE_CLIENT_FOUND_ROWS";

@@ -59,7 +59,7 @@ EXAMPLE
 
       # Create a new table 'foo'. This must not fail, thus we don't
       # catch errors.
-      $dbh->do("CREATE TABLE foo (id INTEGER, name VARCHAR(20)");
+      $dbh->do("CREATE TABLE foo (id INTEGER, name VARCHAR(20))");
 
       # INSERT some data into 'foo'. We are using $dbh->quote() for
       # quoting the name.
@@ -245,7 +245,9 @@ DESCRIPTION
                         . "mysql_read_default_file=/home/joe/my.cnf";
                     $dbh = DBI->connect($dsn, $user, $password);
 
-                you'll be connected to *perlhost*. See the (missing :-)
+                you'll be connected to *perlhost*. Note that if you specify
+                a default group and do not specify a file, then the default
+                config files will all be read. See the (missing :-)
                 documentation of the C function mysql_options() for details.
 
         mysql_socket
@@ -289,7 +291,7 @@ DESCRIPTION
             @tables = $dbh->func('_ListTables');
 
         Once connected to the desired database on the desired mysql or mSQL
-        mSQL daemon with the `DBI->connect()' method, we may extract a list
+        mSQL daemon with the `DBI-'connect()> method, we may extract a list
         of the tables that have been created within that database.
 
         `ListTables' returns an array containing the names of all the tables

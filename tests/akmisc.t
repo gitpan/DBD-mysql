@@ -582,7 +582,7 @@ while (Testing()) {
 
     # "him" is undef, but fetchrow is TRUE
 
-    Test($state or defined(($him) = $sth3->fetchrow))
+    Test($state or (($him) = $sth3->fetchrow) > 0)
 	or print("Expected fetchrow() returning TRUE:"
 			      . " $$errstrRef.\n");
     Test($state or !defined($him))

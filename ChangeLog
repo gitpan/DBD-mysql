@@ -1,3 +1,9 @@
+2000-08-20  Jochen Wiedmann  <joe@ispsoft.de> (1.2215)
+
+	* lib/DBD/mysql/Install.pm (Initialize): Adding -lz -lgz by
+	  default now.
+	* dbd/dbd.pm.in: Minor doc change.
+
 2000-05-10  Jochen Wiedmann  <joe@ispsoft.de> (1.2214)
 
 	* dbd/dbdimp.c: Fixed bug that timestamp fields weren't quoted.
