@@ -10,10 +10,10 @@ use vars qw($loaded $mdriver);
 
 my($host, $user, $password, $dbname);
 
-$host = shift @ARGV || $ENV{'DBI_HOST'} || "~test_host~";
-$user = shift @ARGV || $ENV{'DBI_USER'} || "~test_user~";
-$password = shift @ARGV || $ENV{'DBI_PASS'} || "~test_pass~";
-$dbname = shift @ARGV || $ENV{'DBI_DB'} || "~test_db~";
+$host = shift @ARGV || $ENV{'DBI_HOST'} || "~~test_host~~";
+$user = shift @ARGV || $ENV{'DBI_USER'} || "~~test_user~~";
+$password = shift @ARGV || $ENV{'DBI_PASS'} || "~~test_pass~~";
+$dbname = shift @ARGV || $ENV{'DBI_DB'} || "~~test_db~~";
 
 $| = 1;
 do ((-f "lib.pl") ? "lib.pl" :

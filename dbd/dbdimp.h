@@ -73,6 +73,8 @@ enum av_attribs {
     AV_ATTRIB_LENGTH,
     AV_ATTRIB_IS_NUM,
     AV_ATTRIB_TYPE_NAME,
+    AV_ATTRIB_PRECISION,
+    AV_ATTRIB_SCALE,
 #ifdef DBD_MYSQL
     AV_ATTRIB_MAX_LENGTH,
     AV_ATTRIB_IS_KEY,
@@ -194,6 +196,8 @@ struct imp_sth_st {
 #define mymsql_constant         mysql_constant
 #define do_warn			mysql_dr_warn
 #define do_error		mysql_dr_error
+#define dbd_db_type_info_all    mysql_db_type_info_all
+#define dbd_db_quote            mysql_db_quote
 #elif defined(DBD_MSQL1)
 #define dbd_init		msql1_dr_init
 #define dbd_db_login		msql1_db_login
@@ -222,6 +226,9 @@ struct imp_sth_st {
 #define mymsql_constant         msql1_constant
 #define do_warn			msql1_dr_warn
 #define do_error		msql1_dr_error
+#define dbd_dr_types            msql1_dr_types
+#define dbd_db_type_info_all    msql1_db_type_info_all
+#define dbd_db_quote            msql1_db_quote
 #else
 #define dbd_init		msql_dr_init
 #define dbd_db_login		msql_db_login
@@ -250,6 +257,9 @@ struct imp_sth_st {
 #define mymsql_constant         msql_constant
 #define do_warn			msql_dr_warn
 #define do_error		msql_dr_error
+#define dbd_dr_types            msql_dr_types
+#define dbd_db_type_info_all    msql_db_type_info_all
+#define dbd_db_quote            msql_db_quote
 #endif
 
 #include <dbd_xsh.h>
@@ -259,5 +269,30 @@ SV	*dbd_db_fieldlist _((result_t res));
 void    dbd_preparse _((imp_sth_t *imp_sth, SV *statement));
 int dbd_st_internal_execute(SV*, SV*, SV*, int, imp_sth_ph_t*, result_t*,
 			    dbh_t, int);
+AV* dbd_db_type_info_all _((SV* dbh, imp_dbh_t* imp_dbh));
+SV* dbd_db_quote(SV*, SV*, SV*);
+
+
+typedef struct {
+    char* typeName;
+    int dataType;
+    int precision;
+    char* literalPrefix;
+    char* literalSuffix;
+    char* createParams;
+    int nullable;
+    int caseSensitive;
+    int searchable;
+    int unsignedAttribute;
+    int money;
+    int autoIncrement;
+    char* localTypeName;
+    int minimumScale;
+    int maximumScale;
+    AV* av;
+} mymsql_type;
+
+extern mymsql_type dbd_dr_types[];
+
 
 extern int MysqlReconnect(SV*);
