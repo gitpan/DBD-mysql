@@ -131,4 +131,18 @@ while (Testing()) {
 	or !$verbose or printf("NUM_OF_FIELDS is %s, not zero.\n",
 			       $cursor->{'NUM_OF_FIELDS'});
     Test($state or (undef $cursor) or 1);
+
+    #
+    #  Test different flavours of quote. Need to work around a bug in
+    #  DBI 1.02 ...
+    #
+    my $quoted;
+    if (!$state) {
+	$quoted = eval { $dbh->quote(0, DBI::SQL_INTEGER()) };
+    }
+    Test($state or $@  or  $quoted eq 0);
+    if (!$state) {
+	$quoted = eval { $dbh->quote('abc', DBI::SQL_VARCHAR()) };
+    }
+    Test($state or $@ or $quoted eq q{'abc'});
 }

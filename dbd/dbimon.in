@@ -1,4 +1,4 @@
-~startperl~
+#!/usr/bin/perl
 #
 #   dbimon - DBI monitor
 #
@@ -53,7 +53,7 @@ use Data::ShowTable ();
 #
 #   Constants
 #
-my $VERSION = "1.19_19";
+my $VERSION = "1.2001";
 
 my @VALID_VARS = ("escapeChar", "less", "listWrapMargin", "maxTableWidth",
 		  "noEscape", "quoteChar", "sepChar", "showMode");
@@ -77,14 +77,18 @@ my $password;
 my $attribs;
 
 # Variables that may be modified via the 'set' command
-my $escapeChar      = '"';
-my $less            = '';
-my $listWrapMargin  = $Data::ShowTable::List_Wrap_Margin;
-my $maxTableWidth   = $Data::ShowTable::Max_Table_Width;
-my $noEscape        = 0;
-my $quoteChar       = '"';
-my $sepChar         = ';';
-my $showMode        = $Data::ShowTable::Show_Mode;
+my $escapeChar       = '"';
+my $less             = '';
+my $listWrapMargin   = $Data::ShowTable::List_Wrap_Margin;
+my $maxTableWidth    = $Data::ShowTable::Max_Table_Width;
+my $noEscape         = 0;
+my $quoteChar        = '"';
+my $sepChar          = ';';
+my $showMode         = $Data::ShowTable::Show_Mode;
+
+my $dumpStructure    = 1;
+my $dumpData         = 1;
+my $dumpNames        = 0;
 
 
 ############################################################################
@@ -430,8 +434,8 @@ sub DisplayList ($$) {        # XXX Replace this with ShowDatabases() and
 sub DsnList() {
     my @l;
     eval { @l = DBI->data_sources($driver); };
-    if ($@) {
-	@l = ();
+    if (!@l) {
+	push(@l, $dsn);
     }
     @l;
 }
@@ -445,19 +449,10 @@ sub TableList ($) {
     }
     my (@l, $ndbh);
     eval {
-	if ($dsn ne $rdsn) {
-	    my $ndbh = DBI->connect($rdsn, $user, $password);
-	    if ($ndbh) {
-		@l = $ndbh->func("_ListTables");
-		$ndbh->disconnect;
-	    }
-	} else {
-	    @l = $dbh->func("_ListTables");
-	}
+	my $ndbh = ($dsn eq $rdsn) ? $dbh :
+	    DBI->connect($rdsn, $user, $password, {'Warn' => 0});
+	@l = $ndbh->tables();
     };
-    if ($@) {
-	@l = ();
-    }
     @l;
 }
 
@@ -468,23 +463,20 @@ sub FieldList($$;$) {
     } elsif ($rdsn !~ /\:[^\:]+\:/) {
 	$rdsn = "DBI:$rdsn";
     }
-    my ($sth);
+    my($sth, $ndbh);
     eval {
-	if ($dsn ne $rdsn) {
-	    my $ndbh = DBI->connect($rdsn, $user, $password);
-	    if ($ndbh) {
-		$sth = $ndbh->prepare("LISTFIELDS $table");
-		$sth->execute;
-		($sth, $ndbh);
-	    } else {
-		(undef);
-	    }
+	$ndbh = ($dsn eq $rdsn) ? $dbh :
+	    DBI->connect($rdsn, $user, $password, {'Warn' => 0});
+	if ($dbh->{'ImplementorClass'} =~ /\:mysql|mSQL1?\:/) {
+	    $sth = $ndbh->prepare("LISTFIELDS $table");
 	} else {
-	    $sth = $dbh->prepare("LISTFIELDS $table");
-	    $sth->execute;
-	    ($sth);
+	    $sth = $ndbh->prepare("SELECT * FROM $table WHERE 1 = 0");
+	}
+	if (!$sth  ||  !$sth->execute()) {
+	    $sth = undef;
 	}
     };
+    ($sth, $ndbh);
 }
 
 sub RelShow (;$$) {
@@ -532,7 +524,7 @@ sub RelShow (;$$) {
 	# relshow database table
 	#
 	if (!$sth) {
-	    print "Cannot get table list, error", $dbh->errstr, "\n";
+	    print "Cannot get field list, error", $DBI::errstr, "\n";
 	} else {
 	    my ($fLen, $tLen, $lLen, $nLen) = (length("Field"),
 					       length("Type"),
@@ -600,10 +592,8 @@ sub RelShow (;$$) {
 	}
     }
 
-    if ($ndbh) {
-	undef $sth;
-	$ndbh->disconnect;
-    }
+    undef $sth; # So statement handle destructor gets called before
+	        # Database handle destructor
 }
 
 
@@ -627,7 +617,52 @@ sub RelShow (;$$) {
 sub GetOrSetVal (@) {
     my ($key, $val, $complete) = @_;
 
-    if ($key =~ /^e(s(c(a(p(e(c(h(ar?)?)?)?)?)?)?)?)?$/i) {
+    if ($key =~ /^dumpd(:?a(:?ta?))$/i) {
+	if ($complete) {
+	    return (); # No completion available
+	}
+	if (defined($val)) {
+	    if ($val =~ /^on$/i) {
+		$dumpData = 1;
+	    } elsif ($val =~ /^off?$/i) {
+		$dumpData = 0;
+	    } else {
+		$dumpData = $val ? 1 : 0;
+	    }
+	}
+	$val = $dumpData ? "on" : "off";
+	$key = "dumpData";
+    } elsif ($key =~ /^dumps(:?n(:?a(:?m(:?es?))))$/i) {
+	if ($complete) {
+	    return (); # No completion available
+	}
+	if (defined($val)) {
+	    if ($val =~ /^on$/i) {
+		$dumpNames = 1;
+	    } elsif ($val =~ /^off?$/i) {
+		$dumpNames = 0;
+	    } else {
+		$dumpNames = $val ? 1 : 0;
+	    }
+	}
+	$val = $dumpNames ? "on" : "off";
+	$key = "dumpNames";
+    } elsif ($key =~ /^dumps(:?t(:?r(:?u(:?c(:?t(:?u(:?re?)))))))$/i) {
+	if ($complete) {
+	    return (); # No completion available
+	}
+	if (defined($val)) {
+	    if ($val =~ /^on$/i) {
+		$dumpStructure = 1;
+	    } elsif ($val =~ /^off?$/i) {
+		$dumpStructure = 0;
+	    } else {
+		$dumpStructure = $val ? 1 : 0;
+	    }
+	}
+	$val = $dumpStructure ? "on" : "off";
+	$key = "dumpStructure";
+    } elsif ($key =~ /^e(s(c(a(p(e(c(h(ar?)?)?)?)?)?)?)?)?$/i) {
 	if ($complete) {
 	    return (); # No completion available
 	}
@@ -811,6 +846,12 @@ sub Set (@) {
 		   (GetOrSetVal("listWrapMargin"))[1],
 		   (GetOrSetVal("maxTableWidth"))[1]);
 	}
+	printf("            dumpData: %s\n" .
+	       "           dumpNames: %s\n" .
+	       "       dumpStructure: %s\n",
+	       GetOrSetVal('dumpData'),
+	       GetOrSetVal('dumpNames'),
+	       GetOrSetVal('dumpStructure'));
     } elsif (@_ == 1  ||  @_ == 2) {
 	my($key, $val) = @_;
 	($key, $val) = GetOrSetVal($key, $val);
@@ -854,7 +895,7 @@ sub complete_table ($$) {
     if (!$rdsn) {
 	return ();
     }
-    grep /^\Q$word/, TableList($dsn);
+    grep /\b\Q$word/i, TableList($dsn);
 }
 
 sub complete_table_or_field {
@@ -866,7 +907,7 @@ sub complete_table_or_field {
     if ($line =~ /(delete|select)\s.*from\s+\Q$word\E$/i  ||
 	$line =~ /^update\s+\Q$word\E$/i ||
 	$line =~ /^insert\s.*into\s+\Q$word\E$/i) {
-	@result = grep /^\Q$word/, TableList($dsn);
+	@result = grep /\b\Q$word/i, TableList($dsn);
     } elsif ($line =~ /^delete\s.*\sfrom\s+(\w+)/i  ||
 	     $line =~ /^select\s.*\sfrom\s+(\w+)/i  ||
 	     $line =~ /^update\s+(\w+)/i            ||
@@ -923,7 +964,8 @@ sub Complete ($$$) {
 
     if ($pos == 0) {
 	grep /^$word/i, ('!', '?', 'delete from', 'dsn', 'insert into',
-			 'quit', 'relshow', 'select', 'set', 'update');
+			 'quit', 'relshow', 'select', 'set', 'update',
+			 'dump');
     } elsif ($line =~ /^dsn?/i) {
 	complete_database($word);
     } elsif ($line =~ /^de(l(e(te?)?)?)?/i) {
@@ -948,6 +990,104 @@ sub CompleteGnu ($$$) {
     my(@poss) = Complete($word, $line, $pos);
     $attribs->{'completion_word'} = \@poss;
     return;
+}
+
+
+############################################################################
+#
+#   Name:    Dump
+#
+#   Purpose: Dumps a databases contents to stdout as a sequence of
+#            SQL queries.
+#
+#   Inputs:  @tables - List of table names; if not given, all tables
+#                will be dumped.
+#
+#   Returns: Nothing
+#
+############################################################################
+
+sub Dump {
+    my(@tables) = @_;
+
+    if (!@tables) {
+	@tables = TableList($dsn);
+    }
+
+    print "##\n";
+    print "##  Dump of database $dsn\n";
+    print("##  Automatically generated by dbimon at ",
+	  scalar(localtime(time())), "\n");
+    print "##  Do not edit!\n";
+    print "##\n\n";
+
+    foreach my $table (@tables) {
+	$table =~ s/.*\.//; # Some drivers have USER.TABLE
+
+	print "#\n";
+	print "# Dump of table $table\n";
+	print "#\n";
+	my $sth = $dbh->prepare("SELECT * FROM $table");
+	if (!$sth) {
+	    print("Error while preparing dump of table $table: ",
+		  $dbh->errstr(), "\n");
+	    next;
+	}
+	if (!$sth->execute()) {
+	    print("Error while dumping table $table: ", $dbh->errstr(), "\n");
+	}
+
+	my $types = $sth->{'TYPE'};
+	my $scales = $sth->{'SCALE'};
+	my $precs = $sth->{'PRECISION'};
+	my $names = $sth->{'NAME'};
+	my $numFields = $sth->{'NUM_OF_FIELDS'};
+
+	if ($dumpStructure) {
+	    my @ts;
+	    for (my $i = 0;  $i < $numFields;  $i++) {
+		my $t = $types->[$i];
+		my @types = $dbh->type_info($t);
+		if (!@types) {
+		    print STDERR "Warning: Unknown type: $t\n";
+		    @types = $dbh->type_info(DBI::SQL_VARCHAR());
+		    if (!@types) {
+			die "Unknown datatype: SQL_VARCHAR";
+		    }
+		}
+		my $thash = $types[0];
+		my $tname = $thash->{'TYPE_NAME'};
+		my $cparams = $thash->{'CREATE_PARAMS'} || '';
+		if ($cparams =~ /\blength\b/i) {
+		    $tname .= "(" . $precs->[$i] . ")";
+		} elsif ($cparams =~ /\bprecision\b/i) {
+		    if ($tname =~ /\bscale\b/i) {
+			$tname .= "(".$precs->[$i].",".$scales->[$i].")";
+		    } else {
+			$tname .= "(".$precs->[$i].")";
+		    }
+		}
+		
+		push @ts, $names->[$i]." ".$tname;
+	    }
+	    print(sprintf("CREATE TABLE %s (%s)\n", $table,
+			  join(", ", @ts)));
+	}
+	if ($dumpData) {
+	    my $row;
+	    while ($row = $sth->fetchrow_arrayref()) {
+		my @values;
+		for (my $i = 0;  $i < $numFields;  $i++) {
+		    push @values, $dbh->quote($row->[$i], $types->[$i]);
+		}
+
+		print(sprintf("INSERT INTO %s %sVALUES (%s)\n", $table,
+			      $dumpNames ?
+			      sprintf("(%s) ", join(", ", @$names)) : "",
+			      join(", ", @values)));
+	    }
+	}
+    }
 }
 
 
@@ -1033,6 +1173,10 @@ dbimon $VERSION Copyright (C) 1997 Jochen Wiedmann
 {
     my ($arg);
     my ($dsn, $user, $password);
+    my $dumpContents;
+    my @dumpTables;
+    my $inputFrom;
+    my $dieOnError;
 
     #   Initialize $less
     {
@@ -1054,6 +1198,28 @@ dbimon $VERSION Copyright (C) 1997 Jochen Wiedmann
 	    $batchMode = 1;
 	} elsif ($arg eq "-d"  ||  $arg eq "-debug"  ||  $arg eq "--debug") {
 	    $debugging = 1;
+	} elsif ($arg eq "--no-dump-structure") {
+	    $dumpStructure = 0;
+	} elsif ($arg eq "--no-dump-data") {
+	    $dumpData = 0;
+	} elsif ($arg eq "--dump-names") {
+	    $dumpNames = 1;
+	} elsif ($arg eq "--dump") {
+	    $dumpContents = 1;
+	    $batchMode = 1;
+	} elsif ($arg eq "--table") {
+	    if (!@ARGV) {
+		Usage();
+	    }
+	    push(@dumpTables, shift @ARGV);
+	} elsif ($arg eq "--input") {
+	    if (!@ARGV) {
+		Usage();
+	    }
+	    $inputFrom = shift @ARGV;
+	    $batchMode = 1;
+	} elsif ($arg eq "--no-errors") {
+	    $dieOnError = 1;
 	} else {
 	    if (!defined($dsn)) {
 		$dsn = $arg;
@@ -1073,6 +1239,17 @@ dbimon $VERSION Copyright (C) 1997 Jochen Wiedmann
     if (!($dbh = Connect($dsn, $user, $password))) {
 	print STDERR "Cannot connect: $DBI::errstr\n";
 	exit 1;
+    }
+
+    if ($dumpContents) {
+	Dump(@dumpTables);
+	exit 0;
+    }
+    if ($inputFrom) {
+	if (!open(STDIN, "<$inputFrom")) {
+	    print STDERR "Cannot open input file $inputFrom: $!\n";
+	    exit 1;
+	}
     }
 
     if (!$batchMode) {
@@ -1111,9 +1288,10 @@ dbimon $VERSION Copyright (C) 1997 Jochen Wiedmann
     while ($batchMode ? defined($line = <STDIN>) :
 	   defined($line = $term->readline($prompt))) {
 	# Remove preceding and trailing blanks, ignore empty lines
+	# and comments
 	$line =~ s/^\s+//;
 	$line =~ s/\s+$//;
-	if ($line =~ /^$/) {
+	if ($line =~ /^$/  ||  $line =~ /^\#/) {
 	    next;
 	}
 	
@@ -1166,6 +1344,8 @@ dbimon $VERSION Copyright (C) 1997 Jochen Wiedmann
 		print "Goodbye\n";
 	    }
 	    last;
+	} elsif ($command =~ /^d(:?u(:?mp?))$/i) {
+	    Dump(@args);
 	} elsif ($command =~ /^r(e(l(s(h(ow?)?)?)?)?)?$/i) {
 	    if (@args > 2) {
 		print "Usage: relshow [<dsn> [<table>]]\n";
@@ -1186,12 +1366,24 @@ dbimon $VERSION Copyright (C) 1997 Jochen Wiedmann
 
 	    my $sth = $dbh->prepare($line);
 	    if (!defined($sth)) {
+		if ($dieOnError) {
+		    print STDERR "Execute error.\n";
+		    print STDERR "Statement: $line\n";
+		    print STDERR "Error message: ", $dbh->errstr(), "\n";
+		    exit 1;
+		}
 		printf("Prepare error: %s\n", $dbh->errstr);
 		next;
 	    }
 	    my $rows = $sth->execute;
 	    if (!$rows) {
-		printf("Execute error: %s\n", $dbh->errstr);
+		if ($dieOnError) {
+		    print STDERR "Execute error.\n";
+		    print STDERR "Statement: $line\n";
+		    print STDERR "Error message: ", $sth->errstr(), "\n";
+		    exit 1;
+		}
+		printf("Execute error: %s\n", $sth->errstr);
 		next;
 	    }
 	    if ($sth->{'NUM_OF_FIELDS'} == 0) {
@@ -1224,6 +1416,7 @@ dbimon - interactive shell with readline for DBI
 =head1 SYNOPSIS
 
 C<dbimon E<lt>dsnE<gt> [E<lt>userE<gt> [E<lt>passwordE<gt>]]>
+         [E<lt>optionsE<gt>]
 
 =head1 DESCRIPTION
 
@@ -1347,6 +1540,27 @@ values 1, 'walrus' and 'Nat "King" Cole' will be displayed as
 Eval the EXPR in perl
 
 =back
+
+
+=head2 Dumping a database contents
+
+The option B<--dump> forces dump of a databases contents, much like
+I<msqldump> or I<mysqldump> do. By default all tables are dumped,
+but you can override this with a sequence of B<--table $table> options.
+
+Dumping means to emit a
+
+    CREATE TABLE $table (...)
+
+statement (unless the option B<--no-dump-structure> is given), followed
+by a sequence of
+
+    INSERT INTO $table (...)
+
+statements, one per row, unless you use the option B<--no-dump-data>.
+By default INSERT statements don't include column names, but the
+option B<--dump-names> can force that.
+
 
 =head2 Completion
 

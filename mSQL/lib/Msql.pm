@@ -1,6 +1,6 @@
 # -*- perl -*-
 
-package Mysql;
+package Msql;
 
 use 5.004;
 use strict;
@@ -9,15 +9,15 @@ require Carp;
 require DynaLoader;
 require Exporter;
 require DBI;
-require Mysql::Statement;
-require DBD::mysql;
+require Msql::Statement;
+require DBD::mSQL;
 
 use vars qw($QUIET @ISA @EXPORT @EXPORT_OK $VERSION $db_errstr);
 
 $db_errstr = '';
 $QUIET  = 0;
 @ISA    = qw(DBI); # Inherits Exporter and DynaLoader via DBI
-$VERSION = '1.2007';
+$VERSION = '1.21_05';
 
 # @EXPORT is a relict from old times...
 @EXPORT = qw(
@@ -37,7 +37,7 @@ $VERSION = '1.2007';
 		SYSVAR_TYPE
 	       );
 
-my($FETCH_map) = {
+my $FETCH_map = {
     'HOST' => '_host',
     'DATABASE' => 'database'
 };
@@ -63,28 +63,18 @@ sub STORE ($$$) {
     }
 }
 
-sub DESTROY {
-    my $self = shift;
-    my $dbh = $self->{'dbh'};
-    if ($dbh) {
-	local $SIG{'__WARN__'} = sub { };
-	$dbh->disconnect();
-    }
-}
-
-
 sub connect ($;$$$$) {
     my($class, $host, $db, $user, $password) = @_;
     my($self) = { 'host' => ($host || ''),
 		  'user' => $user,
 		  'password' => $password,
 		  'db' => $db,
-	          'driver' => 'mysql',
+	          'driver' => 'mSQL',
 	          'COMPATIBILITY' => 1 };
     bless($self, $class);
     $self->{'drh'} = DBI->install_driver($self->{'driver'});
     if ($db) {
-	my $dsn = "DBI:mysql:database=$db;host=$host";
+	my $dsn = "DBI:mSQL:database=$db;host=$host";
 	my $dbh = $class->SUPER::connect($dsn, $user, $password);
 	if (!$dbh) {
 	    $db_errstr = $DBI::errstr;
@@ -92,14 +82,23 @@ sub connect ($;$$$$) {
 	}
 	$self->{'dbh'} = $dbh;
 	$dbh->{'CompatMode'} = 1;
-	$dbh->{'PrintError'} = !$Mysql::QUIET;
+	$dbh->{'PrintError'} = !$Msql::QUIET;
     }
     $self;
 }
 
+sub DESTROY {
+    my $self = shift;
+    my $dbh = $self->{'dbh'};
+    if ($dbh) {
+	local $SIG{__WARN__} = sub { };
+	$dbh->disconnect();
+    }
+}
+
 sub selectdb ($$) {
     my($self, $db) = @_;
-    my($dsn) = "DBI:mysql:database=$db:host=" . $self->{'host'};
+    my($dsn) = "DBI:mSQL:database=$db:host=" . $self->{'host'};
     my($dbh) = DBI->connect($dsn, $self->{'user'}, $self->{'password'});
     if (!$dbh) {
 	$db_errstr = $self->{'errstr'} = $DBI::errstr;
@@ -125,7 +124,7 @@ sub listtables ($) {
 sub quote ($$) {
     my($self) = shift;
     my $obj = (ref($self) && $self->{'dbh'}) ?
-	$self->{'dbh'} : 'DBD::mysql::db';
+	$self->{'dbh'} : 'DBD::~DBD_DRIVER~::db';
     $obj->quote(shift);
 }
 
@@ -158,9 +157,12 @@ sub query ($$) {
     my($self, $statement) = @_;
     my($sth) = $self->{'dbh'}->prepare($statement);
     my($result);
-    $sth->{'PrintError'} = !$Mysql::QUIET;
+    $sth->{'PrintError'} = !$Msql::QUIET;
     if ($sth  &&  !($result = $sth->execute())) {
 	return undef;
+    }
+    if (!$sth->{'NUM_OF_FIELDS'}) {
+	return $result;
     }
     $sth->{'CompatMode'} = 1;
     bless($sth, ref($self) . "::Statement");
@@ -205,7 +207,7 @@ sub sockfd ($) { shift->{'dbh'}->{'sockfd'} }
 
 
 sub AUTOLOAD {
-    my $meth = $Mysql::AUTOLOAD;
+    my $meth = $Msql::AUTOLOAD;
     my $converted = 0;
 
     my $class;
@@ -218,9 +220,9 @@ sub AUTOLOAD {
 
 
     TRY: {
-	my $val = DBD::mysql::constant($meth, @_ ? $_[0] : 0);
+	my $val = DBD::mSQL::constant($meth, @_ ? $_[0] : 0);
 	if ($! == 0) {
-	    eval "sub $Mysql::AUTOLOAD { $val }";
+	    eval "sub $Msql::AUTOLOAD { $val }";
 	    return $val;
 	}
 
@@ -243,8 +245,30 @@ sub AUTOLOAD {
 	}
     }
 
-  Carp::croak("$Mysql::AUTOLOAD: Not defined in $class and not"
+  Carp::croak("$Msql::AUTOLOAD: Not defined in $class and not"
 	      . " autoloadable (last try $meth)");
+}
+
+
+sub unixtimetodate($$) {
+    my($class, $clock) = @_;
+    DBD::mSQL->unixtimetodate($clock);
+}
+sub unixtimetotime($$) {
+    my($class, $clock) = @_;
+    DBD::mSQL->unixtimetotime($clock);
+}
+sub datetounixtime($$) {
+    my($class, $clock) = @_;
+    DBD::mSQL->datetounixtime($clock);
+}
+sub timetounixtime($$) {
+    my($class, $clock) = @_;
+    DBD::mSQL->timetounixtime($clock);
+}
+sub getsequenceinfo($$) {
+    my($self, $table) = @_;
+    $self->{'dbh'}->func($table, 'getsequenceinfo');
 }
 
 
@@ -254,16 +278,16 @@ sub getserverinfo ($) { shift->{'dbh'}->{'serverinfo'} }
 sub getserverstats ($) { shift->{'dbh'}->{'stats'} }
 
 
-Mysql->init_rootclass();
+Msql->init_rootclass();
 
-package Mysql::dr;
-@Mysql::dr::ISA = qw(DBI::dr);
+package Msql::dr;
+@Msql::dr::ISA = qw(DBI::dr);
 
-package Mysql::db;
-@Mysql::db::ISA = qw(DBI::db);
+package Msql::db;
+@Msql::db::ISA = qw(DBI::db);
 
-package Mysql::st;
-@Mysql::st::ISA = qw(Mysql::Statement);
+package Msql::st;
+@Msql::st::ISA = qw(Msql::Statement);
 
 1;
 __END__
@@ -807,7 +831,6 @@ be supported for a long time. But it's a dead end. I expect in the
 medium term, that the DBI efforts result in a richer module family
 with better support and more functionality. Alligator maintains an
 interesting page on the DBI development:
-
-    http://www.arcana.co.uk/technologia/perl/DBI
+http://www.arcana.co.uk/technologia/perl/DBI
 
 =cut
