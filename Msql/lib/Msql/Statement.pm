@@ -1,13 +1,13 @@
 # -*- perl -*-
 
-package ~DRIVER~::Statement;
+package Msql::Statement;
 
-@~DRIVER~::Statement::ISA = qw(DBI::st);
+@Msql::Statement::ISA = qw(DBI::st);
 
 use strict;
 use vars qw($OPTIMIZE $VERSION $AUTOLOAD);
 
-$VERSION = '~NODBD_VERSION~';
+$VERSION = '1.19_14';
 
 $OPTIMIZE = 0; # controls, which optimization we default to
 
@@ -65,9 +65,6 @@ sub length ($) { shift->arrAttr('length') }
 sub maxlength  {
     my $sth = shift;
     my $result;
-#xtract Mysql
-    $result = $sth->fetchinternal('maxlength');
-#xtract Msql
     if (!($result = $sth->{'maxlength'})) {
 	$result = [];
 	my ($l);
@@ -94,16 +91,12 @@ sub maxlength  {
 	}
 	$sth->{MAXLENGTH} = $result;
     }
-#endxtract
     return wantarray ? @$result : $result;
 }
 
 sub listindices {
     my($sth) = shift;
     my(@result,$i);
-#xtract Mysql
-    return ();
-#xtract Msql
     if (!&Msql::IDX_TYPE()) {
 	return ();
     }
@@ -112,7 +105,6 @@ sub listindices {
 	push @result, $sth->name->[$i];
     }
     @result;
-#endxtract
 }
 
 sub AUTOLOAD {
@@ -155,15 +147,9 @@ sub as_string {
     }
     for (0..$sth->numfields-1) {
 	$l=length($sth->name->[$_]);
-#xtract Mysql
-	if ($l < $sth->maxlength->[$_]) {
-	    $l= $sth->maxlength->[$_];
-	}
-#xtract Msql
 	if ($sth->optimize  &&  $l < $sth->maxlength->[$_]) {
 	    $l= $sth->maxlength->[$_];
 	}
-#endxtract
 	if (!$sth->isnotnull  &&  $l < 4) {
 	    $l = 4;
 	}
@@ -182,7 +168,6 @@ sub as_string {
 	    $col = $row[$i];
 	    $j = @prow;
 	    $pcol = defined $col ? unctrl($col) : "NULL";
-#xtract Msql
 	    # New in 2.0: a string is longer than it should be
 	    if (defined &Msql::TEXT_TYPE  &&
 		$sth->optimize &&
@@ -191,7 +176,6 @@ sub as_string {
 		my $l = length($col);
 		substr($pcol,$sth->length->[$j])="...($l)";
 	    }
-#endxtract
 	    push(@prow, $pcol);
 	}
 	$result .= sprintf $sprintf, @prow;

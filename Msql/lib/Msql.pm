@@ -1,6 +1,6 @@
 # -*- perl -*-
 
-package ~DRIVER~;
+package Msql;
 
 BEGIN { require 5.004 };
 
@@ -8,15 +8,15 @@ require Carp;
 require DynaLoader;
 require Exporter;
 require DBI;
-require ~DRIVER~::Statement;
-require DBD::~DBD_DRIVER~;
+require Msql::Statement;
+require DBD::mSQL;
 
 use vars qw($QUIET @ISA @EXPORT @EXPORT_OK $VERSION $db_errstr);
 
 $db_errstr = '';
 $QUIET  = 0;
 @ISA    = qw(DBI); # Inherits Exporter and DynaLoader via DBI
-$VERSION = '~NODBD_VERSION~';
+$VERSION = '1.19_14';
 
 # @EXPORT is a relict from old times...
 @EXPORT = qw(
@@ -50,7 +50,7 @@ sub FETCH ($$) {
 	$key = $FETCH_map->{$key};
     }
     my($dbh) = $self->{'dbh'};
-    my($attr) = $dbh->{'private_DBD_~DBD_DRIVER~_attr'};
+    my($attr) = $dbh->{'private_DBD_mSQL_attr'};
     if (exists($attr->{$key})) {
 	$attr->{$key};
     } else {
@@ -73,25 +73,25 @@ sub connect ($;$$$$) {
 		  'user' => $user,
 		  'password' => $password,
 		  'db' => $db,
-	          'driver' => '~DBD_DRIVER~',
+	          'driver' => 'mSQL',
 	          'COMPATIBILITY' => 1 };
     bless($self, $class);
     $self->{'drh'} = DBI->install_driver($self->{'driver'});
     if ($db) {
-	my($dsn) = "DBI:~DBD_DRIVER~:database=$db;host=$host";
+	my($dsn) = "DBI:mSQL:database=$db;host=$host";
 	if (!($self->{'dbh'} = $class->SUPER::connect($dsn, $user, $password))) {
 	    $db_errstr = $DBI::errstr;
 	    return undef;
 	}
 	$dbh->{'CompatMode'} = 1;
-	$dbh->{'PrintError'} = !$~DRIVER~::QUIET;
+	$dbh->{'PrintError'} = !$Msql::QUIET;
     }
     $self;
 }
 
 sub selectdb ($$) {
     my($self, $db) = @_;
-    my($dsn) = "DBI:~DBD_DRIVER~:database=$db:host=" . $self->{'host'};
+    my($dsn) = "DBI:mSQL:database=$db:host=" . $self->{'host'};
     my($dbh) = DBI->connect($dsn, $self->{'user'}, $self->{'password'});
     if (!$dbh) {
 	$db_errstr = $self->{'errstr'} = $DBI::errstr;
@@ -144,15 +144,13 @@ sub query ($$) {
     my($self, $statement) = @_;
     my($sth) = $self->{'dbh'}->prepare($statement);
     my($result);
-    $sth->{'PrintError'} = !$~DRIVER~::QUIET;
+    $sth->{'PrintError'} = !$Msql::QUIET;
     if ($sth  &&  !($result = $sth->execute())) {
 	undef $sth;
     }
-#xtract Msql
     if (!$sth->{'NUM_OF_FIELDS'}) {
 	return $result;
     }
-#endxtract
     $sth->{'CompatMode'} = 1;
     $sth;
 }
@@ -207,7 +205,7 @@ sub AUTOLOAD {
 
 
     TRY: {
-	my $val = DBD::~DBD_DRIVER~::constant($meth, @_ ? $_[0] : 0);
+	my $val = DBD::mSQL::constant($meth, @_ ? $_[0] : 0);
 	if ($! == 0) {
 	    eval "sub $AUTOLOAD { $val }";
 	    return $val;
@@ -235,7 +233,6 @@ sub AUTOLOAD {
       . " autoloadable (last try $meth)";
 }
 
-#xtract Msql
 
 sub unixtimetodate($$) {
     my($class, $clock) = @_;
@@ -258,7 +255,6 @@ sub getsequenceinfo($$) {
     $self->{'dbh'}->func($table, 'getsequenceinfo');
 }
 
-#endxtract
 
 sub gethostinfo ($) { shift->{'dbh'}->{'hostinfo'} }
 sub getprotoinfo ($) { shift->{'dbh'}->{'protoinfo'} }
@@ -266,16 +262,16 @@ sub getserverinfo ($) { shift->{'dbh'}->{'serverinfo'} }
 sub getserverstats ($) { shift->{'dbh'}->{'stats'} }
 
 
-~DRIVER~->init_rootclass();
+Msql->init_rootclass();
 
-package ~DRIVER~::dr;
-@~DRIVER~::dr::ISA = qw(DBI::dr);
+package Msql::dr;
+@Msql::dr::ISA = qw(DBI::dr);
 
-package ~DRIVER~::db;
-@~DRIVER~::db::ISA = qw(DBI::db);
+package Msql::db;
+@Msql::db::ISA = qw(DBI::db);
 
-package ~DRIVER~::st;
-@~DRIVER~::st::ISA = qw(~DRIVER~::Statement);
+package Msql::st;
+@Msql::st::ISA = qw(Msql::Statement);
 
 1;
 __END__

@@ -1,9 +1,13 @@
+# -*- perl -*-
 
 require 5.004;
 use strict;
 require Config;
 require File::Basename;
 require File::Path;
+
+my($EXPERIMENTAL) = 1;
+
 
 sub Extract ($$$$$$) {
     my($from, $to, $driver, $dbd_driver, $version, $dbd_version) = @_;
@@ -22,7 +26,8 @@ sub Extract ($$$$$$) {
     $contents = '';
     while (defined($line = <IN>)) {
 	if ($line =~ /^\#xtract\s+(\S+)\s*$/) {
-	    $on = $1 eq $driver;
+	    $on = ($1 eq $driver)
+		||  ($1 eq 'experimental'  &&  $EXPERIMENTAL);
 	} elsif ($line =~ /^\#endxtract\s*/) {
 	    $on = 1;
 	} elsif ($on) {
@@ -37,21 +42,36 @@ sub Extract ($$$$$$) {
     $contents =~ s/\~NODBD_VERSION\~/$version/g;
     $contents =~ s/\~DBD_VERSION\~/$dbd_version/g;
 
+    if (-f $to  &&  open(OUT, "<$to")) {
+	my($oContents) = '';
+	while (defined($line = <OUT>)) {
+	    $oContents .= $line;
+	}
+	close(OUT);
+	if ($oContents eq $contents) {
+	    return;
+	}
+    }
+	
     if (!open(OUT, ">$to")) {
 	print STDERR "Cannot open $to for writing: $!\n";
 	exit 10;
     }
+    
     if (!print OUT $contents  ||  !close OUT) {
 	print STDERR "Cannot write $to: $!\n";
 	exit 10;
     }
 }
 
+if (!$ENV{'XTRACT_NOT_RUNNING'}) {
+    if (@ARGV != 6) {
+	print "Usage: $0 <from> <to> <driver> <dbd_driver> <version>",
+	    " <dbd_version>\n";
+	exit 10;
+    }
 
-if (@ARGV != 6) {
-    print "Usage: $0 <from> <to> <driver> <dbd_driver> <version>",
-	" <dbd_version>\n";
-    exit 10;
+    Extract($ARGV[0], $ARGV[1], $ARGV[2], $ARGV[3], $ARGV[4], $ARGV[5]);
 }
 
-Extract($ARGV[0], $ARGV[1], $ARGV[2], $ARGV[3], $ARGV[4], $ARGV[5]);
+1;

@@ -1,24 +1,27 @@
 #!/usr/bin/perl -w
 
-BEGIN {
-    do ((-f "lib.pl") ? "lib.pl" : "t/lib.pl");
-    if ($mdriver ne "mSQL" && $mdriver ne "mSQL1") {
-	print "1..0\n"; exit 0;
-    }
-    $| = 1;
-    eval "use Msql";
-    my $db = Msql->connect();
-    if (Msql->getserverinfo lt 2) {
-	print "1..0\n";
-	exit;
-    }
-    print "1..37\n";
-}
-END {print "not ok 1\n" unless $loaded;}
-
 use strict;
-use vars qw($loaded);
-$loaded = 1;
+use vars qw($mdriver);
+
+my($file);
+foreach $file ("lib.pl", "t/lib.pl", "Msql/t/lib.pl") {
+    if (-f $file) {
+	do $file;
+	last;
+    }
+}
+if (!$mdriver || ($mdriver ne "mSQL" && $mdriver ne "mSQL1")) {
+    print "1..0\n"; exit 0;
+}
+$| = 1;
+eval "use Msql";
+my $db = Msql->connect("", "test");
+if ($db->getserverinfo lt 2) {
+    print "1..0\n";
+    exit;
+}
+print "1..37\n";
+
 print "ok 1\n";
 
 {
@@ -30,7 +33,7 @@ print "ok 1\n";
 		   "( id char(4) not null, longish text(30) )");
     $t[1] = create(
 		   $db,
-		   "TABLE00",
+		   "TABLE01",
 		   "( id char(4) not null, longish text(600) )");
     if (grep /^$t[0]$/, $db->listtables) {
 	print "ok 2\n";
@@ -42,7 +45,7 @@ print "ok 1\n";
 	    $q = qq{insert into $t[$j] values \('00$i',\'}.bytometer(2**$i).qq{\'\)};
 	    my $ok = 3 + $i*2 + $j;
 	    my $ret = $db->query($q);
-	    if ($ret == 1) {
+	    if ($ret) {
 		print "ok $ok\n";
 	    } else {
 		print "not ok $ok: 'insert' returned [$ret], expected 1\n";

@@ -12,7 +12,7 @@
 #
 require DBI;
 $mdriver = "";
-foreach $file ("lib.pl", "t/lib.pl") {
+foreach $file ("lib.pl", "t/lib.pl", "DBD-~DBD_DRIVER~/t/lib.pl") {
     do $file; if ($@) { print STDERR "Error while executing lib.pl: $@\n";
 			   exit 10;
 		      }
@@ -56,6 +56,24 @@ while (Testing()) {
 	print "List ends.\n";
     }
     Test($state or $dbh->disconnect());
+
+    #
+    #   Try different DSN's
+    #
+    my(@dsnList);
+    if (($mdriver eq 'mysql'  or  $mdriver eq 'mSQL')
+	and  $test_dsn eq "DBI:$mdriver:test") {
+	@dsnList = ("DBI:$mdriver:test:localhost",
+		    "DBI:$mdriver:test;localhost",
+		    "DBI:$mdriver:database=test;host=localhost");
+    }
+    my($dsn);
+    foreach $dsn (@dsnList) {
+	Test($state or ($dbh = DBI->connect($dsn, $test_user,
+					    $test_password)))
+	    or print "Cannot connect to DSN $dsn: ${DBI::errstr}\n";
+	Test($state or $dbh->disconnect());
+    }
 }
 
 exit 0;
