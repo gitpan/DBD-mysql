@@ -1,0 +1,417 @@
+=head2 Is there a way to talk to mSQL-1 and mSQL-2 within the same program?
+
+No.
+
+
+
+=head2 How should I install Msql, so that I can work with mSQL-1 and
+mSQL-2 on demand?
+
+You have to store the two modules in different places and take care
+which one you want to use. You could do it with the following shell
+script:
+
+    for L in /usr/local/Minerva /usr/local/Hughes ; do
+      echo ------------------------------------
+      echo Configuring for $L
+      echo ------------------------------------
+      perl Makefile.PL INSTALLSITELIB=$L/perl INSTALLSITEARCH=$L/perl \
+	INSTALLSCRIPT=$L/bin
+      make
+      make test
+      make install
+    done
+
+From then you can talk to mSQL-1 by running
+
+    perl -I/usr/local/Minerva/perl yourprogram
+
+and you talk to mSQL-2 by running
+
+    perl -I/usr/local/Hughes/perl yourprogram
+
+The invocations differ in the @INC path (see man perlvar) such that
+only the correct library for the desired version can get loaded. Once
+again: you have to make sure yourself, that the correct library is
+loaded, otherwise you cannot connect to the database.
+
+Perl decides to load a library at compile time of the statement
+'use Msql' (see man perlfunc/use). Your @INC path at that moment
+decides upon which version you get.
+
+Alternatively to the above you could insert the library location in
+your own program with
+
+    use lib '/usr/local/Minerva/perl'; # change @INC at compile time
+
+After the above descibed steps the two installed pmsql(1) programs are
+identical. You could insert such a 'use lib' statement in each of them
+to have them talk to the appropriate server. Or you call them as perl
+programs the same way as "yourprogram" above.
+
+
+
+=head2 I get: Can't call method ... without a package or object reference
+
+Run your script with the -w switch or test your connect and query
+statements on success or failure.
+
+    #WRONG:
+    $db = Msql->connect();
+
+    #RIGHTish:
+    $db = Msql->connect or die "Couldn't connect to....: $Msql::db_errstr";
+
+    #WRONG:
+    $sth = $db->query("some query");
+
+    #RIGHTish:
+    $sth = $db->query("some query") or die "Query failed: $Msql::db_errstr";
+
+
+
+=head2 I don't understand how you retrieve the data from a SELECT Query with Msql Perl.
+
+Precanned reply:
+
+    read the README
+
+    read the manpage
+
+    read the FAQ that comes with MsqlPerl
+
+    read the tutorial in t/msql.t
+
+subscribe to the msqlperl mailing list by sending mail to
+msqlperl-request@franz.ww.tu-berlin.de with "subscribe msqlperl
+your.name@your.domain" in the body of the message. Ask the question to
+the mailing list by writing to msqlperl@franz.ww.tu-berlin.de. Wait
+for the answer. Keep subscribed to the mailing list and answer the
+same question as soon as somebody else asks it.
+
+
+
+=head2 How do I get the names of the fields after a listfields?
+
+Please, read the manpage. Type 'man Msql' and if that doesn't help,
+try 'perldoc Msql'.
+
+
+
+=head2 Where can I find more documentation?
+
+Msql.pm IS the manpage in pod format. If you're on UNIX you should be
+able to read it with 'man Msql'. On other operating systems try
+'perldoc Msql'. Also, the test script, t/msql.t might help you to sort
+things out. The most recent addition is the pmsql program which may
+also help you to learning by example.
+
+
+
+=head2 HPUX compilation goes wrong!!!
+
+     From: Yiorgos Adamopoulos <Y.Adamopoulos@noc.ntua.gr>
+
+     I successfully compiled MsqlPerl for a HP817 (HP-UX 9.04/s800) using Perl5.002,
+     msql-1.0.14 and gcc-2.7.2.  I added CC_ONLY = -fPIC to site.mm after running
+     setup.
+
+
+
+=head2 How do I retrieve fields by name?
+
+The internal fetchhash routine is quite good. If you need speed, you
+should hardcode your column names into a hash slice. Everything else
+is a terrible waste.
+
+		     closure:  8 secs ( 7.47 usr  0.03 sys =  7.50 cpu)
+	  hashslice via name: 10 secs ( 9.51 usr  0.04 sys =  9.55 cpu)
+	  internal_fetchhash:  7 secs ( 7.05 usr  0.03 sys =  7.08 cpu)
+       brute force fetchhash: 15 secs (13.90 usr  0.05 sys = 13.95 cpu)
+     hashslice via constants:  6 secs ( 5.57 usr  0.02 sys =  5.59 cpu)
+
+     #!/usr/bin/perl
+
+     use Msql;
+     my $db = Msql->Connect("","mod");
+     $sth = $db->Query("select * from mods");
+
+
+     sub Msql::Statement::brute_fetchhash {
+	 my $self = shift;
+	 my %hash;
+	 @hash{ $self->name } = $self->FetchRow and \%hash;
+     }
+
+     sub Msql::Statement::gimme_a_fetchhash_routine {
+	 my $self = shift;
+	 my @z = $sth->name;
+	 sub { my %hash; @hash{@z} = $self->FetchRow and \%hash;};
+     }
+
+     use Benchmark;
+
+     timethese(20, {
+     'hashslice via constants' => q{
+	 $sth->DataSeek(0);
+	 while (@row{qw/modid userid maillistid chapterid seqdummy statd stats statl stati description changed changedby/} = $sth->FetchRow){
+	     $X = $row{modid};
+	     print "$X\n" ;
+	 }
+     },
+
+     '     hashslice via name' => q{
+	 $sth->DataSeek(0);
+	 while (@row{$sth->name} = $sth->FetchRow){
+	     $X = $row{modid};
+	     print "$X\n" ;
+	 }
+     },
+
+     '  brute force fetchhash' => q{
+	 $sth->DataSeek(0);
+	 while ($hashref = $sth->brute_fetchhash){
+	     $X = $hashref->{modid};
+	     print "$X\n" ;
+	 }
+     },
+     '                closure' => q{
+	 $sth->DataSeek(0);
+	 $clos = $sth->gimme_a_fetchhash_routine;
+	 while ($hashref = &$clos){
+	     $X = $hashref->{modid};
+	     print "$X\n" ;
+	 }
+     },
+     '     internal_fetchhash' => q{
+	 $sth->DataSeek(0);
+	 while (%hash = $sth->fetchhash){
+	     $X = $hash{modid};
+	     print "$X\n" ;
+	 }
+     },
+     });
+
+
+
+=head2 Dynamic Loading
+
+Hello I am running XXX and would really like to use Msqlperl but I am
+getting this error message.
+
+ Can't load module Msql, dynamic loading not available in this perl.
+   (You may need to build a new perl executable which either supports
+	dynamic loading or has the Msql module statically linked into it.)
+  at /usr/lib/perl5/site_perl/Msql.pm line 56
+ BEGIN failed--compilation aborted at ./sql.pl line 5.
+
+There is a manpage dedicated to building and installing modules:
+ExtUtils::MakeMaker. The long answer is in there. The short answer is:
+run 'make perl' in the MsqlPerl build directory. The third answer is,
+get an operating system that supports dynamic loading. With Linux it's
+already quite standard to have dynamic loading, and so is with many
+other OSs. Check out the newgroups for your OS and consult the FAQs
+there.
+
+
+
+=head2 How can I construct an insert statement from an array?
+
+The icc routine below should do what you want. It's hardly tested and
+I'm reluctant to add it to the distribution. But feel free to convince
+me that including it is a good thing.
+
+    #!/usr/bin/perl -w
+    use Msql;
+    use strict;
+
+    sub Msql::icc {
+	my($db,$table,@fields)=@_;
+	my($s,@types)=$db->listfields($table) or return;
+	if (@fields){
+	    # The user wants to input the fields in a different order
+	    my(@tfields,@ttypes,%tfields);
+	    @tfields = $s->name;
+	    @ttypes = $s->type;
+	    @tfields{@tfields} = @ttypes;
+	    @types = @tfields{@ttypes};
+	} else {
+	    # They are gonna give the arguments in table's order
+	    @fields = $s->name;
+	    @types = $s->type;
+	}
+	# return a subroutine reference.
+	sub {
+	    my(@arr)=@_;
+	    return join " ",
+	    "insert into $table values (",
+	    join(
+		 ",",
+		 map {
+		     defined $arr[$_] ?
+			 $types[$_] == &Msql::REAL_TYPE
+			     ||
+			 $types[$_] == &Msql::INT_TYPE ?
+			     $arr[$_]+0 :
+				 Msql->quote($arr[$_]) :
+				     "NULL"
+				 }
+		 0..$#types
+		),
+		     ")\n";
+	}
+    }
+
+    # Example for usage:
+    {
+	my $dbh=Msql->connect("","test");
+	my $f=$dbh->icc("pwent");
+	my(@info,$query,$sth);
+	while (@info = getpwent()) {
+	    print $query =&$f(@info);
+	    $sth = $dbh->query($query) or die Msql->errmsg;
+	}
+    }
+
+We also got email from Doug Wilson who pounded on the icc method:
+
+    Date: Thu, 1 May 1997 14:23:31 -0500 (CDT)
+    From: Doug Wilson <doug@hurl.net>
+    To: msqlperl@franz.ww.tu-berlin.de
+
+    After debugging the sample insert function from the installation FAQ,
+    I added an extra feature; now not only are strings automatically quoted
+    correctly (as before), they are also truncated to their database length.
+
+    my sample:
+    #!/usr/bin/perl
+    # tabstop=4
+
+    use lib '/usr/local/Minerva/perl';
+    use Msql;
+
+    sub Msql::icc
+    {
+	my($db,$table,@fields)=@_;
+	my($s,@types)=$db->listfields($table) or die Msql->errmsg;
+	my $tfld_idx = 0;
+	if (@fields){
+	    # The user wants to input the fields in a different order
+	    my(@tfields,@ttypes,@tlengths,%tmptypes,%tmplengths,$fieldname);
+	    @tfields = $s->name;
+	    @ttypes = $s->type;
+	    @tmptypes{@tfields} = @ttypes;
+	    @tlengths = $s->length;
+	    @tmplengths{@tfields} = @tlengths;
+	    foreach $fieldname (@fields) {
+		$types[$tfld_idx]=$tmptypes{$fieldname};
+		$lengths[$tfld_idx++]=$tmplengths{$fieldname};
+	    }
+	} else {
+	    # They are gonna give the arguments in table's order
+	    @fields = $s->name;
+	    @types = $s->type;
+	    @lengths = $s->length;
+	}
+	# return a subroutine reference.
+	sub {
+	    my(@arr)=@_;
+	    return join " ",
+	    "insert into $table",
+		$tfld_idx > 0 ?
+		join(" ", "(", join(",", @fields), ")") : "",
+		"values (",
+		join(",",
+		     map {
+			 defined $arr[$_] ?
+			     $types[$_] == &Msql::REAL_TYPE
+				 ||
+			     $types[$_] == &Msql::INT_TYPE ?
+				 $arr[$_]+0 :
+				     Msql->quote(
+					substr($arr[$_],0,$lengths[$_]))
+			    :
+			     "NULL"
+				     }
+		     0..$#types
+		    ),
+		    ")\n";
+	}
+    }
+
+    #Sample Usage
+    my ($regfile) = "7094.reg";
+    my(%regvars,%dbvars);
+
+    #Read in keys & values
+    if (open (REGFILE, "<$regfile"))
+    {
+	while (<REGFILE>)
+	{
+	    $line = $_;
+	    chomp($line);
+	    ($key, $value) = split(/=/, $line);
+	    $regvars{$key} = $value;
+	}
+
+	close (REGFILE);
+    }
+
+    #Do the file to database field translation
+    $dbvars{user}=$regvars{Pppname};
+    $dbvars{lname}=$regvars{LastName};
+    $dbvars{fname}=$regvars{FirstName};
+    $dbvars{address1}=$regvars{Address};
+    $dbvars{address2}=$regvars{Address1};
+    $dbvars{city}=$regvars{City};
+    $dbvars{state}=$regvars{State};
+    $dbvars{zip}=$regvars{Zip};
+    $dbvars{country}=$regvars{Country};
+    $dbvars{hphone}=$regvars{Phone};
+    $dbvars{email}=$regvars{EmailName};
+    $dbvars{epasswd}=$regvars{EmailPassword};
+    $dbvars{ppp}=$regvars{PppName};
+    $dbvars{ppasswd}=$regvars{PppPassword};
+    $dbvars{regcode}=$regvars{RegCode};
+    $dbvars{serial}=$regvars{RegNumber};
+
+    $dbh=Msql->connect("","ispreg");
+    my @fnames = keys(%dbvars);
+    my $f=$dbh->icc("customers", @fnames);
+    my(@info,$query,$sth);
+    @info = values(%dbvars);
+
+    $query = &$f(@info);
+    $sth = $dbh->query($query) or die Msql->errmsg;
+    ----------------------------------------------------------------------
+    To unsubscribe from this list send a message containing "unsubscribe"
+    to msqlperl-request@franz.ww.tu-berlin.de
+
+
+
+=head2 What can I do if I can't connect to local msql server
+
+    Date: Sun, 27 Apr 1997 15:52:16 -0400 (EDT)
+    From: Mark-Jason Dominus <mjd@plover.com>
+    To: msql-list@Bunyip.Com
+    Subject: Re: [mSQL] linux: can't connect to local msql server
+
+    On Sun, 27 Apr 1997, Rob Hill wrote:
+    > I have the msql.sock devices in my /usr/local/Hughes dir but I cannot
+    > connect to msql locally.
+
+    When I installed msql2, it put the socket into
+    /usr/local/Hughes/msql.sock, but the perl Msql.pm module wanted to
+    find it under /dev/msql.  I made a symbolic link from /dev/msql to
+    /usr/local/Hughes/msql.sock.
+
+    I did
+
+	    strace -o /tmp/msqlperl perl testprogram
+	    grep connect /tmp/msqlperl 
+
+    to find out where Msql was looking for the socket file.
+
+    mjd@pobox.com                                             Mark-Jason Dominus
+    mjd@plover.com                              Plover Systems, Philadelphia, PA
+

@@ -1,0 +1,34 @@
+# -*- perl -*-
+
+package Bundle::Mysql;
+
+$VERSION = '~NODBD_VERSION~;
+
+1;
+
+__END__
+
+=head1 NAME
+
+Bundle::~DRIVER~ - A bundle to install Perl drivers for mSQL or MySQL
+
+=head1 SYNOPSIS
+
+C<perl -MCPAN -e 'install Bundle::~DRIVER~'>
+
+=head1 CONTENTS
+
+DBI
+
+Data::ShowTable
+
+~DRIVER~
+
+DBD::~DBD_DRIVER~
+
+=head1 DESCRIPTION
+
+This bundle includes all that's needed to run both DBI drivers and
+non-DBI drivers for mSQL or MySQL.
+
+=cut

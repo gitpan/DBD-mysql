@@ -1,0 +1,24 @@
+To install the package you usually just type
+
+    perl Makefile.PL
+    make               # optional
+    make test          # optional
+    make install
+
+During the first step you will be asked some questions. First of all,
+you have to decide, which database engines you want to be supported
+by entering one of the numbers 1 (Mysql only), 2 (mSQL only) or 3
+(both).
+
+Once this is done, for any DBMS you´ll be asked in which directory the
+respective API libraries and headerfiles are installed. You can avoid
+this question by setting the MSQL_HOME and MYSQL_HOME environment
+variables. If, for example, the file $MSQL_HOME/include/msql.h exists,
+you will not be prompted for the installation directory.
+
+Please let us know, if you have further questions that should be dealt
+with in this document.
+
+Enjoy,
+Andreas & Jochen
+

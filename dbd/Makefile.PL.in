@@ -1,0 +1,33 @@
+#!/usr/local/bin/perl -sw
+
+use strict;
+require ExtUtils::MakeMaker;
+require Config;
+
+sub config () {
+    my $dbd_driver = "~DBD_DRIVER~";
+    my $from_driver = "~DRIVER~";
+
+    my $ref = &_MY::Config::Initialize~DRIVER~;
+
+    my %hash = %$ref;
+    $hash{'DEFINE'} .= " -DMyConnect=dbd_db_connect";
+    $hash{'NAME'} = "DBD::" . $dbd_driver;
+    $hash{'VERSION_FROM'} = "../lib/DBD/$dbd_driver.pm";
+    if (-f 'dbimon') {
+	$hash{'EXE_FILES'} = [ 'dbimon' ];
+    }
+    $hash{'clean'} = { 'FILES' => '*.xsi' };
+    \%hash;
+}
+
+
+ExtUtils::MakeMaker::WriteMakefile(
+	      OBJECT       => qq[\$(O_FILES)],
+	      CONFIGURE    => \&config
+	     );
+
+
+sub MY::postamble {
+    return "\ndbd.xs: ~DBD_DRIVER~.xsi\n\n" . DBI::DBD::dbd_postamble();
+}

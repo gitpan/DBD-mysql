@@ -1,0 +1,19 @@
+#!/usr/local/bin/perl -w
+
+use strict;
+require ExtUtils::MakeMaker;
+require Config;
+
+my $DRIVER = "~DRIVER~";
+
+sub ~DRIVER~_config () {
+    my $ref = _MY::Config::Initialize~DRIVER~;
+    my %hash = %$ref;
+    $hash{NAME} = $DRIVER;
+    $hash{VERSION} = "~NODBD_VERSION~";
+    $hash{OBJECT} = '$(O_FILES)';
+    $hash{EXE_FILES} = [ ($DRIVER eq 'Msql') ? 'pmsql' : 'pmysql' ];
+    \%hash;
+}
+
+ExtUtils::MakeMaker::WriteMakefile(CONFIGURE => \&~DRIVER~_config);

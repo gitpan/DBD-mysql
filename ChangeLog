@@ -1,0 +1,313 @@
+1997-10-02  Jochen Wiedmann <joe@ispsoft.de> (1.1815)
+
+	* DBD/dbd.xs: Fixed bug in insertid; &svsock was used instead
+	  of svsock
+
+	* Fixed bug in nodbd.xs (formerly Mysql.xs): key INSERTID had
+	  length of 9 (reported by Maurice Aubrey, <maurice@hevanet.com>)
+
+	* t/ak-dbd.t, t/akmisc.t: Added tests for mysql's insertid
+	  feature.
+
+	* Merged source trees of Mysql and Msql.
+	
+	* lib/M(y)sql.pm: Added some words on createdb, dropdb and
+	  shutdown to the man page. Missed by Ray Zimmermann
+          (rz10@cornell.edu)
+
+	* dbd/dbd.xs.in: Implemented $dbh->do as a direct XS call.
+
+	* dbd/dbd.xs.in, nodbd/nodbd.xs.in: Suppressed some warnings
+	  due to uninitialized RETVAL. George Hartlieb
+	  (ghartlieb@mail.arc.nasa.gov)
+
+1997-09-29  Andreas Koenig <koenig@anna.mind.de> (1.1814)
+
+	* t/50commit.t: Fixed printing of warning message when
+	  commit issues a warning.
+
+	* lib/DBD/mSQL.pm (connect): Fixed warning in connect, if
+	  attrhash is present.
+
+	* pmsql.PL: Fixed use of Msql 2 constants in @typelabel definition
+	  and similar things.
+
+	* lib/Msql/Statement.pm: Fixed use of Msql::TEXT_TYPE without
+	  checking whether we are running Msql 1.
+
+$Id: ChangeLog 1.1 Tue, 30 Sep 1997 01:28:08 +0200 joe $
+
+DBD::mysql for DBI - Written by Jochen Wiedmann <joe@ispsoft.de>
+
+97.09.27 V1.1812
+          Added t/50commit.t to test suite.
+	  Included <embed.h> in myMsql.h for redefining my_setenv().
+	  Made AutoCommit, Commit and Rollback DBI conformant.
+	  Fixed reconnect problems with Mysql: mysql_port was 0 on some
+	  systems.
+	  Added support of mysql_real_connect to myMsql.c.
+	  Fixed Msql::errno returning a char*.
+	  Added lib/Bundle::Mysql.pm.
+          Fixed 'use Mysql' to 'require Mysql' in t/mysql2.t.
+	
+97.09.12 V1.1810
+	  Fixed bug in dbd_st_FETCH_internal: newRV_noinc was used for
+	  the return value. This resulted in invalid cache values,
+	  reported by Michael Bletzinger
+	  <Michael.Bletzinger@ssa.crane.navy.mil>
+
+97.09.12 V1.1809
+	  Adapted changes from DBD-Oracle 0.46 to 0.47; in particular
+	  the files Driver.xst and dbd_xsh.h from the DBI distribution
+	  are used now. (LongReadLen, LongTruncOk, ... are still
+	  meaningless, but they are not that important for m(y)sql:
+	  The complete results are in RAM anyways ...)
+          Fixed man page of DBD::M(y)SQL: "@names = $sth->{'NAME'}".
+	  Added parameter completion for "set" command to dbimon.
+	
+97.09.08  V1.1808
+	  Fixed bug in dbimon, a closing brace was missing causing a
+	  syntax error.
+	  Fixed problems in the Term::ReadLine::GNU support, reported
+	  by Nem W. Schlecht (nem@abattoir.cc.ndsu.nodak.edu).
+	  Modified dbimon for internally using the Data::ShowTable
+	  module. My thanks to Tim Bunce for the hint.
+	  Compatibility fixes for SunOS and Solaris, supplied by
+	  Neil Bowers (neilb@cre.canon.co.uk).
+	
+97.09.03  V1.1806
+          Fixed bug in Mysql.xs: $sth->numfields dumped core because no
+	  check for a result was done.
+	  Fixed bug in lib/Mysql/Statement.pm: Mysql::Statement.as_string
+	  did not check for $sth->numfields != 0.
+	  Added patch from Nem W. Schlecht (nem@abattoir.cc.ndsu.nodak.edu)
+	  for Term::ReadLine::GNU support to pmysql and dbimon.
+	
+97.09.03  V1.1805
+	  Fixed bug in DBD::mysql: Executing a non-select statement
+	  always returned -1 (unknown number of rows) although the
+	  correct number was returned by $sth->rows().
+	  Fixed bug in DBD::mysql: strlen was executed on a NULL
+	  value when mysql_fetch_rows returned a NULL field.
+	  Added all _ListField attributes to statement handles.
+	  Added support for "LISTFIELDS <table>" to $sth->execute.
+	  Modified $sth->func("_ListSelectedFields") and
+	  $dbh->func("<table>", "_ListFields") to use the new
+	  possibilities; in fact these are only stubs now.
+	  Added dbimon.
+	  Added some internal attributes for dbimon to DBD::mysql:
+	  format_default_size, format_max_size, format_type_name
+	  and format_right_justification.
+	
+97.08.30  V1.1804
+	  Added "fancy", "quote", "separator" and "escape" commands to
+	  pm(y)sql.PL, patch supplied by Nem W Schlecht
+	  (nem@abattoir.cc.ndsu.nodak.edu).
+	  Modified pm(y)sql.PL and pmsql.PL so that it automatically
+	  adapts pm(y)sql for use with Msql and Mysql, respectively.
+	  Makefile.PL and M(y)sqlPerl/Makefile.PL now automatically
+	  adapt lib/M(y)sql.pm, lib/M(y)sql/Statement.pm and
+	  lib/DBD/mSQL.pm or lib/DBD/mysql.pm for use in Msql-modules
+	  or Mysql-modules; just copy these files, rename them and
+	  run "perl Makefile.PL".
+	
+97.08.29  V1.1803
+	  Added mysql_errno()
+	  Modified perl modules for use of $driver and isa($driver).
+	  Modified Msql.xs and Mysql.xs for use of Package and
+	  StPackage.
+	  Modified test for fetch of non-result sth in akmisc.t: Msql
+	  returns number of rows and not an sth.
+	
+97.08.27  Removed use of TEXT_TYPE from pmysql and Mysql/Statement.pm.
+
+97.08.16  Modified mysql.xs, dbdimp.h and dbdimp.c for use in DBD::mSQL.
+	  Now using Andreas König´s Makefile.PL from the DBD::mSQL
+	  distribution.
+	  Added check for disabled '-lgcc' on Linux; this leads to a
+	  missing __moddi3 symbol in libmysqlclient.a, when running
+	  mysql.so.
+
+	  Added mysqlperl support.
+	
+97.08.02  Almost completely rewritten, with the exception of private
+          functions like _ListTables.
+          Implemented bind_param.
+          Test suite rewritten for portability.
+          Many sources moved from mysql.pm and mysql.xs to dbdimp.h;
+          mysql.pm and mysql.xs are now close to Oracle.xs and Oracle.pm.
+
+97.07.28  Added $dbh->quote method.
+	  Modified internal use of "char* statement" to "SV* statement".
+	  Modified use of mysql_query to mysql_real_query. (The above
+	  three things should fix blob problems hopefully.)
+	  Bumped revision number to 2.00 because of API changes:
+	  The connect method works now as described in the DBI man
+	  page, compatibility to DBD::msql seems deprecated.
+	  Heavy internal modifications in order to use DBIS->get_fbav();
+	  this gives compatibility to DBI 0.88.
+	  Modified test suite to use Test::Harness.
+	  Added blob tests.
+
+DBD::mysql for DBI - Written by Alligator Descartes <descarte@mcqueen.com>
+
+96.06.22  Get new patched version 1.65 from gnat@frii.com
+	  Added the memory bug patch to this.
+
+96.06.18  Added pod documentation to mysql.pm and the possibility
+	  to retreive insert_id. This was done by Nathan Torkington.
+
+	  Fixed memory bug that sql results never was freed.
+	  Now a result is freed when one calls the 'finish' action.
+	  The patch was done by gareth@netcom.co.uk & Monty
+
+96.05.27  Changed Makefile.PL after suggestions from Raymond Wiker
+
+96.04.25  Changed the README and fixed a typo in mysql.xs
+	  Changed version to DBD-mysql-1.63.1 to have a reference to mSQL-0.63
+
+96.04.19  Updated with differences from DBD:mSQL-0.63
+
+
+96.11.03  Changed from DBD:mysql-0.60pl10 to DBD:mysql-1.0 by Michael Widenius
+
+
+Original ChangeLog:
+
+18/07/95:	Started. 
+
+		Version 0.0.0 ( Totally pre-alpha! )
+
+19/07/95:22:00	Code now basically seems to work. I've got connection to
+		a database, and clean disconnection.
+
+	 23:45	I'm now working on the statement cycle stuff, which I've
+		mapped out. It's just a case of coding, which shouldn't
+		take too long, hopefully.
+
+		Posted notice of approaching doom to perldb-interest.
+
+20/07/95:01:25	Fetching appears to work OK now. I need to read the API on
+		msqlFieldSeek, since I can't work out why fetch is returning
+		the same row over and over! 
+
+21/07/95:09:22  Added a field into imp_sth (currow) which keeps track of the
+                current row that's been fetched from the result struct. If I
+                can fix the return codes coming from fetchrow, it'll work!
+
+21/07/95:10:30  Pondered bind variables in cursors. Since there isn't a bind
+                function in the API, I may have to frig the way that prepare/
+                execute works, ie, move the call to msqlQuery *after* it's
+                done some parsing for bind values......Hm.
+
+21/07/95:10:35  Twiddled some bits in the fetchrow cycle. 
+
+23/07/95:15:50  Fetch is fetching a row, but it's not returning it to the 
+        	calling cycle, so I need to fart about with the sv stuff, which
+		is not amusing me greatly!
+
+26/07/95:23:42	Decided in agreement with Andreas that the first release is
+		to be 0.61! 
+
+27/07/95:14:14	Finally! It fucking works! After splendid quantities of
+      		hacking around with the prepare/execute/fetchrow/finish cycle
+		it's actually returning rows correctly!
+
+		NOTE: The SV handling within dbd_describe is shot to buggery,
+		      but I've kludged it in mSQL.xs::fetchrow to do a
+		      sv_2mortal instead of a sv_mortalcopy.
+
+27/07/95:14:22	Tidied up mSQL.xs::finish to do an msqlFreeResult. Annoyingly
+		enough, there's no return code to msqlFR, so I can't test 
+		whether or not it's worked! Bah!
+
+27/07/95:15:15	Altered test to do several bits and bobs. I'm testing INSERT
+		statements now. These only execute an msqlQuery, but the
+		stuff needs to continue to pass through the execute and finish
+		stages cleanly.......*sigh*
+
+27/07/95:15:22	My dubious 'INSERT' check hack works, sort of. Pity it converts
+		the entire statement to lower case.....! 
+
+27/07/95:17:33	Twiddled some more stuff so it seems to do CREATE TABLE,
+		INSERT statements too. Of course, there's no error checking
+		yet, but it seems to be OK........Hm.
+
+27/07/95:17:38	Mailed out a statement saying the 0.61 code would be up for
+		grabs as of Monday 31st July! Still waiting on Alpha reports.
+
+27/07/95:12:11	Fixed the lower-case all the INSERT/CREATE &c. statement bug.
+		It now checks to see if you're in quotes.
+
+28/07/95:xx:xx	Got a report back from Andreas to say  compilation barfs on
+		his Indy. Fixed a load of do_error bugs in dbdimp.c. 
+
+13/08/95:18:25  Finally got back to this after a rather long break. Fixed some
+		Makefile.PL bugs that were kicking about. Finally fixed
+		( or appeared to fix ) the strlen signedness bug in dbdimp.c
+		that may halt compilation on the Indy. 
+
+		Emailed Karsten the debug info to see what's causing problems
+		on the NeXTStep platform.
+
+14/08/95:13:48	Got email back from Andreas. signedness broke mSQL.xs as well!
+		Fixed that and emailed him a quick patch.
+
+14/08/95:14:45	Andreas now has a successful compile. The tests are crap, but
+		appear to ( sort of ) work.
+
+29/08/95:23:18	Converted driver across to new DBI format. It now appears
+		to compile, install and run fairly reasonably. There are
+		some serious messes that need cleared up in it, but it's
+		fundamentally OK, I hope. Announced for pl0 testing.
+
+04/09/95:15:04	Started back on getting the 0.60pl0 out. Tidied up the parsing
+   		of statements for INSERT, CREATE &c statements. It just takes
+		the first word of the statement now.
+
+04/09/95:15:19	Looks OK. Tested against DBI 0.63 and looks reasonable.
+		Announced release of 0.60pl1 and put up for ftp.
+
+20/09/95:15:20	Patched a load of stuff including NULLs, and local device
+		handling ( SV ). Released pl4, which was bogus. Released
+		pl5 which should fix those issues.
+
+20/09/95:22:17	Fixed overhang of old DBI bug with DBIc_ENDING remaining in
+		DESTROY in mSQL.xs. Spotted by Marti Rijken and fixed.
+		( Hopefully! )
+
+18/10/95:15:13	Added in the missing API chunks for ListTables, ListDBs
+		and ListFields.
+
+		ListFields isnae working, but I'll fix that sometime soon....
+
+05/11/95:11:32	Fixed $sth->readblob to return undef. Fixed Makefile.PL, 
+		dbdimp.h, mSQL.h, dbdimp.c for release of 0.60pl7. Also tested
+		'make test' which now works!
+
+23/11/95:19:22	Fixed ListFields from the pointers given to me by Sven V.
+
+24/11/95:03:13	Fixed error handling in all the func methods
+
+24/11/95:13:01	Added 'NumRows' method to statement handles to return the
+		number of rows returned ( or affected ) by a statement.o
+
+		pre-release distributed to ANDK
+
+25/11/95:09:20	Real release released! No major problems reported.
+
+30/12/95:18:10	Altered mSQL.pm to allow for hostname:port style connections
+		to known remote port machines. Sets ENV var since the
+		msqlConnect API call doesn't support port arguments.
+
+30/12/95:18:15	Added 'length' key into the hash returned by ListFields, so
+		we can get the scale of the field.
+
+24/03/96:22:34	Fixed bugs and upgraded versioning for perl5.002 to work
+		properly. Released as pl10
+
+-> Lamentable lack of ChangeLog information here!
+
+27/03/97: Tidied up things with regard to 0.61 release. 
+
+28/03/97: Patched NULL as undef bug
