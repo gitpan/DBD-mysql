@@ -10,11 +10,34 @@ you have to decide, which database engines you want to be supported
 by entering one of the numbers 1 (Mysql only), 2 (mSQL only) or 3
 (both).
 
-Once this is done, for any DBMS you´ll be asked in which directory the
+Once this is done, for any DBMS you'll be asked in which directory the
 respective API libraries and headerfiles are installed. You can avoid
 this question by setting the MSQL_HOME and MYSQL_HOME environment
 variables. If, for example, the file $MSQL_HOME/include/msql.h exists,
 you will not be prompted for the installation directory.
+
+If "make test" fails with a message like
+
+	Cannot connect: Can't connect to local mSQL server
+        Either your server is not up and running or you have no
+        permissions for acessing the DSN DBI:mSQL:test.
+        This test requires a running server and write permissions.
+        Please make sure your server is running and you have
+        permissions, then retry.
+
+this can have a number of possible reasons:
+
+  - your database engine is not up and running
+  - you don't have a database "test"; either create one or try setting
+    the environment variable DBI_DSN to the correct value:
+
+	DBI_DSN="DBI:mSQL:mydb"; export DBI_DSN		# Bourne-Shell
+	setenv DBI_DSN="DBI:mSQL:mydb"			# C-Shell
+
+  - your engine is not running on the local host; fix this by by adding
+    the host name and port to DBI_DSN, for example
+
+	DBI_DSN="DBI:mSQL:test:hostname=localhost:port=3333"
 
 Please let us know, if you have further questions that should be dealt
 with in this document.

@@ -5,7 +5,7 @@ package Msql::Statement;
 use strict;
 use vars qw($OPTIMIZE $VERSION $AUTOLOAD);
 
-$VERSION = '1.1821';
+$VERSION = '1.1822';
 
 $OPTIMIZE = 0; # controls, which optimization we default to
 
@@ -35,8 +35,8 @@ sub maxlength  {
 	$sth->dataseek(0);
 	my($col, @row, $i);
 	while (@row = $sth->fetchrow) {
-	    $i = 0;
-	    while ($col = shift @row) {
+	    for ($i = 0;  $i < @row;  $i++) {
+		$col = $row[$i];
 		my($s) = defined $col ? unctrl($col) : "NULL";
 		# New in 2.0: a string is longer than it should be
 		if (defined &Msql::TEXT_TYPE  &&
@@ -48,7 +48,6 @@ sub maxlength  {
 		if (length($s) > $$result[$i]) {
 		    $$result[$i] = length($s);
 		}
-		++$i;
 	    }
 	}
 	$sth->{MAXLENGTH} = $result;
@@ -125,18 +124,18 @@ sub as_string {
     $sth->dataseek(0);
     my(@row);
     while (@row = $sth->fetchrow) {
-	my ($col, $pcol, @prow, $i);
-	while ($col = shift @row) {
-	    $i = @prow;
+	my ($col, $pcol, @prow, $i, $j);
+	for ($i = 0;  $i < $sth->numfields;  $i++) {
+	    $col = $row[$i];
+	    $j = @prow;
 	    $pcol = defined $col ? unctrl($col) : "NULL";
 	    # New in 2.0: a string is longer than it should be
 	    if (defined &Msql::TEXT_TYPE  &&
 		$sth->optimize &&
-		$sth->type->[$i] == &Msql::TEXT_TYPE &&
-		length($pcol) > $sth->length->[$i] + 5
-		) {
+		$sth->type->[$j] == &Msql::TEXT_TYPE &&
+		length($pcol) > $sth->length->[$j] + 5) {
 		my $l = length($col);
-		substr($pcol,$sth->length->[$i])="...($l)";
+		substr($pcol,$sth->length->[$j])="...($l)";
 	    }
 	    push(@prow, $pcol);
 	}

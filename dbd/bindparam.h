@@ -185,19 +185,19 @@ static char* ParseParam(char* statement, STRLEN *slenPtr,
 		      case SQL_FLOAT:
 		      case SQL_REAL:
 		      case SQL_DOUBLE:
-		      /* case SQL_BIGINT:     These are commented out */
-		      /* case SQL_TINYINT:    in DBI's dbi_sql.h      */
+		      case SQL_BIGINT:
+		      case SQL_TINYINT:
 			isNum = TRUE;
 			break;
 		      case SQL_CHAR:
 		      case SQL_VARCHAR:
-		      /* case SQL_DATE:       These are commented out */
-		      /* case SQL_TIME:       in DBI's dbi_sql.h      */
-		      /* case SQL_TIMESTAMP:                          */
-		      /* case LONGVARCHAR:                            */
-		      /* case BINARY:                                 */
-		      /* case VARBINARY:                              */
-		      /* case LONGVARBINARY                           */
+		      case SQL_DATE:
+		      case SQL_TIME:
+		      case SQL_TIMESTAMP:
+		      case SQL_LONGVARCHAR:
+		      case SQL_BINARY:
+		      case SQL_VARBINARY:
+		      case SQL_LONGVARBINARY:
 			isNum = FALSE;
 			break;
 		      default:

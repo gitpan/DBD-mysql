@@ -9,7 +9,6 @@ BEGIN {
     eval "use Msql";
     my $db = Msql->connect();
     if (Msql->getserverinfo lt 2) {
-	print STDERR "No 2.X server. ";
 	print "1..0\n";
 	exit;
     }

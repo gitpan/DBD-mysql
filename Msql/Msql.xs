@@ -5,9 +5,6 @@
 #include "XSUB.h"
 #include <myMsql.h>
 
-#include "../nodbd/constants.h"
-
-
 #ifndef IS_PRI_KEY
 #define IS_PRI_KEY(a) IS_UNIQUE(a)
 #endif
@@ -451,12 +448,13 @@ info(handle)
 
 double
 constant(name,arg)
-    char *		name
-    char *		arg
-  CODE:
-    RETVAL = mymsql_constant(name, arg);
-  OUTPUT:
-    RETVAL
+	char *		name
+	char *		arg
+      CODE:
+        extern double mymsql_constant _((char*, char*));
+        RETVAL = mymsql_constant(name, arg);
+      OUTPUT:
+        RETVAL
 
 
 char *

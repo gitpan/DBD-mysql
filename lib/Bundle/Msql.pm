@@ -1,8 +1,8 @@
 # -*- perl -*-
 
-package Bundle::Mysql;
+package Bundle::Msql;
 
-$VERSION = '1.1821';
+$VERSION = '1.1822';
 
 1;
 

@@ -1,7 +1,7 @@
-#!/sw/linux-i386/perl-5.004.03/bin/perl
+#!/sw/linux-i386/perl-5.004.04/bin/perl
 
 # $Id: pmysql.PL 1.1 Tue, 30 Sep 1997 01:28:08 +0200 joe $
-my $version = '1.1819';
+my $version = '1.1822';
 
 BEGIN {require 5.002;}
 # use strict;      # only for testing. Unfriendly for the user-eval()s
@@ -32,66 +32,45 @@ $^W = 1;
 # typelabels
 
 my(%typelabel);
-if ($driver eq 'Mysql') {
-    @typelabel{
-        Mysql::FIELD_TYPE_BLOB(),
-	Mysql::FIELD_TYPE_CHAR(),
-	Mysql::FIELD_TYPE_DECIMAL(),
-	Mysql::FIELD_TYPE_DATE(),
-	Mysql::FIELD_TYPE_DATETIME(),
-	Mysql::FIELD_TYPE_DOUBLE(),
-	Mysql::FIELD_TYPE_FLOAT(),
-	Mysql::FIELD_TYPE_INT24(),
-	Mysql::FIELD_TYPE_LONGLONG(),
-	Mysql::FIELD_TYPE_LONG_BLOB(),
-	Mysql::FIELD_TYPE_LONG(),
-	Mysql::FIELD_TYPE_NULL(),
-	Mysql::FIELD_TYPE_SHORT(),
-	Mysql::FIELD_TYPE_STRING(),
-	Mysql::FIELD_TYPE_TINY_BLOB(),
-	Mysql::FIELD_TYPE_TIMESTAMP(),
-	Mysql::FIELD_TYPE_TIME(),
-	Mysql::FIELD_TYPE_VAR_STRING()
-    } = qw(
-	blob
-	char
-	decimal
-	date
-	datetime
-	double
-	float
-	int24
-	longlong
-        longblob
-	long
-	null
-	short
-	string
-	tinyblob
-	timestamp
-	time
-	varstring
-    );
-} else {
-    my (@typenames);
-    for (qw/INT CHAR REAL IDENT IDX TEXT DATE UINT MONEY TIME SYSVAR/) {
-	my $type = 'Msql::' . $_ . '_TYPE';
-	push(@typenames, (eval "\&$type") || 999);
-    }
-    @typelabel{ @typenames } = qw(
-        int
-        char 
-        real
-        ident
-        index
-        text
-        date
-        uint
-        money
-        time
-        sys
-    );
-}
+@typelabel{
+    Mysql::FIELD_TYPE_BLOB(),
+    Mysql::FIELD_TYPE_CHAR(),
+    Mysql::FIELD_TYPE_DECIMAL(),
+    Mysql::FIELD_TYPE_DATE(),
+    Mysql::FIELD_TYPE_DATETIME(),
+    Mysql::FIELD_TYPE_DOUBLE(),
+    Mysql::FIELD_TYPE_FLOAT(),
+    Mysql::FIELD_TYPE_INT24(),
+    Mysql::FIELD_TYPE_LONGLONG(),
+    Mysql::FIELD_TYPE_LONG_BLOB(),
+    Mysql::FIELD_TYPE_LONG(),
+    Mysql::FIELD_TYPE_NULL(),
+    Mysql::FIELD_TYPE_SHORT(),
+    Mysql::FIELD_TYPE_STRING(),
+    Mysql::FIELD_TYPE_TINY_BLOB(),
+    Mysql::FIELD_TYPE_TIMESTAMP(),
+    Mysql::FIELD_TYPE_TIME(),
+    Mysql::FIELD_TYPE_VAR_STRING()
+} = qw(
+    blob
+    char
+    decimal
+    date
+    datetime
+    double
+    float
+    int24
+    longlong
+    longblob
+    long
+    null
+    short
+    string
+    tinyblob
+    timestamp
+    time
+    varstring
+);
 
 
 # host
@@ -107,9 +86,7 @@ if (@ARGV && $ARGV[0] eq "-h") {
 my $Less;
 {
     my @path = split ":", $ENV{PATH};
-    if ($driver eq 'Mysql'  &&  exists($ENV{PMYSQL_PAGER})) {
-	$Less = $ENV{PMYSQL_PAGER};
-    } elsif ($driver eq 'Msql'  &&  exists($ENV{PMSQL_PAGER})) {
+    if (exists($ENV{PMYSQL_PAGER})) {
 	$Less = $ENV{PMYSQL_PAGER};
     } else {
 	$Less = $ENV{PAGER} || find_exe("less",[@path]) ||
@@ -146,19 +123,7 @@ $escape = $quote;
 	  . " Term::ReadLine::[Perl|GNU])";
     }
 
-    my $probe_server;
-    if ($driver eq 'Mysql') {
-	$probe_server = '';
-    } elsif (Msql->connect($host)) {
-	$probe_server = "mSQL " . Msql->getserverinfo . " detected\n";
-    } else {
-	$probe_server = "You seem to run a version of ";
-	$probe_server .= defined &Msql::IDX_TYPE ? "mSQL >= 2.0\n" :
-	                                           "mSQL < 2.0\n";
-    }
-    printf ("$prompt -- interactive %s monitor version $version\n",
-	    ($driver eq 'Mysql') ? "MySQL" : "mSQL");
-    print $probe_server;
+    printf ("$prompt -- interactive Mysql monitor version $version\n");
     print "Readline support $rl_avail\n\n";
 }
 
@@ -178,13 +143,8 @@ my $Debug = 0; # 1 | 2 | 4;
 #
 
 my($indexarg, $indexdes);
-if ($driver eq 'Mysql'  ||  !defined &Msql::IDX_TYPE) {
-    $indexarg = "";
-    $indexdes = " or tables";
-} else {
-    $indexarg = " [index]";
-    $indexdes = ", tables or indices";
-}
+$indexarg = "";
+$indexdes = " or tables";
 
 while ( defined ($_ = $term->readline("$prompt> ")) ) {
 
@@ -519,12 +479,6 @@ sub relshow {
 		return "Too many arguments to relshow\n"
 			unless $Dbh->getserverinfo ge 2;
 		#warn join ":", grep //, $sth->name;
-		if ($driver eq 'Msql'  &&  $index eq "_seq") {
-		    my(@seq) = $Dbh->getsequenceinfo($table);
-		    push(@m, "Sequence Step  = $seq[0]\n"
-			     . "Sequence Value = $seq[1]\n");
-		    return join "", @m;
-		}
 		grep(/^\Q$index\E$/, $sth->name)
 			or return join "", @m, qq{Index "$index" not found\n};
 		push @m, qq{Index      = $index\n};
@@ -551,13 +505,8 @@ sub relshow {
 
 	    my $fieldwidth = longest($sth->name,"Field") || 15;
 	    my ($keywidth, $keytitle);
-	    if ($driver eq 'Mysql'  ||  $driver->getserverinfo lt 2) {
-		$keywidth = 3;
-		$keytitle = "Key";
-	    } else {
-		$keywidth = 12;
-		$keytitle = "Unique Index";
-	    }
+	    $keywidth = 3;
+	    $keytitle = "Key";
 	    my $border = " +-".("-"x$fieldwidth)."-+-----------+--------+----------+-".("-"x$keywidth)."-+\n";
 	    push @m, $border;
 	    push @m, sprintf " | %-".$fieldwidth."s | Type      | Length | Not Null | %-".$keywidth."s |\n", "Field", $keytitle;
@@ -565,19 +514,12 @@ sub relshow {
 	    my $max = $sth->numfields;
 	    for ($i=0;$i<$max;$i++){
 		my $keyNO;
-		if ($driver eq 'Mysql'  ||  $driver->getserverinfo lt 2  ||
-		    $sth->type->[$i] == &Msql::IDX_TYPE()) {
-		    $keyNO = "N";
-		} else {
-		    $keyNO = "N/A";
-		}
+		$keyNO = "N";
 		push @m, sprintf " | %-".$fieldwidth."s | %-9s | %6s |    %-3s   | %-".$keywidth."s |\n",
 			$sth->name->[$i],
 			$typelabel{$sth->type->[$i]} || ("unknown-".$sth->type->[$i]),
 			($sth->length->[$i] || "N/A"),
-			$sth->is_not_null->[$i] ? " Y " : 
-			    ($driver eq 'Mysql' ||
-			     $sth->type->[$i]!=Msql::IDX_TYPE()) ? " N " : "N/A",
+		        $sth->is_not_null->[$i] ? " Y " : "N",
 			$sth->is_pri_key->[$i] ? "Y" : $keyNO;
 	    }
 	    push @m, "$border\n";

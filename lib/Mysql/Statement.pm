@@ -5,7 +5,7 @@ package Mysql::Statement;
 use strict;
 use vars qw($OPTIMIZE $VERSION $AUTOLOAD);
 
-$VERSION = '1.1821';
+$VERSION = '1.1822';
 
 $OPTIMIZE = 0; # controls, which optimization we default to
 
@@ -92,9 +92,10 @@ sub as_string {
     $sth->dataseek(0);
     my(@row);
     while (@row = $sth->fetchrow) {
-	my ($col, $pcol, @prow, $i);
-	while ($col = shift @row) {
-	    $i = @prow;
+	my ($col, $pcol, @prow, $i, $j);
+	for ($i = 0;  $i < $sth->numfields;  $i++) {
+	    $col = $row[$i];
+	    $j = @prow;
 	    $pcol = defined $col ? unctrl($col) : "NULL";
 	    push(@prow, $pcol);
 	}

@@ -1,3 +1,17 @@
+1997-12-11  Jochen Wiedmann  <joe@ispsoft.de> (1.1822)
+
+	* dbd/myMsql.c: DSN's like DBI:mysql:test;hostname=$host;port=$port
+	  haven't been working.
+	* dbd/dbimon.in: POD modifications, suggested by Jesse N. Glick
+	  <jglick@sig.bsh.com>
+	* INSTALL: Added hints for "make test".
+	* nodbd/statement.pm.in (as_string): Still bugs in the new
+	  as_string method, thanks to Frank D. Cringle <fdc@cliwe.ping.de>.
+	* Enabled SQL_DATE, SQL_TIME, ... (available in DBI 0.91)
+	* Makefiles: Modified postamble to use a common function which calls
+	  module dependent hooks.
+	* nodbd/nodbd.xs.in/fetchinternal: Fixed the problem RETVAL == NULL.
+
 Wed Nov 19 19:50:29 1997  Jochen Wiedmann  <joe@ispsoft.de> (1.1821)
 
 	* dbd/dbd.pm.in: Added AUTOLOAD for constants like

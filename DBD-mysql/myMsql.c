@@ -74,19 +74,51 @@
  **************************************************************************/
 
 #ifdef DBD_MSQL
-int MyConnect(dbh_t* sock, char* host, char* user, char* password) {
+int MyConnect(dbh_t* sock, char* dsn, char* user, char* password) {
 #else
-int MyConnect(dbh_t sock, char* host, char* user, char* password) {
+int MyConnect(dbh_t sock, char* dsn, char* user, char* password) {
 #endif
-    int port = 0;
-    char* portPtr;
+    char* copy;
+    char* host = NULL;
+    char* port = NULL;
+    int portNr;
 
-    if (host  &&  (portPtr = strchr(host, ':'))) {
-        *portPtr++ = '\0';
-	port = atoi(portPtr);
+    if (dsn) {
+        if (!(copy = malloc(strlen(dsn)+1))) {
+	    return FALSE;
+	}
+	strcpy(copy, dsn);
+
+	while (copy && *copy) {
+	    char* next = strchr(copy, ':');
+	    if (!next) {
+	        next = strchr(copy, ';');
+	    }
+	    if (next) {
+	        *next++ = '\0';
+	    }
+
+	    if (strncmp(copy, "hostname=", 9) == 0) {
+	        host = copy+9;
+	    } else if (strncmp(copy, "port=", 5) == 0) {
+	        port = copy+5;
+	    } else {
+	        if (!host) {
+		    host = copy;
+		} else if (!port) {
+		    port = copy;
+		}
+	    }
+	    copy = next;
+	}
     }
 
     if (host && !*host) host = NULL;
+    if (port && *port) {
+        portNr = atoi(port);
+    } else {
+        portNr = 0;
+    }
     if (user && !*user) user = NULL;
     if (password && !*password) password = NULL;
 
@@ -97,17 +129,15 @@ int MyConnect(dbh_t sock, char* host, char* user, char* password) {
 	 *  Setting a port for mysql's client is ugly: We have to use
 	 *  the not documented variable mysql_port.
 	 */
-	if (port) {
-	    mysql_port = port;
-	}
+        mysql_port = portNr;
         return mysql_connect(sock, host, user, password) ? TRUE : FALSE;
 #else
 #if defined(MYSQL_VERSION_ID)  &&  MYSQL_VERSION_ID >= 032115
-	return mysql_real_connect(sock, host, user, password, port, NULL,
+	return mysql_real_connect(sock, host, user, password, portNr, NULL,
 				  0) ?
 	    TRUE : FALSE;
 #else
-	return mysql_real_connect(sock, host, user, password, port, NULL) ?
+	return mysql_real_connect(sock, host, user, password, portNr, NULL) ?
 	    TRUE : FALSE;
 #endif
 #endif
@@ -123,8 +153,8 @@ int MyConnect(dbh_t sock, char* host, char* user, char* password) {
         char buffer[32];
 	char* oldPort = NULL;
 
-	sprintf(buffer, "%d", port);
-	if (port) {
+	sprintf(buffer, "%d", portNr);
+	if (portNr) {
 	    oldPort = environ[setenv_getix("MSQL_TCP_PORT")];
 	    if (oldPort) {
 	        char* copy = (char*) malloc(strlen(oldPort)+1);

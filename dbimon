@@ -39,7 +39,7 @@ use Data::ShowTable ();
 #
 #   Constants
 #
-my $VERSION = "1.1821";
+my $VERSION = "1.1822";
 
 my @VALID_VARS = ("escapeChar", "less", "listWrapMargin", "maxTableWidth",
 		  "noEscape", "quoteChar", "sepChar", "showMode");
@@ -1177,8 +1177,6 @@ dbimon $VERSION Copyright (C) 1997 Jochen Wiedmann
 
 __END__
 
-=pod
-
 =head1 NAME
 
 dbimon - interactive shell with readline for DBI
@@ -1324,7 +1322,10 @@ have here.
 
 =head1 DRIVER REQUIREMENTS
 
-dbimon should in theory work with any DBI driver. However, DBI is too
+This section is mostly for authors of DBI drivers. If you are interested
+in using dbimon only, skip it.
+
+Dbimon should in theory work with any DBI driver. However, DBI is too
 restricted for really comfortable work. Thus I decided to use some
 very basic possibilities of the DBD::mSQL and DBD::mysql drivers. It
 should be easy to add these to any driver and dbimon doesn't depend
@@ -1377,16 +1378,16 @@ should implement this attribute.
 This array is passed to I<Data::ShowTable::ShowTable> as the I<types>
 argument.
 
-=item C<@list = $dbh-E<gt>func("_ListTables")>
+=item C<@list = $dbh-E<gt>func('_ListTables')>
 
 Lists the tables of the dsn corresponding to I<$dbh>.
 
-=item C<$sth = $dbh-E<gt>func($table, "_ListFields")>
+=item C<$sth = $dbh-E<gt>func($table, '_ListFields')>
 
 Returns a statement handle describing the fields of a table. This could,
 for example, be implemented by a
 
-  SELECT * FROM table WHERE 0 <> 1
+  SELECT * FROM table WHERE 0 = 1
 
 (Of course I can imagine better solutions ... :-)
 

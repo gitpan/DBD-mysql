@@ -1,6 +1,6 @@
 # -*- perl -*-
 
-package Bundle::Mysql;
+package Bundle::~DRIVER~;
 
 $VERSION = '~NODBD_VERSION~';
 

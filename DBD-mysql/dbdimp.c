@@ -117,21 +117,23 @@ int dbd_db_login(SV* dbh, imp_dbh_t* imp_dbh, char* dbname, char* user,
 		 char* password) {
     char* copy = NULL;
     char* host = NULL;
+    char* ptr;
 
     if (dbis->debug >= 2)
-        fprintf(DBILOGFP, "imp_dbh->connect: db = %s, uid = %s, pwd = %s\n",
+        fprintf(DBILOGFP, "imp_dbh->connect: dsn = %s, uid = %s, pwd = %s\n",
 	       dbname ? dbname : "NULL",
 	       user ? user : "NULL",
 	       password ? password : "NULL");
 
     /*
-     *  dbname may be "db:host"
+     *  dbname may be "db:host" or "db;host"
      */
-    if (strchr(dbname, ':')) {
-        New(0, copy, strlen(dbname)+1, char);
+    if ((ptr = strchr(dbname, ':'))  ||  (ptr = strchr(dbname, ';'))) {
+        int len = ptr-dbname;
+	copy = (char*) malloc(strlen(dbname)+1);
 	strcpy(copy, dbname);
 	dbname = copy;
-	host = strchr(copy, ':');
+	host = dbname + len;
 	*host++ = '\0';
     }
 
@@ -141,7 +143,7 @@ int dbd_db_login(SV* dbh, imp_dbh_t* imp_dbh, char* dbname, char* user,
     imp_dbh->svsock = &imp_dbh->mysql;
     if (!dbd_db_connect(imp_dbh->svsock, host, user, password)) {
 	DO_ERROR(dbh, JW_ERR_CONNECT, imp_dbh->svsock);
-	Safefree(copy);
+	if (copy) free(copy);
 	return FALSE;
     }
 
@@ -149,13 +151,13 @@ int dbd_db_login(SV* dbh, imp_dbh_t* imp_dbh, char* dbname, char* user,
      *  Connected, now try to login
      */
     if (MySelectDb(imp_dbh->svsock, dbname)) {
-        Safefree(copy);
+        if (copy) free(copy);
 	DO_ERROR(dbh, JW_ERR_SELECT_DB, imp_dbh->svsock);
 	MyClose(imp_dbh->svsock);
 	return FALSE;
     }
 
-    Safefree(copy);
+    if (copy) free(copy);
 
     /*
      *  Tell DBI, that dbh->disconnect should be called for this handle

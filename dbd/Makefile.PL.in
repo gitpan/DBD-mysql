@@ -24,13 +24,16 @@ sub config () {
 }
 
 
+my $pa = $_MY::Config::Postamble;
+$_MY::Config::Postamble = \&Create~DBD_DRIVER~Postamble;
 ExtUtils::MakeMaker::WriteMakefile(
 	      OBJECT       => qq[\$(O_FILES)],
 	      CONFIGURE    => \&config
 	     );
+$_MY::Config::Postamble = $pa;
 
 
-sub MY::postamble {
+sub Create~DBD_DRIVER~Postamble ($) {
     my $self = shift;
 
     my $pa = "\n";
@@ -82,4 +85,15 @@ $(BASEEXT).xsi: $(DBI_DRIVER_XST)
 ';
 
     $pa;
+}
+
+
+package MY;
+
+sub postamble {
+    if ($_MY::Config::Postamble) {
+	&$_MY::Config::Postamble(@_);
+    } else {
+	'';
+    }
 }

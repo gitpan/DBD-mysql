@@ -20,15 +20,19 @@ sub ~DRIVER~_config () {
     \%hash;
 }
 
+my $pa = $_MY::Config::Postamble;
+$_MY::Config::Postamble = \&Create~DRIVER~Postamble;
 ExtUtils::MakeMaker::WriteMakefile(CONFIGURE => \&~DRIVER~_config);
+$_MY::Config::Postamble = $pa;
 
-sub MY::postamble {
+sub Create~DRIVER~Postamble {
     my $pa = "\n";
     my $ref;
     foreach $ref (@_MY::Config::Files::~DRIVER~,
 		  ["../dbd/myMsql.c", "myMsql.c"],
 		  ["../nodbd/nodbd.xs.in", "~DRIVER~.xs"],
-		  ["../nodbd/pmsql.in", "pmsql", 1],
+		  ["../nodbd/pmsql.in",
+		   ($DRIVER eq 'Msql') ? 'pmsql' : 'pmysql', 1],
 		  ["../nodbd/typemap", "typemap"],
 		  ["../tests/lib.pl", "t/lib.pl"],
 		  ["../tests/msql1.t", "t/msql1.t"],
@@ -40,3 +44,13 @@ sub MY::postamble {
     $pa;
 }
 
+
+package MY;
+
+sub postamble {
+    if ($_MY::Config::Postamble) {
+	&$_MY::Config::Postamble(@_);
+    } else {
+	'';
+    }
+}

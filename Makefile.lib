@@ -6,10 +6,21 @@ use strict;
 require File::Basename;
 
 
+package MY;
+
+sub postamble {
+    if ($_MY::Config::Postamble) {
+	&$_MY::Config::Postamble(@_);
+    } else {
+	'';
+    }
+}
+
+
 package _MY::Config;
 
-$_MY::Config::VERSION = "1.1821";
-$_MY::Config::DBD_VERSION = "2.007";
+$_MY::Config::VERSION = "1.1822";
+$_MY::Config::DBD_VERSION = "2.008";
 
 $_MY::Config::X_Msql = undef;
 $_MY::Config::X_Mysql = undef;
@@ -29,13 +40,13 @@ sub Init ($) {
 	$_MY::Config::enableMsql = 1;
 	$_MY::Config::enableMysql = 1;
 
-	print "Checking for DBI, 0.86 or later ... ";
+	print "Checking for DBI, 0.91 or later ... ";
 	$@ = '';
-	eval " use DBI 0.86 (); require DBI::DBD; ";
+	eval " use DBI 0.91 (); require DBI::DBD; ";
 	if ($@) {
 	    my $reply = ExtUtils::MakeMaker::prompt(
 	        "\n\n" .
-		"You don't have installed the DBI module, version 0.86 or" .
+		"You don't have installed the DBI module, version 0.91 or" .
                 " later. I cannot\n" .
                 "continue installing the DBD modules. You have two" .
 		" options:\n\n" .
@@ -98,11 +109,14 @@ sub Init ($) {
 	open(FILE, ">status.lib");
 	print FILE "\$_MY::Config::enableDbd = $_MY::Config::enableDbd;\n",
 	    "\$_MY::Config::enableMsql = $_MY::Config::enableMsql;\n",
-	    "\$_MY::Config::enableMysql = $_MY::Config::enableMysql;\n";
+	    "\$_MY::Config::enableMysql = $_MY::Config::enableMysql;\n",
+	    "1\n";
 	close(FILE);
     } else {
 	require "status.lib";
     }
+
+    $_MY::Config::Postamble = \&CreatePostamble;
 
     $_MY::Config::initialized = 1;
 }
@@ -501,7 +515,7 @@ sub InitializeMysql {
     $_MY::Config::X_Mysql = \%X;
 }
 
-sub MY::postamble {
+sub CreatePostamble ($) {
     my ($ref, $pa, $from, $to);
 
     my @mysqlFiles = (["nodbd/bundle.pm.in", "lib/Bundle/Mysql.pm"],
@@ -521,6 +535,7 @@ sub MY::postamble {
 
     my @msqlFiles = (["nodbd/bundle.pm.in", "lib/Bundle/Msql.pm"],
 		     ["nodbd/nodbd.pm.in", "lib/Msql.pm"],
+
 		     ["nodbd/statement.pm.in", "lib/Msql/Statement.pm"],
 		     ["dbd/dbd.pm.in", "lib/DBD/mSQL.pm"]);
     if ($_MY::Config::enableMsql) {
@@ -538,14 +553,13 @@ sub MY::postamble {
     $pa;
 }
 
-
 sub Xtract($$$) {
     my ($ref, $driver, $dbdDriver, $path) = @_;
     if (!$path) {
 	$path = "xtract";
     }
     system sprintf("%s %s %s %s %s %s %s %s",
-		   $Config::Config{perlpath}, $path,
+		   $^X, $path,
 		   $ref->[0], $ref->[1], $driver, $dbdDriver,
 		   $_MY::Config::VERSION, $_MY::Config::DBD_VERSION);
     chmod $ref->[2] ? 0755 : 0644, $ref->[1];
@@ -558,7 +572,7 @@ sub XtractF($$$$) {
     }
     sprintf("%s: %s Makefile.PL\n"
 	    . "\t%s %s %s %s %s %s %s %s\n\tchmod %s %s\n",
-	    $ref->[1], $ref->[0], $Config::Config{perlpath}, $path,
+	    $ref->[1], $ref->[0], $^X, $path,
 	    $ref->[0], $ref->[1], $driver, $dbdDriver,
 	    $_MY::Config::VERSION, $_MY::Config::DBD_VERSION,
 	    $ref->[2] ? "0755" : "0644", $ref->[1]);

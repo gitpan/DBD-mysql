@@ -27,7 +27,7 @@
 
 #include "dbdimp.h"
 
-#include "bindparam.h"
+#include "bindparam.c"
 
 
 DBISTATE_DECLARE;

@@ -102,14 +102,8 @@ int MyConnect(dbh_t sock, char* host, char* user, char* password) {
 	}
         return mysql_connect(sock, host, user, password) ? TRUE : FALSE;
 #else
-#if defined(MYSQL_VERSION_ID)  &&  MYSQL_VERSION_ID >= 032115
-	return mysql_real_connect(sock, host, user, password, port, NULL,
-				  0) ?
-	    TRUE : FALSE;
-#else
 	return mysql_real_connect(sock, host, user, password, port, NULL) ?
 	    TRUE : FALSE;
-#endif
 #endif
     }
 #else

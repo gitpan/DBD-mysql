@@ -183,6 +183,7 @@ fetchinternal(handle, key)
   int	off = 0;
   int	numfields;
   field_t	curField;
+  RETVAL = Nullsv;
 
   readRESULT;
   switch (*key){
@@ -253,6 +254,10 @@ fetchinternal(handle, key)
 	MYPERL_FETCH_INTERNAL(av_push(av,(SV*)newSViv((IV) curField->type)););
     }
     break;
+  }
+
+  if (!RETVAL) {
+    XSRETURN_UNDEF;
   }
 }
    OUTPUT:
