@@ -557,7 +557,7 @@ if (Msql::int___type() == INT_TYPE) {
 # Let's create another table where we inspect if we can insert
 # 8 bit characters:
 
-$query = "create table $firsttable (ascii int, character char(1))";
+$query = "create table $firsttable (ascii int, chrctr char(1))";
 $dbh->query($query) or test_error;
 my $nchar;
 for $nchar (1..255) {
@@ -584,7 +584,7 @@ if ($sth->numrows() == 255){
     print "not ok 67\n";
 }
 while (%hash = $sth->fetchhash) {
-    $hash{character} eq chr($hash{ascii}) or print "not ok 68 [char no $hash{ascii}]\n";
+    $hash{chrctr} eq chr($hash{ascii}) or print "not ok 68 [char no $hash{ascii}]\n";
 }
 print "ok 68\n";
 

@@ -201,8 +201,9 @@ Interface (DBI)
 
         or
 
-    $dbh = DBI->connect("DBI:mysql:$database:$hostname:$port",
-			$user, $password);
+    $dsn = "DBI:mysql:$database:$hostname:$port";
+    if ($compression) { $dsn .= ";mysql_compression=1"; }
+    $dbh = DBI->connect($dsn, $user, $password);
 
     @databases = DBD::mysql::dr->func( $hostname, '_ListDBs' );
     @tables = $dbh->func( '_ListTables' );
@@ -247,11 +248,12 @@ of the I<mysql-modules> and I<Msql-modules> packages, respectively.
 
     use DBI;
 
-    $dbh = DBI->connect("DBI:mysql:$database", $user, $password);
-    $dbh = DBI->connect("DBI:mysql:$database:$hostname",
-			$user, $password);
-    $dbh = DBI->connect("DBI:mysql:$database:$hostname:$port",
-			$user, $password);
+    $dsn = "DBI:mysql:$database";
+    $dsn = "DBI:mysql:$database:$hostname";
+    $dsn = "DBI:mysql:$database:$hostname:$port";
+    $dsn = "DBI:mysql:$database:$hostname:$port;mysql_compression=1";
+
+    $dbh = DBI->connect($dsn, $user, $password);
 
 A C<database> must always be specified.
 
@@ -263,6 +265,10 @@ Should the mysql or mSQL daemon be running on a non-standard port number,
 you may explicitly state the port number to connect to in the C<hostname>
 argument, by concatenating the I<hostname> and I<port number> together
 separated by a colon ( C<:> ) character.
+
+As of MySQL 3.22.3, a new feature is supported: If you finish your DSN
+with ";mysql_compression=1", then the communication between client and
+server will be compressed.
 
 =back
 

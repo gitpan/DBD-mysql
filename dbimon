@@ -39,7 +39,7 @@ use Data::ShowTable ();
 #
 #   Constants
 #
-my $VERSION = "1.1831";
+my $VERSION = "1.1832";
 
 my @VALID_VARS = ("escapeChar", "less", "listWrapMargin", "maxTableWidth",
 		  "noEscape", "quoteChar", "sepChar", "showMode");

@@ -82,6 +82,7 @@ int MyConnect(dbh_t sock, char* dsn, char* user, char* password, char* db) {
     char* host = NULL;
     char* port = NULL;
     int portNr;
+    int compression = 0;
 
     if (dsn) {
         if (!(copy = malloc(strlen(dsn)+1))) {
@@ -102,6 +103,8 @@ int MyConnect(dbh_t sock, char* dsn, char* user, char* password, char* db) {
 	        host = copy+9;
 	    } else if (strncmp(copy, "port=", 5) == 0) {
 	        port = copy+5;
+	    } else if (strncmp(copy, "mysql_compression=", 18) == 0) {
+	        compression = atoi(copy+18);
 	    } else {
 	        if (!host) {
 		    host = copy;
@@ -142,6 +145,11 @@ int MyConnect(dbh_t sock, char* dsn, char* user, char* password, char* db) {
 #else
 #if defined(MYSQL_VERSION_ID)  &&  (MYSQL_VERSION_ID >= 32200)
 	mysql_init(sock);
+#if defined(MYSQL_VERSION_ID)  &&  (MYSQL_VERSION_ID >= 32203)
+	if (compression) {
+	    mysql_options(sock, MYSQL_OPT_COMPRESS, NULL);
+	}
+#endif
 	return mysql_real_connect(sock, host, user, password, db, portNr,
 				  NULL, 0) ?
 	    TRUE : FALSE;

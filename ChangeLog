@@ -1,3 +1,12 @@
+1998-07-06  Jochen Wiedmann  <joe@ispsoft.de> (1.1832)
+
+	* Makefile.lib (InitializeMsql): Added /usr to the search path
+	  for mSQL headers and libraries.
+	* tests/msql1.t (unctrl): Renamed "character" column to
+	  "chrctr". ("character" is not a valid column name under
+	  msql-2.0.4.1)
+	* dbd/dbdimp.c: Added "mysql_compression".
+	
 1998-06-14  Jochen Wiedmann  <joe@ispsoft.de> (1.1831)
 
 	* dbd/myMsql.c (MyConnect): mysql_init called for Mysql 3.22.

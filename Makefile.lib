@@ -19,8 +19,8 @@ sub postamble {
 
 package _MY::Config;
 
-$_MY::Config::VERSION = "1.1831";
-$_MY::Config::DBD_VERSION = "2.0097";
+$_MY::Config::VERSION = "1.1832";
+$_MY::Config::DBD_VERSION = "2.0098";
 
 $_MY::Config::X_Msql = undef;
 $_MY::Config::X_Mysql = undef;
@@ -308,7 +308,7 @@ sub InitializeMsql {
 
     my %X;
     my @msqldirs = qw{/usr/local/Hughes /usr/local/Minerva /usr/local
-		      /usr/mSQL /opt/mSQL};
+		      /usr/mSQL /opt/mSQL /usr};
     my @gooddirs;
     if (exists($ENV{MSQL_HOME})) { push(@gooddirs, $ENV{MSQL_HOME}); }
 
