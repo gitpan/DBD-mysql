@@ -1,6 +1,6 @@
 #!/usr/local/bin/perl
 #
-#   $Id: 40bindparam.t,v 1.1.1.1 1999/07/13 08:14:45 joe Exp $
+#   $Id: 40bindparam.t,v 1.2 1999/10/08 12:06:22 joe Exp $
 #
 #   This is a skeleton test. For writing new tests, take this file
 #   and modify/extend it.
@@ -20,7 +20,7 @@ $test_password = '';
 #
 #   Include lib.pl
 #
-require DBI;
+use DBI ();
 use vars qw($COL_NULLABLE);
 $mdriver = "";
 foreach $file ("lib.pl", "t/lib.pl") {
@@ -117,7 +117,16 @@ while (Testing()) {
 	or DbiError($dbh->err, $dbh->errstr);
     Test($state or $cursor->execute)
  	or DbiError($dbh->err, $dbh->errstr);
-  
+
+    #
+    #   Try various mixes of question marks, single and double quotes
+    #
+    Test($state or $dbh->do("INSERT INTO $table VALUES (6, '?')"))
+	   or DbiError($dbh->err, $dbh->errstr);
+    if ($mdriver eq 'mysql') {
+	Test($state or $dbh->do("INSERT INTO $table VALUES (7, \"?\")"))
+	    or DbiError($dbh->err, $dbh->errstr);
+    }
 
     Test($state or undef $cursor  ||  1);
 
@@ -153,13 +162,23 @@ while (Testing()) {
 		    $name eq 'Andreas König'))
 	or printf("Query returned id = %s, name = %s, ref = %s, %d\n",
 		  $id, $name, $ref, scalar(@$ref));
- 
+
     Test($state or (($ref = $cursor->fetch)  &&  $id == 5  &&
 		    !defined($name)))
 	or printf("Query returned id = %s, name = %s, ref = %s, %d\n",
 		  $id, $name, $ref, scalar(@$ref));
 
+    Test($state or (($ref = $cursor->fetch)  &&  $id == 6  &&
+		   $name eq '?'))
+	or print("Query returned id = $id, name = $name, expected 6,?\n");
+    if ($mdriver eq 'mysql') {
+	Test($state or (($ref = $cursor->fetch)  &&  $id == 7  &&
+			$name eq '?'))
+	    or print("Query returned id = $id, name = $name, expected 7,?\n");
+    }
+
     Test($state or undef $cursor  or  1);
+
 
     #
     #   Finally drop the test table.

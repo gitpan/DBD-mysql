@@ -381,35 +381,33 @@ STATEMENT HANDLES
             preceding and trailing blanks off the column values. Chopping
             blanks does not have impact on the *max_length* attribute.
 
-    insertid
+    mysql_insertid
             MySQL has the ability to choose unique key values automatically.
             If this happened, the new ID will be stored in this attribute.
             This attribute is not valid for DBD::mSQL. An alternative way
             for accessing this attribute is via $dbh->{'mysql_insertid'}.
             (Note we are using the $dbh in this case!)
 
-    is_blob Reference to an array of boolean values; TRUE indicates, that the
-            respective column is a blob. This attribute is valid for MySQL
-            only.
+    mysql_is_blob
+            Reference to an array of boolean values; TRUE indicates, that
+            the respective column is a blob. This attribute is valid for
+            MySQL only.
 
-    is_key  Reference to an array of boolean values; TRUE indicates, that the
-            respective column is a key. This is valid for MySQL only.
+    mysql_is_key
+            Reference to an array of boolean values; TRUE indicates, that
+            the respective column is a key. This is valid for MySQL only.
 
-    is_num  Reference to an array of boolean values; TRUE indicates, that the
-            respective column contains numeric values.
+    mysql_is_num
+            Reference to an array of boolean values; TRUE indicates, that
+            the respective column contains numeric values.
 
-    is_pri_key
+    mysql_is_pri_key
             Reference to an array of boolean values; TRUE indicates, that
             the respective column is a primary key. This is only valid for
             MySQL and mSQL 1.0.x: mSQL 2.x uses indices.
 
-    is_not_null
-            A reference to an array of boolean values; FALSE indicates that
-            this column may contain NULL's. You should better use the
-            *NULLABLE* attribute above which is a DBI standard.
-
-    length
-    max_length
+    mysql_length
+    mysql_max_length
             A reference to an array of maximum column sizes. The
             *max_length* is the maximum physically present in the result
             table, *length* gives the theoretically possible maximum.
@@ -427,7 +425,9 @@ STATEMENT HANDLES
             returned a result: A zero value indicates a non-SELECT statement
             like *INSERT*, *DELETE* or *UPDATE*.
 
-    table   A reference to an array of table names, useful in a *JOIN* result.
+    mysql_table
+            A reference to an array of table names, useful in a *JOIN*
+            result.
 
     TYPE    A reference to an array of column types. The engine's native column
             types are mapped to portable types like DBI::SQL_INTEGER() or

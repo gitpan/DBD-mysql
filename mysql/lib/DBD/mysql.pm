@@ -1,6 +1,6 @@
 #   Our beloved Emacs will give us -*- perl -*- mode :-)
 #
-#   $Id: dbd.pm.in,v 1.4 1999/09/16 17:40:51 joe Exp $
+#   $Id: dbd.pm.in,v 1.5 1999/10/03 17:46:10 joe Exp $
 #
 #   Copyright (c) 1994,1995,1996,1997 Alligator Descartes, Tim Bunce
 #
@@ -690,43 +690,37 @@ this attribute determines whether a I<fetchrow> will chop preceding
 and trailing blanks off the column values. Chopping blanks does not
 have impact on the I<max_length> attribute.
 
-=item insertid
+=item mysql_insertid
 
 MySQL has the ability to choose unique key values automatically. If this
 happened, the new ID will be stored in this attribute. This attribute
 is not valid for DBD::mSQL. An alternative way for accessing this attribute
 is via $dbh->{'mysql_insertid'}. (Note we are using the $dbh in this case!)
 
-=item is_blob
+=item mysql_is_blob
 
 Reference to an array of boolean values; TRUE indicates, that the
 respective column is a blob. This attribute is valid for MySQL only.
 
-=item is_key
+=item mysql_is_key
 
 Reference to an array of boolean values; TRUE indicates, that the
 respective column is a key. This is valid for MySQL only.
 
-=item is_num
+=item mysql_is_num
 
 Reference to an array of boolean values; TRUE indicates, that the
 respective column contains numeric values.
 
-=item is_pri_key
+=item mysql_is_pri_key
 
 Reference to an array of boolean values; TRUE indicates, that the
 respective column is a primary key. This is only valid for MySQL
 and mSQL 1.0.x: mSQL 2.x uses indices.
 
-=item is_not_null
+=item mysql_length
 
-A reference to an array of boolean values; FALSE indicates that this
-column may contain NULL's. You should better use the I<NULLABLE>
-attribute above which is a DBI standard.
-
-=item length
-
-=item max_length
+=item mysql_max_length
 
 A reference to an array of maximum column sizes. The I<max_length> is
 the maximum physically present in the result table, I<length> gives
@@ -749,7 +743,7 @@ You may use this for checking whether a statement returned a result:
 A zero value indicates a non-SELECT statement like I<INSERT>,
 I<DELETE> or I<UPDATE>.
 
-=item table
+=item mysql_table
 
 A reference to an array of table names, useful in a I<JOIN> result.
 
@@ -763,14 +757,12 @@ DBD::mysql::FIELD_TYPE_INTERVAL are mapped to DBI::SQL_VARCHAR().
 If you need the native column types, use I<mysql_type> or I<msql_type>,
 respectively. See below.
 
-
 =item mysql_type
 
 A reference to an array of MySQL's native column types, for example
 DBD::mysql::FIELD_TYPE_SHORT() or DBD::mysql::FIELD_TYPE_STRING().
 Use the I<TYPE> attribute, if you want portable types like
 DBI::SQL_SMALLINT() or DBI::SQL_VARCHAR().
-
 
 =item mysql_type_name
 

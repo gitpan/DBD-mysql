@@ -1,3 +1,14 @@
+1999-09-17  Jochen Wiedmann  <joe@ispsoft.de> (1.2208)
+
+	* dbd/bindparam.h: Added support for MySQL's double
+	  quotes. (Although I don't like it. :-)
+	* dbd/dbd.pm.in: Fixed a lot of docs for deprecated
+	  features in favour of current.
+	* Makefile.PL: Fixed use of -e (should be exists).
+	  tschulth@debis.com (Thomas Schultheis)
+	* MONEY seems to be a numeric type with mSQL.
+	  Ernst Paalvast <ernst@esdmm.nl>
+
 1999-09-15  Jochen Wiedmann  <joe@gate.ispsoft.de> (1.2207)
 
 	* dbd/dbdimp.c: Added mysql_connect_timeout. 
@@ -454,7 +465,7 @@ Fri Oct 24 01:29:08 1997  Jochen Wiedmann  <joe@ispsoft.de> (1.1816)
 	* lib/Msql/Statement.pm: Fixed use of Msql::TEXT_TYPE without
 	  checking whether we are running Msql 1.
 
-$Id: ChangeLog,v 1.8 1999/09/16 17:40:49 joe Exp $
+$Id: ChangeLog,v 1.11 1999/10/08 12:06:19 joe Exp $
 
 DBD::mysql for DBI - Written by Jochen Wiedmann <joe@ispsoft.de>
 

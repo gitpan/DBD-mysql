@@ -17,7 +17,7 @@
  *           Fax: +49 7123 / 14892
  *
  *
- *  $Id: dbdimp.c,v 1.4 1999/09/16 17:40:51 joe Exp $
+ *  $Id: dbdimp.c,v 1.5 1999/09/21 08:51:08 joe Exp $
  */
 
 
@@ -310,9 +310,9 @@ const sql_type_info_t SQL_GET_TYPE_INFO_values[] = {
     0, 0, 10, UINT_TYPE,   1
     /* 7 */
   },
-  { "money",     SQL_VARCHAR,                      10, "'",  "'",  NULL,
+  { "money",     SQL_VARCHAR,                      10, NULL,  NULL,  NULL,
     1, 0, 1, 0, 1, 0, "money type",
-    0, 0, 10, MONEY_TYPE,  0
+    0, 0, 10, MONEY_TYPE,  1
     /* 8 */
   },
   { "time",      SQL_TIME,                          6, NULL, NULL, NULL,

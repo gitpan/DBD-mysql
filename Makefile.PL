@@ -5,7 +5,7 @@
 #  You may distribute this under the terms of either the GNU General Public
 #  License or the Artistic License, as specified in the Perl README file.
 #
-#  $Id: Makefile.PL,v 1.7 1999/09/16 17:40:49 joe Exp $
+#  $Id: Makefile.PL,v 1.9 1999/10/08 12:06:39 joe Exp $
 #
 BEGIN {require 5.004;}
 use strict;
@@ -19,8 +19,8 @@ use ExtUtils::PerlPP ();
 
 use vars qw($VERSION $DBD_VERSION $options);
 
-$VERSION = "1.2207";
-$DBD_VERSION = "2.0407";
+$VERSION = "1.2208";
+$DBD_VERSION = "2.0408";
 
 $options = { 'prompt' => 1 };
 
@@ -74,13 +74,13 @@ sub QueryDb ($) {
     my $d = lc $driver;
     my $prompt = $options->{'prompt'};
 
-    my $test_db =  (-e $options->{"$d-test-db"}) ?
+    my $test_db =  exists($options->{"$d-test-db"}) ?
 	$options->{"$d-test-db"} : ($cfg->{'test_db'} || 'test');
     $test_db = prompt
 	("Which database should I use for testing the $db drivers?",
 	 $test_db) if $prompt;
 
-    my $test_host = (-e $options->{"$d-test-host"}) ?
+    my $test_host = exists($options->{"$d-test-host"}) ?
 	$options->{"$d-test-host"} : ($cfg->{'test_host'} || 'localhost');
     $test_host = prompt
 	("On which host is database $test_db running (hostname, ip address\n" .
@@ -88,14 +88,14 @@ sub QueryDb ($) {
 
     my($test_user, $test_pass);
     if ($driver eq 'mysql') {
-	$test_user = (-e $options->{"$d-test-user"}) ?
+	$test_user = exists($options->{"$d-test-user"}) ?
 	    $options->{"$d-test-user"} : ($cfg->{'test_user'} || "undef");
 	$test_user = prompt
 	    ("User name for connecting to database $test_db?", $test_user)
 		if $prompt;
 	$test_user = undef if $test_user eq 'undef';
 
-	$test_pass = (-e $options->{"$d-test-pass"}) ?
+	$test_pass = exists($options->{"$d-test-pass"}) ?
 	    $options->{"$d-test-pass"} : ($cfg->{'test_pass'} || "undef")
 		if $prompt;
 	$test_pass = prompt

@@ -21,7 +21,7 @@
  *           Fax: +49 7123 / 14892
  *
  *
- *  $Id: bindparam.h,v 1.1.1.1 1999/07/13 08:14:45 joe Exp $
+ *  $Id: bindparam.h,v 1.2 1999/10/08 12:06:21 joe Exp $
  */
 
 /*
@@ -31,25 +31,34 @@
 static int CountParam(char* statement) {
     char* ptr = statement;
     int numParam = 0;
+    char c;
 
-    while (*ptr) {
-        switch (*ptr++) {
+    while (c = *ptr++) {
+        switch (c) {
+#ifdef DBD_MYSQL
+	  case '"':
+#endif
 	  case '\'':
 	    /*
 	     *  Skip string
 	     */
-	    while (*ptr  &&  *ptr != '\'') {
-	        if (*ptr == '\\') {
-		    ++ptr;
-		}
-		if (*ptr) {
-		    ++ptr;
-		}
-	    }
-	    if (*ptr) {
-	        ++ptr;
-	    }
-	    break;
+	    {
+		char end_token = c;
+                while ((c = *ptr)  &&  c != end_token) {
+                    if (c == '\\') {
+		        ++ptr;
+                        if (*ptr) {
+		            ++ptr;
+		        }
+		    } else {
+                        ++ptr;
+                    }
+	        }
+	        if (c) {
+	            ++ptr;
+	        }
+	        break;
+            }
 	  case '?':
 	    ++numParam;
 	    break;
