@@ -1,0 +1,131 @@
+Original-Received: by 
+                   webster.AusWeb.com.au (8.7.5)
+PP-warning: Illegal Received field on preceding line
+Date: Tue, 30 Jul 1996 09:44:04 +1000 (EST)
+From: "David J. Hughes" <bambi@Hughes.com.au>
+X-Sender: bambi@webster.AusWeb.com.au
+To: msql-list@bunyip.com
+Subject: [mSQL] It's Fixed !!!!!!!!
+Mime-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Prev-Sender: owner-msql-list@bunyip.com
+Precedence: bulk
+Reply-To: "David J. Hughes" <bambi@Hughes.com.au>
+Errors-To: owner-msql-list@bunyip.com
+
+
+After sitting here banging my head against the old "missing table" bug
+with my partner in crime Jason <jason@fan.net.au>, we've fixed it !!!!! 
+This is yet another very obscure bug.  So, can it be reproduced?  Yup, once
+you know the problem. 
+
+	o Fill the table cache
+	o Cause a reference to a table that doesn't exist
+	o The oldest cache entry will have the table definition list
+		set to NULL but with the name, DB, and age fields still set
+
+
+We all owe a debt of thanks to Jason as it was his inability to type 
+table names correctly that found the problem :)
+
+
+So, the fix is left as an exercise for the reader ..... 
+
+
+.... Just kidding !!!   ;-)
+
+
+This is against the 1.0.16 sources
+
+	o Edit msqldb.c at line 1400 and add the following after the
+	  line that does
+
+		entry->def = NULL;
+
+	Add the following
+
+		*(entry->DB) = 0;
+		*(entry->table) = 0;
+		entry->age = 0;
+
+
+So, the new code frag looks like
+
+                freeTableDef(entry->def);
+                safeFree(entry->rowBuf);
+                safeFree(entry->keyBuf);
+                entry->def = NULL; 
+                *(entry->DB) = 0;
+                *(entry->table) = 0;
+                entry->age = 0;
+        }       
+
+The last 3 lines are the new ones.
+
+
+If you want to test your installation (and again when it's fixed) the 
+script included at the end of this message will showup the bug.  If you 
+have the bug (as you all currently do) the last relshow will produce an 
+empty table definition.  Once it's fixed you'll get a real output from 
+relshow.
+
+This fix will be in 1.0.17
+
+
+Bambi  -  feeling so happy :)
+...
+
+
+#!/bin/sh
+#
+# To run this script, create a new, empty database called 'test'
+#
+#
+PREFIX=/usr/local/Minerva/bin/ 
+MSQL=${PREFIX}/msql
+RELSHOW=${PREFIX}/relshow
+
+
+#
+# Create 8 tables (there are 8 slots in the cache)
+#
+echo "create table test1 ( foo char(1))\p\g" | $MSQL test
+echo "create table test2 ( foo char(1))\p\g" | $MSQL test
+echo "create table test3 ( foo char(1))\p\g" | $MSQL test
+echo "create table test4 ( foo char(1))\p\g" | $MSQL test
+echo "create table test5 ( foo char(1))\p\g" | $MSQL test
+echo "create table test6 ( foo char(1))\p\g" | $MSQL test
+echo "create table test7 ( foo char(1))\p\g" | $MSQL test
+echo "create table test8 ( foo char(1))\p\g" | $MSQL test
+
+
+#
+# Reference all 8 tables so they will be loaded into the cache (i.e.
+# the cache will be full)
+#
+$RELSHOW test test1
+$RELSHOW test test2
+$RELSHOW test test3
+$RELSHOW test test4
+$RELSHOW test test5
+$RELSHOW test test6
+$RELSHOW test test7
+$RELSHOW test test8
+
+#
+# Reference a table that doesn't exist !!!  This is the key problem
+#
+$RELSHOW test foobaa
+
+#
+# Have a look at the oldest entry in the cache.  Bet you it'll be
+# whacked.
+#
+$RELSHOW test test1
+
+
+--------------------------------------------------------------------------
+To remove yourself from the Mini SQL mailing list send a message containing
+"unsubscribe" to msql-list-request@bunyip.com.  Send a message containing
+"info msql-list" to majordomo@bunyip.com for info on monthly archives of
+the list. For more help, mail owner-msql-list@bunyip.com NOT the msql-list!

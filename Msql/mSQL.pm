@@ -7,7 +7,7 @@
 #   You may distribute under the terms of either the GNU General Public
 #   License or the Artistic License, as specified in the Perl README file.
 
-package DBD::mysql;
+package DBD::mSQL;
 use strict;
 use vars qw(@ISA $VERSION $err $errstr $drh);
 
@@ -16,9 +16,9 @@ use DynaLoader();
 use Carp ();
 @ISA = qw(DynaLoader);
 
-$VERSION = '2.03_05';
+$VERSION = '2.0208';
 
-bootstrap DBD::mysql $VERSION;
+bootstrap DBD::mSQL $VERSION;
 
 
 $err = 0;	# holds error code   for DBI::err
@@ -32,11 +32,11 @@ sub driver{
     $class .= "::dr";
 
     # not a 'my' since we use it above to prevent multiple drivers
-    $drh = DBI::_new_drh($class, { 'Name' => 'mysql',
+    $drh = DBI::_new_drh($class, { 'Name' => 'mSQL',
 				   'Version' => $VERSION,
-				   'Err'    => \$DBD::mysql::err,
-				   'Errstr' => \$DBD::mysql::errstr,
-				   'Attribution' => 'DBD::mysql by Jochen Wiedmann'
+				   'Err'    => \$DBD::mSQL::err,
+				   'Errstr' => \$DBD::mSQL::errstr,
+				   'Attribution' => 'DBD::mSQL by Jochen Wiedmann'
 				 });
 
     $drh;
@@ -59,7 +59,7 @@ sub _OdbcParse($$$) {
 	if ($val =~ /([^=]*)=(.*)/) {
 	    $var = $1;
 	    $val = $2;
-	    if ($var eq 'hostname'  ||  $var eq 'host') {
+	    if ($var eq 'hostname') {
 		$hash->{'host'} = $val;
 	    } elsif ($var eq 'db'  ||  $var eq 'dbname') {
 		$hash->{'database'} = $val;
@@ -85,7 +85,7 @@ sub _OdbcParseHost ($$) {
 }
 
 sub AUTOLOAD {
-    my ($meth) = $DBD::mysql::AUTOLOAD;
+    my ($meth) = $DBD::mSQL::AUTOLOAD;
     my ($smeth) = $meth;
     $smeth =~ s/(.*)\:\://;
 
@@ -98,7 +98,7 @@ sub AUTOLOAD {
 1;
 
 
-package DBD::mysql::dr; # ====== DRIVER ======
+package DBD::mSQL::dr; # ====== DRIVER ======
 use strict;
 
 sub connect {
@@ -118,50 +118,8 @@ sub connect {
 	'password' => $password
     };
 
-    DBD::mysql->_OdbcParse($dsn, $privateAttrHash,
+    DBD::mSQL->_OdbcParse($dsn, $privateAttrHash,
 				  ['database', 'host', 'port']);
-
-    if (my $file = $privateAttrHash->{'mysql_configfile'}) {
-	require Symbol;
-	my $fh = Symbol::gensym();
-	if (!open($fh, "<$file")) {
-	    DBI::set_err($drh, "Unable to open config file $file: $!");
-	    return undef;
-	}
-	my $inSection;
-	while (defined(my $line = <$fh>)) {
-	    if ($line =~ /^\[(.*?)\]/) {
-		if ($inSection) {
-		    last;
-		} elsif ($1 eq 'perl'  ||  $1 eq 'client') {
-		    $inSection = 1;
-		}
-	    } elsif ($line =~ /^\s*(.*?)\s*=\s*(.*?)\s*$/) {
-		my $var = $1; my $val = $2;
-		if ($var eq 'host'  ||  $var eq 'hostname') {
-		    if (!$privateAttrHash->{'host'}) {
-			$privateAttrHash->{'host'} = $val;
-		    }
-		} elsif ($var eq 'password') {
-		    if (!$password) {
-			$password = $privateAttrHash->{'password'} = $val;
-		    }
-		} elsif ($var eq 'port') {
-		    if (!$privateAttrHash->{'port'}) {
-			$privateAttrHash->{'port'} = $val;
-		    }
-		} elsif ($var eq 'socket') {
-		    if (!$privateAttrHash->{'mysql_socket'}) {
-			$privateAttrHash->{'mysql_socket'} = $val;
-		    }
-		} elsif ($var eq 'user') {
-		    if (!$username) {
-			$username = $privateAttrHash->{'user'} = $val;
-		    }
-		}
-	    }
-	}
-    }
 
     if (!defined($this = DBI::_new_dbh($drh, {}, $privateAttrHash))) {
 	return undef;
@@ -169,7 +127,7 @@ sub connect {
 
     # Call msqlConnect func in mSQL.xs file
     # and populate internal handle data.
-    DBD::mysql::db::_login($this, $dsn, $username, $password)
+    DBD::mSQL::db::_login($this, $dsn, $username, $password)
 	  or $this = undef;
     $this;
 }
@@ -179,7 +137,7 @@ sub data_sources {
     my(@dsn) = $self->func('', '_ListDBs');
     my($i);
     for ($i = 0;  $i < @dsn;  $i++) {
-	$dsn[$i] = "DBI:mysql:$dsn[$i]";
+	$dsn[$i] = "DBI:mSQL:$dsn[$i]";
     }
     @dsn;
 }
@@ -189,7 +147,7 @@ sub admin {
     my($command) = shift;
     my($dbname) = ($command eq 'createdb'  ||  $command eq 'dropdb') ?
 	shift : '';
-    my($host, $port) = DBD::mysql->_OdbcParseHost(shift(@_) || '');
+    my($host, $port) = DBD::mSQL->_OdbcParseHost(shift(@_) || '');
     my($user) = shift || '';
     my($password) = shift || '';
 
@@ -204,7 +162,7 @@ sub _CreateDB {
     my($drh) = shift;
     my($host) = (@_ > 1) ? shift : undef;
     my($dbname) = shift;
-    if (!$DBD::mysql::QUIET) {
+    if (!$DBD::mSQL::QUIET) {
 	warn "'_CreateDB' is deprecated, use 'admin' instead";
     }
     $drh->func('createdb', $dbname, $host, 'admin');
@@ -214,24 +172,24 @@ sub _DropDB {
     my($drh) = shift;
     my($host) = (@_ > 1) ? shift : undef;
     my($dbname) = shift;
-    if (!$DBD::mysql::QUIET) {
+    if (!$DBD::mSQL::QUIET) {
 	warn "'DropDB' is deprecated, use 'admin' instead";
     }
     $drh->func('dropdb', $dbname, $host, 'admin');
 }
 
 
-package DBD::mysql::db; # ====== DATABASE ======
+package DBD::mSQL::db; # ====== DATABASE ======
 use strict;
 
-%DBD::mysql::db::db2ANSI = ("INT"   =>  "INTEGER",
+%DBD::mSQL::db::db2ANSI = ("INT"   =>  "INTEGER",
 			   "CHAR"  =>  "CHAR",
 			   "REAL"  =>  "REAL",
 			   "IDENT" =>  "DECIMAL"
                           );
 
 ### ANSI datatype mapping to mSQL datatypes
-%DBD::mysql::db::ANSI2db = ("CHAR"          => "CHAR",
+%DBD::mSQL::db::ANSI2db = ("CHAR"          => "CHAR",
 			   "VARCHAR"       => "CHAR",
 			   "LONGVARCHAR"   => "CHAR",
 			   "NUMERIC"       => "INTEGER",
@@ -259,7 +217,7 @@ sub prepare {
     my $sth = DBI::_new_sth($dbh, {'Statement' => $statement});
 
     # Populate internal handle data.
-    if (!DBD::mysql::st::_prepare($sth, $statement)) {
+    if (!DBD::mSQL::st::_prepare($sth, $statement)) {
 	$sth = undef;
     }
 
@@ -269,18 +227,18 @@ sub prepare {
 sub db2ANSI {
     my $self = shift;
     my $type = shift;
-    return $DBD::mysql::db::db2ANSI{"$type"};
+    return $DBD::mSQL::db::db2ANSI{"$type"};
 }
 
 sub ANSI2db {
     my $self = shift;
     my $type = shift;
-    return $DBD::mysql::db::ANSI2db{"$type"};
+    return $DBD::mSQL::db::ANSI2db{"$type"};
 }
 
 sub _ListFields($$) {
     my($self, $table) = @_;
-    if (!$DBD::mysql::QUIET) {
+    if (!$DBD::mSQL::QUIET) {
 	warn "'_ListFields' is deprecated, use the SQL query 'LISTFIELDS \$table' instead.";
     }
     my($sth) = $self->prepare("LISTFIELDS $table");
@@ -303,45 +261,20 @@ sub _SelectDB ($$) {
     die "_SelectDB is removed from this module; use DBI->connect instead.";
 }
 
-{
-    my $names = ['TABLE_QUALIFIER', 'TABLE_OWNER', 'TABLE_NAME',
-		 'TABLE_TYPE', 'REMARKS'];
 
-    sub table_info ($) {
-	my $dbh = shift;
-	my @tables = map { [ undef, undef, $_, 'TABLE', undef ]
-			 } $dbh->func('_ListTables');
-	my $dbh2;
-	if (!($dbh2 = $dbh->{'~dbd_driver~_sponge_dbh'})) {
-	    $dbh2 = $dbh->{'~dbd_driver~_sponge_dbh'} =
-		DBI->connect("DBI:Sponge:");
-	    if (!$dbh2) {
-	        DBI::set_err($dbh, 1, $DBI::errstr);
-		return undef;
-	    }
-	}
-	my $sth = $dbh2->prepare("LISTTABLES", { 'rows' => \@tables,
-						 'NAMES' => $names });
-	if (!$sth) {
-	    DBI::set_err($sth, $dbh2->err(), $dbh2->errstr());
-	}
-	$sth;
-    }
-}
-
-package DBD::mysql::st; # ====== STATEMENT ======
+package DBD::mSQL::st; # ====== STATEMENT ======
 use strict;
 
 # Just a stub for backward compatibility; use is deprecated
 sub _ListSelectedFields ($) {
-    if (!$DBD::mysql::QUIET) {
+    if (!$DBD::mSQL::QUIET) {
 	warn "_ListSelectedFields is deprecated and superfluos";
     }
     shift;
 }
 
 sub _NumRows ($) {
-    if (!$DBD::mysql::QUIET) {
+    if (!$DBD::mSQL::QUIET) {
 	warn "_NumRows is deprecated, use \$sth->rows instead.";
     }
     shift->rows;
@@ -364,13 +297,12 @@ Interface (DBI)
     $driver = "mSQL"; # or "mSQL1";
     $dsn = "DBI:$driver:database=$database;host=$hostname";
 
-    $dbh = DBI->connect($dsn, undef, undef);
+    $dbh = DBI->connect($dsn,	undef, undef);
 
         or
 
     $driver = "mysql";
-    $dsn = "DBI:$driver:database=$database;host=$hostname;port=$port";
-    if ($compression) { $dsn .= ";mysql_compression=1"; }
+    $dsn = "DBI:$driver:database=$database;$options";
 
     $dbh = DBI->connect($dsn, $user, $password);
 
@@ -399,19 +331,6 @@ Interface (DBI)
     $rc = $dbh->func('reload', 'admin');
 
 
-=head1 EXPERIMENTAL SOFTWARE
-
-This package contains experimental software and should *not* be used
-in a production environment. We are following the Linux convention and
-treat the "even" releases (1.18xx as of this writing, perhaps 1.20xx,
-1.22xx, ... in the future) as stable. Only bug or portability fixes
-will go into these releases.
-
-The "odd" releases (1.19xx as of this writing, perhaps 1.21xx, 1.23xx
-in the future) will be used for testing new features or other serious
-code changes.
-
-
 =head1 DESCRIPTION
 
 <DBD::mysql> and <DBD::mSQL> are the Perl5 Database Interface drivers for
@@ -429,21 +348,20 @@ of the I<Msql-Mysql-modules> package.
 
     $driver = "mSQL";  #  or "mSQL1"
     $dsn = "DBI:$driver:$database";
-    $dsn = "DBI:$driver:database=$database;host=$hostname";
+    $dsn = "DBI:$driver:database=$database;$options";
 
     $dbh = DBI->connect($dsn, undef, undef);
 
         or
 
     $dsn = "DBI:mysql:$database";
-    $dsn = "DBI:mysql:database=$database;host=$hostname";
-    $dsn = "DBI:mysql:database=$database;host=$hostname;port=$port";
-
-    if ($compression) { $dsn .= ";mysql_compression=1"; }
+    $dsn = "DBI:mysql:database=$database;$options";
 
     $dbh = DBI->connect($dsn, $user, $password);
 
 A C<database> must always be specified.
+
+Possible options are, separated by semicolon:
 
 =over 8
 
@@ -461,7 +379,6 @@ argument, by concatenating the I<hostname> and I<port number> together
 separated by a colon ( C<:> ) character or by using the  C<port> argument.
 This doesn't work for mSQL 2: You have to create an alternative config
 file and load it using the msql_configfile attribute, see below.
-
 
 =item msql_configfile
 
@@ -481,6 +398,39 @@ As of MySQL 3.22.3, a new feature is supported: If your DSN contains
 the option "mysql_compression=1", then the communication between client
 and server will be compressed.
 
+=item mysql_read_default_file
+
+=item mysql_read_default_group
+
+These options can be used to read a config file like /etc/my.cnf or
+~/.my.cnf. By default MySQL's C client library doesn't use any config
+files unlike the client programs (mysql, mysqladmin, ...) that do, but
+outside of the C client library. Thus you need to explicitly request
+reading a config file, as in
+
+    $dsn = "DBI:mysql:test;mysql_read_default_file=/home/joe/my.cnf";
+    $dbh = DBI->connect($dsn, $user, $password)
+
+The option mysql_read_default_group can be used to specify the default
+group in the config file: Usually this is the I<client> group, but
+see the following example:
+
+    [perl]
+    host=perlhost
+
+    [client]
+    host=localhost
+
+If you read this config file, then you'll be typically connected to
+I<localhost>. However, by using
+
+    $dsn = "DBI:mysql:test;mysql_read_default_group=perl;"
+        . "mysql_read_default_file=/home/joe/my.cnf";
+    $dbh = DBI->connect($dsn, $user, $password);
+
+you'll be connected to I<perlhost>. See the (missing :-) documentation
+of the C function mysql_options() for details.
+
 =item mysql_socket
 
 As of MySQL 3.21.15, it is possible to choose the Unix socket that is
@@ -494,7 +444,6 @@ location for the socket than that built into the client.
 =back
 
 =back
-
 
 =head2 Private MetaData Methods
 
@@ -580,7 +529,7 @@ and supply the appropriate arguments (host, defaults localhost, user,
 defaults to '' and password, defaults to ''). A driver handle can be
 obtained with
 
-    $drh = DBI->install_driver('mysql');
+    $drh = DBI->install_driver('mSQL');
 
 Otherwise reuse the existing connection of a database handle (dbh).
 
@@ -790,10 +739,10 @@ respectively. See below.
 
 =item mysql_type
 
-A reference to an array of MySQL's native column types, for example
-DBD::mysql::FIELD_TYPE_SHORT() or DBD::mysql::FIELD_TYPE_STRING().
+A reference to an array of mSQL's native column types, for example
+DBD::mSQL::INT_TYPE() or DBD::mSQL::CHAR_TYPE().
 Use the I<TYPE> attribute, if you want portable types like
-DBI::SQL_SMALLINT() or DBI::SQL_VARCHAR().
+DBI::SQL_INTEGER() or DBI::SQL_VARCHAR().
 
 
 =back
@@ -837,7 +786,7 @@ expect them to work in future versions, but they have not yet been scheduled
 for removal and currently they should be usable without any code modifications.
 
 Deprecated attributes and methods will currently issue a warning unless
-you set the variable $DBD::mysql::QUIET to a true value. This will
+you set the variable $DBD::mSQL::QUIET to a true value. This will
 be the same for Msql-Mysql-modules 1.19xx and 1.20xx. They will be silently
 removed in 1.21xx.
 
@@ -934,8 +883,8 @@ Msql-2.0.4 and 2.0.4.1 contain a bug that makes ORDER BY and hence
 the test script C<t/40bindparam> fail. To verify, if this is the
 case for you, do a
 
-	cd Msql
-	perl -w -I../blib/lib -I../blib/arch t/40bindparam.t
+      cd Msql
+      perl -w -I../blib/lib -I../blib/arch t/40bindparam.t
 
 If something is wrong, the script ought to print a number of id's and
 names. If the id's aren't in order, it is likely, that your mSQL has
@@ -967,7 +916,7 @@ current version and all credits and copyright notices are retained (
 the I<AUTHOR> and I<COPYRIGHT> sections ).  Requests for other
 distribution rights, including incorporation into commercial products,
 such as books, magazine articles or CD-ROMs should be made to
-Alligator Descartes <I<descarte@arcana.so.uk>>.
+Alligator Descartes <I<descarte@arcana.co.uk>>.
 
 
 =head1 MAILING LIST SUPPORT

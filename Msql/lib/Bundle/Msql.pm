@@ -2,7 +2,7 @@
 
 package Bundle::Msql;
 
-$VERSION = '1.21_05';
+$VERSION = '1.2008';
 
 1;
 
@@ -21,8 +21,6 @@ C<perl -MCPAN -e 'install Bundle::Msql'>
 DBI
 
 Data::ShowTable
-
-ExtUtils::PerlPP
 
 Msql
 

@@ -1,56 +1,76 @@
-1998-10-23  Jochen Wiedmann  <joe@ispsoft.de> (1.21_05)
+1998-11-07  Jochen Wiedmann  <joe@ispsoft.de> (1.2008)
 
-	* dbd/dbd.xs.in: Fixed bug in $dbh->quote($n, SQL_INTEGER).
+	* dbd/dbdimp.c: Added mysql_read_default_group and
+	  mysql_read_default_file as connect options.
+	* dbd/dbdimp.c: Changed isspace(c) to c == ' ' in
+	  ChopBlanks handling.
+
+1998-10-23  Jochen Wiedmann  <joe@ispsoft.de> (1.2007)
+
+	* Makefile.PL: Oops! Search() was defined twice.
+	* Makefile.PL (InitializeMysql): Added option -static.
+
+1998-10-06  Jochen Wiedmann  <joe@ispsoft.de> (1.2006)
+
 	* Makefile.PL (CheckForLibGcc()): Disabled linking against
 	  libgcc.a under NetBSD. (Curt Sampson, cjs@portal.com)
 	* Forgot to remove the warning for experimental software.
 	* Added Monty's patches for use of mysqlclients.
 	* dbd/dbdimp.c: Added msql_configfile.
-	* Makefile.PL: Added option -static.
-
-1998-10-06  Jochen Wiedmann  <joe@ispsoft.de> (1.21_04)
+	
+1998-10-06  Jochen Wiedmann  <joe@ispsoft.de> (1.2005)
 
 	* INSTALL: Added hints for Win32 installation.
-	* lib/DBD/mysql/Install.pm: Added portability fixes for Win32
-	  installation with MyODBC. This is now the recommended way of
-	  installing DBD::mysql under Win32.
+	* Makefile.PL: Lots of portability fixes for Win32 installation
+	  with MyODBC. This is now the recommended way of installing
+	  DBD::mysql under Win32.
 
-1998-09-27  Jochen Wiedmann  <joe@ispsoft.de> (1.21_02)
+1998-08-31  Jochen Wiedmann  <joe@ispsoft.de> (1.2004)
 
-	* INSTALL: Added a hint for Remote_Access in msql.conf
-	* nodbd/nodbd.pm.in (quote): Made quote a class method; Andreas
-	  König <koenig@anna.mind.de>.
+	* Makefile.PL: Some fixes for Win32.
 	* dbd/myMsql.h (MyReconnect): Fixed $dbh->ping() for MySQL.
 	  My thanks to Nikki Chumakov (nikki@paranoia.ru).
-	* dbd/dbimon.in: Added dump mode.
-	* dbd/dbimon.in: TableList now based on $dbh->tables(), thus
-	  portable.
-	* dbd/dbimon.in: Shell completion with TableList case independent.
-	* tests/60leaks.t: No longer calling exit() within BEGIN.
-	  (Workaround for a bug within Perl 5.00404)
-	* tests/ak-dbd.t: Removed "local $sth->{PrintError} = 0"; yet
-	  another workaround.
+	* nodbd/nodbd.pm.in (quote): Made quote a class method; Andreas
+	  König <koenig@anna.mind.de>.
+	* INSTALL: Added a hint for Remote_Access in msql.conf
 
-1998-07-28  Jochen Wiedmann  <joe@ispsoft.de> (1.21_00)
+1998-08-23  Jochen Wiedmann  <joe@ispsoft.de> (1.2003)
 
-	* INSTALL: Added a description of the missing-libgcc problem.
-	* INSTALL: Added a patch for the mSQL problem with ORDER BY.
-	* dbd/dbd.pm.in: Added a description of mSQL's problem with
-	  ORDER BY.
-	* Fixed pointers to DBI home (was www.hermetica.com, now
-	  www.arcana.co.uk)
-	* lib/DBD/mysql/Install.pm (Initialize): Added
-	  $ENV{'MYSQL_HEADERDIR'} and $ENV{'MYSQL_LIBDIR'}.
-	* dbd/dbdimp.c: mysql_fetch_lengths() returns longs under
-	  MySQL 3.22.04
-	* nodbd/nodbd.pm.in (errno): Fixed missing definition of
-	  $self.
 	* Makefile.PL (InitializeMysql): Looking for libmysqlclient.a
 	  and libmysqlclient.so now.
 	* dbd/dbdimp.c (dbd_st_internal_execute): Fixed memory leak,
 	  *cdaPtr was not checked for <> NULL. My thanks to Marc
 	  Lehmann <pcg@goof.com> for the report.
-	* dbd/dbd.pm.in: Added table_info().
+
+1998-08-17  Jochen Wiedmann  <joe@ispsoft.de> (1.2002)
+
+	* Makefile.PL: Added $ENV{'MYSQL_HEADERDIR'} and
+	  $ENV{'MYSQL_LIBDIR'} for use in mysql distribution.
+	* dbd/dbdimp.c: mysql_fetch_lengths() returns longs under
+	  MySQL 3.22.04.
+	* nodbd/nodbd.pm.in (errno): Fixed missing definition of
+	  $self.
+
+1998-08-16  Jochen Wiedmann  <joe@ispsoft.de> (1.2001)
+
+	* dbd/dbdimp.c (dbd_st_FETCH_internal): Added a forgotten
+	  #ifdef TEXT_TYPE ... #endif around the mSQL 2 types.
+
+1998-08-15  Jochen Wiedmann  <joe@ispsoft.de> (1.2000)
+
+	* dbd/dbd.pm.in (connect): Fixed memory leak by removing the
+	  private_dbd_mysql_attr hash ref.
+	* nodbd/nodbd.pm.in (FETCH): Removed support for
+	  private_dbd_mysql_attr.
+	* nodbd/nodbd.pm.in (DESTROY): Added DESTROY method to prevent
+	  warnings for missing disconnect and/or finish.
+        * INSTALL: Added a description of the missing-libgcc problem.
+        * INSTALL: Added a patch for the mSQL problem with ORDER BY.
+        * Fixed pointers to DBI home (was www.hermetica.com, now
+          www.arcana.co.uk)
+	* dbdimp.c: Added "mysql_socket=..." to the DSN.
+	  My thanks to Orion Poplawski <orion@bvt.com> for this
+	  patch.
 
 1998-07-16  Jochen Wiedmann  <joe@ispsoft.de> (1.19_22)
 
