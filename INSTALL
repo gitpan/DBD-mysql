@@ -88,7 +88,25 @@ b) A simple workaround is to include libgcc.a manually. Do a "make clean"
 	gcc -v
 
 
-2.) Recent versions of mSQL have a bug that appears in the test script
+2.) By default mSQL is installed to allow local access only. This can break
+the test scripts akmisc.t, msql1.t and msql2.t. You might notice a message
+like
+
+  t/akmisc............Can't connect to MSQL server on localhost at
+  t/akmisc.t line 131
+  Cannot connect: Can't connect to MSQL server on localhost
+  It looks as if your server (on localhost) is not up and running.
+  This test requires a running server.
+  Please make sure your server is running and retry.
+  dubious
+  Test returned status 10 (wstat 2560, 0xa00)
+
+If this is the case, try to change the value of "Remote_Access" in
+your msql.conf file to "True". If the value was set intentionally,
+you might restore the old value after the tests ran ok.
+
+
+3.) Recent versions of mSQL have a bug that appears in the test script
 t/40bindparam.t:
 
 > Date: Tue, 14 Jul 1998 00:59:07 +0200 (CEST)

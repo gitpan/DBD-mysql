@@ -17,7 +17,7 @@ use vars qw($QUIET @ISA @EXPORT @EXPORT_OK $VERSION $db_errstr);
 $db_errstr = '';
 $QUIET  = 0;
 @ISA    = qw(DBI); # Inherits Exporter and DynaLoader via DBI
-$VERSION = '1.21_00';
+$VERSION = '1.21_03';
 
 # @EXPORT is a relict from old times...
 @EXPORT = qw(
@@ -121,7 +121,12 @@ sub listtables ($) {
     $self->{'dbh'}->func('_ListTables');
 }
 
-sub quote ($$) { my($self) = shift; $self->{'dbh'}->quote(@_); }
+sub quote ($$) {
+    my($self) = shift;
+    my $obj = (ref($self) && $self->{'dbh'}) ?
+	$self->{'dbh'} : 'DBD::~DBD_DRIVER~::db';
+    $obj->quote(shift);
+}
 
 sub errmsg ($) {
     my $self = shift;

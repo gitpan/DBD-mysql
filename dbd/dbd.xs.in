@@ -302,8 +302,10 @@ ping(dbh)
         int result;
 	D_imp_dbh(dbh);
 #if defined(DBD_MYSQL)
-	result = (mysql_ping(imp_dbh->svsock) == 0)  ||
-	    MyReconnect(imp_dbh->svsock, dbh);
+	result = (mysql_ping(imp_dbh->svsock) == 0);
+	if (!result  &&  MyReconnect(imp_dbh->svsock, dbh)) {
+	    result = (mysql_ping(imp_dbh->svsock) == 0);
+	}
 #elif defined(DBD_MSQL)
 	result = TRUE;
 #endif

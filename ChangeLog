@@ -1,6 +1,14 @@
-1998-08-31  Jochen Wiedmann  <joe@ispsoft.de>
+1998-09-27  Jochen Wiedmann  <joe@ispsoft.de> (1.21_02)
 
-	* dbd/dbdimp.c: Added WSAStartup() call for WIN32.
+	* INSTALL: Added a hint for Remote_Access in msql.conf
+	* nodbd/nodbd.pm.in (quote): Made quote a class method; Andreas
+	  König <koenig@anna.mind.de>.
+	* dbd/myMsql.h (MyReconnect): Fixed $dbh->ping() for MySQL.
+	  My thanks to Nikki Chumakov (nikki@paranoia.ru).
+	* dbd/dbimon.in: Added dump mode.
+	* dbd/dbimon.in: TableList now based on $dbh->tables(), thus
+	  portable.
+	* dbd/dbimon.in: Shell completion with TableList case independent.
 	* tests/60leaks.t: No longer calling exit() within BEGIN.
 	  (Workaround for a bug within Perl 5.00404)
 	* tests/ak-dbd.t: Removed "local $sth->{PrintError} = 0"; yet
