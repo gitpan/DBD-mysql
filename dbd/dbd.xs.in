@@ -32,14 +32,14 @@ _ListDBs(drh, host)
     SV *        drh
     char *	host
   PPCODE:
-#ifdef DBD_MYSQL
+#xtract Mysql
     MYSQL mysql;
     dbh_t sock = &mysql;
     if (dbd_db_connect(sock,host,NULL,NULL)) {
-#else
+#xtract Msql
     dbh_t sock;
     if (dbd_db_connect(&sock,host,NULL,NULL)) {
-#endif
+#endxtract
         result_t res;
         row_t cur;
         res = MyListDbs(sock);
@@ -62,14 +62,14 @@ _CreateDB(drh, host, dbname)
     char *      host
     char *      dbname
     PPCODE:
-#ifdef DBD_MYSQL
+#xtract Mysql
     MYSQL mysql;
     dbh_t sock = &mysql;
     if (dbd_db_connect(sock,host,NULL,NULL)) {
-#else
+#xtract Msql
     dbh_t sock;
     if (dbd_db_connect(&sock,host,NULL,NULL)) {
-#endif
+#endxtract
         if (!MyCreateDb(sock,dbname)) {
             XPUSHs(sv_2mortal((SV*)newSVpv("OK", 2)));
         } else {
@@ -87,14 +87,14 @@ _DropDB(drh, host, dbname)
     char *      host
     char *      dbname
     PPCODE:
-#ifdef DBD_MYSQL
+#xtract Mysql
     MYSQL mysql;
     dbh_t sock = &mysql;
     if (dbd_db_connect(sock,host,NULL,NULL)) {
-#else
+#xtract Msql
     dbh_t sock;
     if (dbd_db_connect(&sock,host,NULL,NULL)) {
-#endif
+#endxtract
         if (MyDropDb(sock,dbname) != -1) {
             XPUSHs(sv_2mortal((SV*)newSVpv("OK", 2)));
         } else {
@@ -110,7 +110,7 @@ MODULE = DBD::~DBD_DRIVER~    PACKAGE = DBD::~DBD_DRIVER~::db
 
 
 
-#ifdef DBD_MYSQL
+#xtract Mysql
 
 int
 _InsertID(dbh)
@@ -124,7 +124,7 @@ _InsertID(dbh)
   OUTPUT:
     RETVAL
 
-#endif
+#endxtract
 
 void
 _ListDBs(dbh)
@@ -151,11 +151,11 @@ _SelectDB(dbh, dbname)
     char *	dbname
     PPCODE:
     D_imp_dbh(dbh);
-#ifdef DBD_MYSQL
+#xtract Mysql
     if (imp_dbh->svsock->net.fd != -1) {
-#else
+#xtract Msql
     if (imp_dbh->svsock != -1) {
-#endif
+#endxtract
         if (MySelectDb(imp_dbh->svsock, dbname) == -1) {
             do_error(dbh, JW_ERR_SELECT_DB, 
 			   MyError(imp_dbh->svsock));

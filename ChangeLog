@@ -1,3 +1,12 @@
+Sat Nov  1 17:04:27 1997  Jochen Wiedmann  <joe@ispsoft.de> (1.1820)
+
+	* xtract: Added "#xtract <driver>" ... "#endxtract".
+
+	* nodbd/statement.pm.in, nodbd/nodbd.pm.in, nodbd/pmsql.in:
+	  Using "#xtract now".
+
+	* Reorganized source tree (again).
+
 Wed Oct 29 00:41:41 1997  Jochen Wiedmann  <joe@ispsoft.de> (1.1819)
 
 	* nodbd/bundle.pm.in: Fixed syntax error.

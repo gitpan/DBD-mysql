@@ -39,8 +39,7 @@ use Data::ShowTable ();
 #
 #   Constants
 #
-my $VERSION = sprintf("%d.%02d%02d%02d",
-		      split(/\./, substr(q$Revision: 1.1 $, 10)));
+my $VERSION = "~NODBD_VERSION~";
 
 my @VALID_VARS = ("escapeChar", "less", "listWrapMargin", "maxTableWidth",
 		  "noEscape", "quoteChar", "sepChar", "showMode");
@@ -72,6 +71,79 @@ my $noEscape        = 0;
 my $quoteChar       = '"';
 my $sepChar         = ';';
 my $showMode        = $Data::ShowTable::Show_Mode;
+
+
+############################################################################
+#
+#   Name:    FormatTypeName, FormatDefaultSize, FormatMaxSize
+#
+#   Purpose: Compatibility kludge for statement attributes missing in
+#            DBI.
+#
+#   Inputs:  $sth - statement handle
+#
+#   Returns: Reference to attribute of values, one for each column
+#
+############################################################################
+
+sub FormatTypeName ($) {
+    my $sth = shift;
+    my ($types, $ref);
+    $@ = '';
+    $ref = eval { $sth->{format_type_name} };
+    if ($@  ||  !$ref) {
+	$@ = '';
+	$types = eval { $sth->{TYPE} };
+	if ($@  ||  !$types) {
+	    my($num) = scalar(@{$sth->{NAME}});
+	    $ref = [];
+	    while ($num--) {
+		push(@$ref, 'char');
+	    }
+	} else {
+	    my ($t, $type);
+	    $ref = [];
+	    while ($t = shift @$types) {
+		my $found = 0;
+		foreach $type (@DBI::sql_types) {
+		    if (defined &{$type}  &&  &{$type}() == $t) {
+			push(@$ref, $type);
+			$found = 1;
+			last;
+		    }
+		}
+		if (!$found) {
+		    push(@$ref, 'char');
+		}
+	    }
+	}
+    }
+    $ref;
+}
+
+sub FormatDefaultSize ($) {
+    my $sth = shift;
+    $@ = '';
+    my $ref = eval { $sth->{format_default_size} };
+    if ($@  ||  !$ref) {
+	$ref = [];
+    }
+    $ref;
+}
+
+sub FormatMaxSize ($) {
+    my $sth = shift;
+    $@ = '';
+    my $ref = eval { $sth->{format_max_size} };
+    if ($@  ||  !$ref) {
+	$@ = '';
+	$ref = eval { $sth->{sol_length} };
+	if ($@  ||  !$ref) {
+	    $ref = [];
+	}
+    }
+    $ref;
+}
 
 
 ############################################################################
@@ -123,7 +195,7 @@ sub Connect (@) {
 	print "Missing datasource name.\n";
 	return undef;
     }
-    if ($ndsn !~ /^DBI:/) {
+    if ($ndsn !~ /^dbi:/i) {
 	$ndsn = "DBI:$ndsn";
     }
 
@@ -149,7 +221,7 @@ sub Connect (@) {
     }
 
     if ($dbh) {
-	if ($ndsn =~ /^DBI\:([^\:]+)\:/) {
+	if ($ndsn =~ /^dbi\:([^\:]+)\:/i) {
 	    $driver = $1;
 	} else {
 	    $driver = undef;
@@ -239,8 +311,8 @@ sub Output ($) {
 	my ($numFields, $titles, $types, $widths);
 	eval {
 	    $titles = $sth->{'NAME'} || [];
-	    $types = $sth->{'format_type_name'} || \('char' x $numFields);
-	    $widths = $sth->{'format_default_size'} || [];
+	    $types = FormatTypeName($sth);
+	    $widths = FormatDefaultSize($sth);
 	};
 	my $row_sub = sub ($) {
 	    if (shift) {
@@ -439,11 +511,11 @@ sub RelShow (;$$) {
 		    ref($ref) eq 'ARRAY') {
 		    $nRef = [@$ref];
 		}
-		if (defined($ref = $sth->{'format_type_name'})  &&
+		if (defined($ref = FormatTypeName($sth))  &&
 		    ref($ref) eq 'ARRAY') {
 		    $tRef = [@$ref];
 		}
-		if (defined($ref = $sth->{'format_max_size'})  &&
+		if (defined($ref = FormatMaxSize($sth))  &&
 		    ref($ref) eq 'ARRAY') {
 		    $lRef = [@$ref];
 		}
@@ -1095,6 +1167,7 @@ dbimon $VERSION Copyright (C) 1997 Jochen Wiedmann
 
 	    # Now for the hard part: Create a table output
 	    Output($sth);
+	    $sth->finish;
 	}
     }
 

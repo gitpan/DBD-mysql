@@ -5,7 +5,7 @@ package Msql::Statement;
 use strict;
 use vars qw($OPTIMIZE $VERSION $AUTOLOAD);
 
-$VERSION = '1.1819';
+$VERSION = '1.1820';
 
 $OPTIMIZE = 0; # controls, which optimization we default to
 
@@ -26,9 +26,7 @@ sub length     { return wantarray ? @{shift->fetchinternal('LENGTH'   )}: shift-
 sub maxlength  {
     my $sth = shift;
     my $result;
-    if ($sth->isa("Mysql::Statement")) {
-	$result = $sth->fetchinternal('MAXLENGTH');
-    } elsif (!($result = $sth->{MAXLENGTH})) {
+    if (!($result = $sth->{MAXLENGTH})) {
 	$result = [];
 	my ($l);
 	for (0..$sth->numfields-1) {
@@ -61,7 +59,7 @@ sub maxlength  {
 sub listindices {
     my($sth) = shift;
     my(@result,$i);
-    if ($sth->isa('Mysql::Statement')  ||  !&Msql::IDX_TYPE) {
+    if (!&Msql::IDX_TYPE) {
 	return ();
     }
     foreach $i (0..$sth->numfields-1) {
@@ -111,8 +109,7 @@ sub as_string {
     }
     for (0..$sth->numfields-1) {
 	$l=length($sth->name->[$_]);
-	if (($sth->optimize  ||  $sth->isa("Mysql::Statement"))  &&
-	    $l < $sth->maxlength->[$_]) {
+	if ($sth->optimize  &&  $l < $sth->maxlength->[$_]) {
 	    $l= $sth->maxlength->[$_];
 	}
 	if (!$sth->isnotnull  &&  $l < 4) {
@@ -133,8 +130,7 @@ sub as_string {
 	    $i = @prow;
 	    $pcol = defined $col ? unctrl($col) : "NULL";
 	    # New in 2.0: a string is longer than it should be
-	    if (!$sth->isa('Mysql::Statement')  &&
-		defined &Msql::TEXT_TYPE  &&
+	    if (defined &Msql::TEXT_TYPE  &&
 		$sth->optimize &&
 		$sth->type->[$i] == &Msql::TEXT_TYPE &&
 		length($pcol) > $sth->length->[$i] + 5
@@ -153,15 +149,3 @@ sub as_string {
 }
 
 1;
-
-sub _leftjustify($$) {
-    my ($self, $type) = @_;
-    if ($self->isa('Mysql::Statement')) {
-	($type == Mysql::FIELD_TYPE_CHAR())
-	|| ($type == Mysql::FIELD_TYPE_STRING())
-        || ($type == Mysql::FIELD_TYPE_VAR_STRING());
-    } else {
-	$type & (&Msql::CHAR_TYPE |
-		 (defined &Msql::TEXT_TYPE ? Msql::TEXT_TYPE() : 0));
-    }
-}

@@ -135,12 +135,12 @@ int dbd_db_login(SV* dbh, imp_dbh_t* imp_dbh, char* dbname, char* user,
     /*
      *  Try to connect
      */
-#ifdef DBD_MYSQL
+#xtract Mysql
     imp_dbh->svsock = &imp_dbh->mysql;
     if (!dbd_db_connect(imp_dbh->svsock, host, user, password)) {
-#else
+#xtract Msql
     if (!dbd_db_connect(&imp_dbh->svsock, host, user, password)) {
-#endif
+#endxtract
 	DO_ERROR(dbh, JW_ERR_CONNECT, imp_dbh->svsock);
 	Safefree(copy);
 	return FALSE;
@@ -670,11 +670,11 @@ int dbd_st_internal_execute(SV* h, SV* statement, SV* attribs, int numParams,
 
 	/** Store the result from the Query */
 	if (!(*cdaPtr = MyStoreResult(svsock))) {
-#ifdef DBD_MYSQL
+#xtract Mysql
 	    return mysql_affected_rows(svsock);
-#else
+#xtract Msql
 	    return -1;
-#endif
+#endxtract
 	}
 
 	return MyNumRows((*cdaPtr));
@@ -728,9 +728,9 @@ int dbd_st_execute(SV* sth, imp_sth_t* imp_sth) {
 						    imp_dbh->svsock))
 	!= -2) {
 	if (!imp_sth->cda) {
-#ifdef DBD_MYSQL
+#xtract Mysql
 	    imp_sth->insertid = mysql_insert_id(imp_dbh->svsock);
-#endif
+#endxtract
 	} else {
 	    /** Store the result in the current statement handle */
 	    DBIc_ACTIVE_on(imp_sth);
@@ -790,9 +790,9 @@ AV* dbd_st_fetch(SV* sth, imp_sth_t* imp_sth) {
     int i;
     AV *av;
     row_t cols;
-#ifdef DBD_MYSQL
+#xtract Mysql
     unsigned int* lengths;
-#endif
+#endxtract
 
     ChopBlanks = DBIc_is(imp_sth, DBIcf_ChopBlanks);
     if (dbis->debug >= 2) {
@@ -806,17 +806,17 @@ AV* dbd_st_fetch(SV* sth, imp_sth_t* imp_sth) {
 
     imp_sth->currow++;
     if (!(cols = MyFetchRow(imp_sth->cda))) {
-#ifdef DBD_MYSQL
+#xtract Mysql
         if (!mysql_eof(imp_sth->cda)) {
 	    D_imp_dbh_from_sth;
 	    DO_ERROR(sth, JW_ERR_FETCH_ROW, imp_dbh->svsock);
 	}
-#endif
+#endxtract
 	return Nullav;
     }
-#ifdef DBD_MYSQL
+#xtract Mysql
     lengths = mysql_fetch_lengths(imp_sth->cda);
-#endif
+#endxtract
     av = DBIS->get_fbav(imp_sth);
     num_fields = AvFILL(av)+1;
 
@@ -825,11 +825,11 @@ AV* dbd_st_fetch(SV* sth, imp_sth_t* imp_sth) {
 	SV *sv = AvARRAY(av)[i]; /* Note: we (re)use the SV in the AV	*/
 
 	if (col) {
-#ifdef DBD_MYSQL
+#xtract Mysql
 	    STRLEN len = lengths[i];
-#else
+#xtract Msql
 	    STRLEN len = strlen(col);
-#endif
+#endxtract
 	    if (ChopBlanks) {
 		while(len && isspace(*col)) {
 		    ++col;
@@ -998,15 +998,15 @@ int dbd_st_STORE_attrib(SV* sth, imp_sth_t* imp_sth, SV* keysv, SV* valuesv) {
 #define IS_KEY(A) (((A) & (PRI_KEY_FLAG | UNIQUE_KEY_FLAG | MULTIPLE_KEY_FLAG)) != 0)
 #endif
 #ifndef IS_NUM
-#ifdef DBD_MYSQL
+#xtract Mysql
 #define IS_NUM(A) ((A) >= (int) FIELD_TYPE_DECIMAL && (A) <= FIELD_TYPE_DATETIME)
-#else
+#xtract Msql
 #ifdef UINT_TYPE
 #define IS_NUM(A) ((A) == INT_TYPE || (A) == REAL_TYPE || (A) == UINT_TYPE)
 #else
 #define IS_NUM(A) ((A) == INT_TYPE || (A) == REAL_TYPE)
 #endif
-#endif
+#endxtract
 #endif
 
 SV* dbd_st_FETCH_internal(SV* sth, int what, result_t res, int cacheit) {
@@ -1074,7 +1074,7 @@ SV* dbd_st_FETCH_internal(SV* sth, int what, result_t res, int cacheit) {
 			int id;
 			const char* name;
 		    } types [] = {
-#ifdef DBD_MYSQL
+#xtract Mysql
 			{ FIELD_TYPE_BLOB, "blob" },
 			{ FIELD_TYPE_CHAR, "char" },
 			{ FIELD_TYPE_DECIMAL, "decimal" },
@@ -1093,21 +1093,33 @@ SV* dbd_st_FETCH_internal(SV* sth, int what, result_t res, int cacheit) {
 			{ FIELD_TYPE_TIMESTAMP, "timestamp" },
 			{ FIELD_TYPE_TIME, "time" },
 			{ FIELD_TYPE_VAR_STRING, "varstring" }
-#else
+#xtract Msql
 			{ INT_TYPE, "int" },
 			{ CHAR_TYPE, "char" },
 			{ REAL_TYPE, "real" },
 			{ IDENT_TYPE, "ident" },
 #ifdef IDX_TYPE
 			{ IDX_TYPE, "index" },
+#endif
+#ifdef TEXT_TYPE
 			{ TEXT_TYPE, "text" },
+#endif
+#ifdef DATE_TYPE
 			{ DATE_TYPE, "date" },
+#endif
+#ifdef UINT_TYPE
 			{ UINT_TYPE, "uint" },
+#endif
+#ifdef MONEY_TYPE
 			{ MONEY_TYPE, "money" },
+#endif
+#ifdef TIME_TYPE
 			{ TIME_TYPE, "time" },
+#endif
+#ifdef SYSVAR_TYPE
 			{ SYSVAR_TYPE, "sys" }
 #endif
-#endif
+#endxtract
 		    };
 		    int i, found = FALSE;
 		    for (i = 0;  i < sizeof(types) / sizeof(struct db_types);
@@ -1124,7 +1136,7 @@ SV* dbd_st_FETCH_internal(SV* sth, int what, result_t res, int cacheit) {
 		    }
 		}
 	        break;
-#ifdef DBD_MYSQL
+#xtract Mysql
 	      case AV_ATTRIB_MAX_LENGTH:
 		sv = newSViv((int) curField->max_length);
 		break;
@@ -1134,7 +1146,7 @@ SV* dbd_st_FETCH_internal(SV* sth, int what, result_t res, int cacheit) {
 	      case AV_ATTRIB_IS_BLOB:
 		sv = boolSV(IS_BLOB(curField->flags));
 		break;
-#endif
+#endxtract
 	    }
 
 	    av_push(av, sv);
@@ -1194,12 +1206,12 @@ SV* dbd_st_FETCH_attrib(SV* sth, imp_sth_t* imp_sth, SV* keysv) {
 	    retsv = ST_FETCH_AV(AV_ATTRIB_IS_PRI_KEY);
 	} else if (strEQ(key, "IS_NOT_NULL")) {
 	    retsv = ST_FETCH_AV(AV_ATTRIB_IS_NOT_NULL);
-#ifdef DBD_MYSQL
+#xtract Mysql
 	} else if (strEQ(key, "IS_KEY")) {
 	    retsv = ST_FETCH_AV(AV_ATTRIB_IS_KEY);
 	} else if (strEQ(key, "IS_BLOB")) {
 	    retsv = ST_FETCH_AV(AV_ATTRIB_IS_BLOB);
-#endif
+#endxtract
 	} else if (strEQ(key, "IS_NUM")) {
 	    retsv = ST_FETCH_AV(AV_ATTRIB_IS_NUM);
 	}
@@ -1212,7 +1224,7 @@ SV* dbd_st_FETCH_attrib(SV* sth, imp_sth_t* imp_sth, SV* keysv) {
 	    retsv = ST_FETCH_AV(AV_ATTRIB_LENGTH);
 	}
 	break;
-#ifdef DBD_MYSQL
+#xtract Mysql
       case 'M':
 	/*
 	 *  Deprecated, use max_length
@@ -1221,7 +1233,7 @@ SV* dbd_st_FETCH_attrib(SV* sth, imp_sth_t* imp_sth, SV* keysv) {
 	    retsv = ST_FETCH_AV(AV_ATTRIB_MAX_LENGTH);
 	}
 	break;
-#endif
+#endxtract
       case 'N':
 	if (strEQ(key, "NAME")) {
 	    retsv = ST_FETCH_AV(AV_ATTRIB_NAME);
@@ -1253,10 +1265,10 @@ SV* dbd_st_FETCH_attrib(SV* sth, imp_sth_t* imp_sth, SV* keysv) {
       case 'f':
 	if (strEQ(key, "format_max_size")) {
 	    retsv = ST_FETCH_AV(AV_ATTRIB_LENGTH);
-#ifdef DBD_MYSQL
+#xtract Mysql
 	} else if (strEQ(key, "format_default_size")) {
 	    retsv = ST_FETCH_AV(AV_ATTRIB_MAX_LENGTH);
-#endif
+#endxtract
 	} else if (strEQ(key, "format_right_justify")) {
 	    retsv = ST_FETCH_AV(AV_ATTRIB_IS_NUM);
 	} else if (strEQ(key, "format_type_name")) {
@@ -1270,12 +1282,12 @@ SV* dbd_st_FETCH_attrib(SV* sth, imp_sth_t* imp_sth, SV* keysv) {
 	    retsv = ST_FETCH_AV(AV_ATTRIB_IS_PRI_KEY);
 	} else if (strEQ(key, "is_not_null")) {
 	    retsv = ST_FETCH_AV(AV_ATTRIB_IS_NOT_NULL);
-#ifdef DBD_MYSQL
+#xtract Mysql
 	} else if (strEQ(key, "is_key")) {
 	    retsv = ST_FETCH_AV(AV_ATTRIB_IS_KEY);
 	} else if (strEQ(key, "is_blob")) {
 	    retsv = ST_FETCH_AV(AV_ATTRIB_IS_BLOB);
-#endif
+#endxtract
 	} else if (strEQ(key, "is_num")) {
 	    retsv = ST_FETCH_AV(AV_ATTRIB_IS_NUM);
 	}
@@ -1285,13 +1297,13 @@ SV* dbd_st_FETCH_attrib(SV* sth, imp_sth_t* imp_sth, SV* keysv) {
 	    retsv = ST_FETCH_AV(AV_ATTRIB_LENGTH);
 	}
 	break;
-#ifdef DBD_MYSQL
+#xtract Mysql
       case 'm':
 	if (strEQ(key, "max_length")) {
 	    retsv = ST_FETCH_AV(AV_ATTRIB_MAX_LENGTH);
 	}
 	break;
-#endif
+#endxtract
       case 'r':
 	/*
 	 * Deprecated, use 'result'

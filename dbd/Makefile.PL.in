@@ -14,9 +14,6 @@ sub config () {
     $hash{'DEFINE'} .= " -DMyConnect=dbd_db_connect";
     $hash{'NAME'} = "DBD::" . $dbd_driver;
     $hash{'VERSION_FROM'} = "../lib/DBD/$dbd_driver.pm";
-    if (-f 'dbimon') {
-	$hash{'EXE_FILES'} = [ 'dbimon' ];
-    }
     $hash{'clean'} = { 'FILES' => '*.xsi' };
     \%hash;
 }
@@ -31,13 +28,28 @@ ExtUtils::MakeMaker::WriteMakefile(
 sub MY::postamble {
     my $pa = "\n";
     my $ref;
-    foreach $ref (@_MY::Config::Files::~DBD_DRIVER~) {
+    foreach $ref
+	(@_MY::Config::Files::~DBD_DRIVER~,
+	 ["../dbd/dbd.xs.in", "~DBD_DRIVER~.xs"],
+	 ["../dbd/dbdimp.c", "dbdimp.c"],
+	 ["../dbd/myMsql.c", "myMsql.c"],
+	 ["../tests/lib.pl", "t/lib.pl"],
+	 ["../tests/00base.t", "t/00base.t"],
+	 ["../tests/10dsnlist.t", "t/10dsnlist.t"],
+	 ["../tests/20createdrop.t", "t/20createdrop.t"],
+	 ["../tests/30insertfetch.t", "t/30insertfetch.t"],
+	 ["../tests/40bindparam.t", "t/40bindparam.t"],
+	 ["../tests/40listfields.t", "t/40listfields.t"],
+	 ["../tests/40nulls.t", "t/40nulls.t"],
+	 ["../tests/40numrows.t", "t/40numrows.t"],
+	 ["../tests/50chopblanks.t", "t/50chopblanks.t"],
+	 ["../tests/50commit.t", "t/50commit.t"],
+	 ["../tests/ak-dbd.t", "t/ak-dbd.t"]) {
 	my($from, $to) = @$ref;
-	$from = "../$from";
-	$to =~ s/DBD-~DBD_DRIVER~\///;
-	$pa .= "$to: $from\n"
-	    . "\tperl ../xtract $from $to ~DRIVER~ ~DBD_DRIVER~"
-	    . " ~NODBD_VERSION~ ~DBD_VERSION~\n\n";
+	$pa .= sprintf("%s: %s Makefile.PL\n"
+		       . "\tperl ../xtract %s %s %s %s %s %s\n\n",
+		       $to, $from, $from, $to, "~DRIVER~", "~DBD_DRIVER~",
+		       "~NODBD_VERSION~", "~DBD_VERSION~");
     }
     $pa = $pa . "\ndbd.xs: ~DBD_DRIVER~.xsi\n\n" . DBI::DBD::dbd_postamble();
 }

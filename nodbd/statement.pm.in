@@ -26,9 +26,10 @@ sub length     { return wantarray ? @{shift->fetchinternal('LENGTH'   )}: shift-
 sub maxlength  {
     my $sth = shift;
     my $result;
-    if ($sth->isa("Mysql::Statement")) {
-	$result = $sth->fetchinternal('MAXLENGTH');
-    } elsif (!($result = $sth->{MAXLENGTH})) {
+#xtract Mysql
+    $result = $sth->fetchinternal('MAXLENGTH');
+#xtract Msql
+    if (!($result = $sth->{MAXLENGTH})) {
 	$result = [];
 	my ($l);
 	for (0..$sth->numfields-1) {
@@ -55,13 +56,17 @@ sub maxlength  {
 	}
 	$sth->{MAXLENGTH} = $result;
     }
+#endxtract
     return wantarray ? @$result : $result;
 }
 
 sub listindices {
     my($sth) = shift;
     my(@result,$i);
-    if ($sth->isa('Mysql::Statement')  ||  !&Msql::IDX_TYPE) {
+#xtract Mysql
+    return ();
+#xtract Msql
+    if (!&Msql::IDX_TYPE) {
 	return ();
     }
     foreach $i (0..$sth->numfields-1) {
@@ -69,6 +74,7 @@ sub listindices {
 	push @result, $sth->name->[$i];
     }
     @result;
+#endxtract
 }
 
 sub AUTOLOAD {
@@ -111,10 +117,15 @@ sub as_string {
     }
     for (0..$sth->numfields-1) {
 	$l=length($sth->name->[$_]);
-	if (($sth->optimize  ||  $sth->isa("Mysql::Statement"))  &&
-	    $l < $sth->maxlength->[$_]) {
+#xtract Mysql
+	if ($l < $sth->maxlength->[$_]) {
 	    $l= $sth->maxlength->[$_];
 	}
+#xtract Msql
+	if ($sth->optimize  &&  $l < $sth->maxlength->[$_]) {
+	    $l= $sth->maxlength->[$_];
+	}
+#endxtract
 	if (!$sth->isnotnull  &&  $l < 4) {
 	    $l = 4;
 	}
@@ -132,9 +143,9 @@ sub as_string {
 	while ($col = shift @row) {
 	    $i = @prow;
 	    $pcol = defined $col ? unctrl($col) : "NULL";
+#xtract Msql
 	    # New in 2.0: a string is longer than it should be
-	    if (!$sth->isa('Mysql::Statement')  &&
-		defined &Msql::TEXT_TYPE  &&
+	    if (defined &Msql::TEXT_TYPE  &&
 		$sth->optimize &&
 		$sth->type->[$i] == &Msql::TEXT_TYPE &&
 		length($pcol) > $sth->length->[$i] + 5
@@ -142,6 +153,7 @@ sub as_string {
 		my $l = length($col);
 		substr($pcol,$sth->length->[$i])="...($l)";
 	    }
+#endxtract
 	    push(@prow, $pcol);
 	}
 	$result .= sprintf $sprintf, @prow;
@@ -153,15 +165,3 @@ sub as_string {
 }
 
 1;
-
-sub _leftjustify($$) {
-    my ($self, $type) = @_;
-    if ($self->isa('Mysql::Statement')) {
-	($type == Mysql::FIELD_TYPE_CHAR())
-	|| ($type == Mysql::FIELD_TYPE_STRING())
-        || ($type == Mysql::FIELD_TYPE_VAR_STRING());
-    } else {
-	$type & (&Msql::CHAR_TYPE |
-		 (defined &Msql::TEXT_TYPE ? Msql::TEXT_TYPE() : 0));
-    }
-}

@@ -17,8 +17,8 @@ require Config;
 require Cwd;
 
 
-my $VERSION = 1.1819;
-my $DBD_VERSION = 2.006;
+my $VERSION = "1.1820";
+my $DBD_VERSION = "2.006";
 
 
 $| = 1;
@@ -61,12 +61,6 @@ if ($@) {
 }
 
 
-my $choosen;
-if (-f ".status") {
-    do ".status";
-}
-$choosen = defined($_MY::Config::Status::choosen)
-    ? $_MY::Config::Status::choosen : 3;
 while (1) {
     my $reply = ExtUtils::MakeMaker::prompt(
         "\n\nWhich DBMS do you want to use?\n\n" .
@@ -95,10 +89,13 @@ $::Verbose++ if $ENV{USER} eq "k";
 
 ExtUtils::MakeMaker::WriteMakefile(
 	      'NAME'         => 'Msql-Mysql-modules',
+	      'EXE_FILES'    => [ 'dbimon' ],
 	      'dist'         => { 'SUFFIX'       => ".gz",
 				  'DIST_DEFAULT' => 'all tardist',
 				  'COMPRESS'     => "gzip -9f" },
-	      'VERSION'      => $VERSION
+	      'VERSION'      => $VERSION,
+	      'realclean'    => 'Mysql/Makefile.PL Msql/Makefile.PL'
+			        . ' DBD-mysql/Makefile.PL DBD-mSQL/Makefile.PL'
 );
 
 
@@ -122,123 +119,56 @@ sub disableMysql { $_MY::Config::enableMysql = 0; }
 
 
 sub MakeDirs () {
-    if ((defined($_MY::Config::Status::enableDbd)  &&
-	 ($_MY::Config::enableDbd == $_MY::Config::Status::enableDbd))  &&
-	(defined($_MY::Config::Status::enableMsql)  &&
-	 ($_MY::Config::enableMsql == $_MY::Config::Status::enableMsql))  &&
-	(defined($_MY::Config::Status::enableMysql)  &&
-	 ($_MY::Config::enableMysql == $_MY::Config::Status::enableMysql))) {
-	return;
-    }
-
-    File::Path::rmtree(["lib"], 0, 0);
-    File::Path::rmtree(["blib"], 0, 0);
-    File::Path::rmtree(["DBD-mSQL"], 0, 0);
-    File::Path::rmtree(["DBD-mysql"], 0, 0);
-    File::Path::rmtree(["Mysql"], 0, 0);
-    File::Path::rmtree(["Msql"], 0, 0);
+    my (@removeList);
 
     if ($_MY::Config::enableMysql) {
 	@_MY::Config::Files::Mysql =
-	    (["nodbd/Makefile.PL.in", "Mysql/Makefile.PL"],
-	     ["nodbd/bundle.pm.in", "lib/Bundle/Mysql.pm"],
-	     ["nodbd/constants.c", "Mysql/constants.c"],
-	     ["dbd/myMsql.c", "Mysql/myMsql.c"],
-	     ["nodbd/nodbd.pm.in", "lib/Mysql.pm"],
-	     ["nodbd/nodbd.xs.in", "Mysql/Mysql.xs"],
-	     ["nodbd/pmsql.in", "Mysql/pmysql"],
-	     ["nodbd/statement.pm.in", "lib/Mysql/Statement.pm"],
-	     ["nodbd/typemap", "Mysql/typemap"],
-	     ["tests/lib.pl", "Mysql/t/lib.pl"],
-	     ["tests/mysql.t", "Mysql/t/mysql.t"],
-	     ["tests/mysql2.t", "Mysql/t/mysql2.t"],
-	     ["tests/akmisc.t", "Mysql/t/akmisc.t"]);
+	    (["nodbd/Makefile.PL.in", "Mysql/Makefile.PL"]);
 
 	if ($_MY::Config::enableDbd) {
 	    @_MY::Config::Files::mysql =
-		(["dbd/Makefile.PL.in", "DBD-mysql/Makefile.PL"],
-		 ["dbd/dbd.pm.in", "lib/DBD/mysql.pm"],
-		 ["dbd/dbd.xs.in", "DBD-mysql/mysql.xs"],
-		 ["dbd/dbdimp.c", "DBD-mysql/dbdimp.c"],
-		 ["dbd/myMsql.c", "DBD-mysql/myMsql.c"],
-		 ["dbd/dbimon.in", "DBD-mysql/dbimon"],
-		 ["tests/lib.pl", "DBD-mysql/t/lib.pl"],
-		 ["tests/00base.t", "DBD-mysql/t/00base.t"],
-		 ["tests/10dsnlist.t", "DBD-mysql/t/10dsnlist.t"],
-		 ["tests/20createdrop.t", "DBD-mysql/t/20createdrop.t"],
-		 ["tests/30insertfetch.t", "DBD-mysql/t/30insertfetch.t"],
-		 ["tests/40bindparam.t", "DBD-mysql/t/40bindparam.t"],
-		 ["tests/40blobs.t", "DBD-mysql/t/40blobs.t"],
-		 ["tests/40listfields.t", "DBD-mysql/t/40listfields.t"],
-		 ["tests/40nulls.t", "DBD-mysql/t/40nulls.t"],
-		 ["tests/40numrows.t", "DBD-mysql/t/40numrows.t"],
-		 ["tests/50chopblanks.t", "DBD-mysql/t/50chopblanks.t"],
-		 ["tests/50commit.t", "DBD-mysql/t/50commit.t"],
-		 ["tests/ak-dbd.t", "DBD-mysql/t/ak-dbd.t"]);
+		(["dbd/Makefile.PL.in", "DBD-mysql/Makefile.PL"]);
+	} else {
+	    push(@removeList, "DBD-mysql/Makefile.PL");
 	}
 	my $ref;
-	print "Extracting files for DBD::mysql and Mysql ...\n";
 	foreach $ref (@_MY::Config::Files::Mysql, @_MY::Config::Files::mysql) {
 	    system sprintf("perl xtract %s %s %s %s %s %s",
 			   $ref->[0], $ref->[1], "Mysql", "mysql", $VERSION,
 			   $DBD_VERSION);
 	}
+    } else {
+	push(@removeList, "Mysql/Makefile.PL", "DBD-mysql/Makefile.PL");
     }
     if ($_MY::Config::enableMsql) {
 	@_MY::Config::Files::Msql =
-	    (["nodbd/Makefile.PL.in", "Msql/Makefile.PL"],
-	     ["nodbd/bundle.pm.in", "lib/Bundle/Msql.pm"],
-	     ["nodbd/constants.c", "Msql/constants.c"],
-	     ["dbd/myMsql.c", "Msql/myMsql.c"],
-	     ["nodbd/nodbd.pm.in", "lib/Msql.pm"],
-	     ["nodbd/nodbd.xs.in", "Msql/Msql.xs"],
-	     ["nodbd/pmsql.in", "Msql/pmsql"],
-	     ["nodbd/statement.pm.in", "lib/Msql/Statement.pm"],
-	     ["nodbd/typemap", "Msql/typemap"],
-	     ["tests/lib.pl", "Msql/t/lib.pl"],
-	     ["tests/msql1.t", "Msql/t/msql1.t"],
-	     ["tests/msql2.t", "Msql/t/msql2.t"],
-	     ["tests/akmisc.t", "Msql/t/akmisc.t"]);
+	    (["nodbd/Makefile.PL.in", "Msql/Makefile.PL"]);
 	if ($_MY::Config::enableDbd) {
 	    @_MY::Config::Files::mSQL =
-		(["dbd/Makefile.PL.in", "DBD-mSQL/Makefile.PL"],
-		 ["dbd/dbd.pm.in", "lib/DBD/mSQL.pm"],
-		 ["dbd/dbd.xs.in", "DBD-mSQL/mSQL.xs"],
-		 ["dbd/dbdimp.c", "DBD-mSQL/dbdimp.c"],
-		 ["dbd/myMsql.c", "DBD-mSQL/myMsql.c"],
-		 ["tests/lib.pl", "DBD-mSQL/t/lib.pl"],
-		 ["tests/00base.t", "DBD-mSQL/t/00base.t"],
-		 ["tests/10dsnlist.t", "DBD-mSQL/t/10dsnlist.t"],
-		 ["tests/20createdrop.t", "DBD-mSQL/t/20createdrop.t"],
-		 ["tests/30insertfetch.t", "DBD-mSQL/t/30insertfetch.t"],
-		 ["tests/40bindparam.t", "DBD-mSQL/t/40bindparam.t"],
-		 ["tests/40listfields.t", "DBD-mSQL/t/40listfields.t"],
-		 ["tests/40nulls.t", "DBD-mSQL/t/40nulls.t"],
-		 ["tests/40numrows.t", "DBD-mSQL/t/40numrows.t"],
-		 ["tests/50chopblanks.t", "DBD-mSQL/t/50chopblanks.t"],
-		 ["tests/50commit.t", "DBD-mSQL/t/50commit.t"],
-		 ["tests/ak-dbd.t", "DBD-mSQL/t/ak-dbd.t"]);
+		(["dbd/Makefile.PL.in", "DBD-mSQL/Makefile.PL"]);
 	    if (!$_MY::Config::enableMysql) {
 		push(@_MY::Config::Files::mSQL,
 		     ["dbd/dbimon.in", "DBD-mSQL/dbimon"]);
 	    }
+	} else {
+	    push(@removeList, "DBD-mSQL/Makefile.PL");
 	}
 	my $ref;
-	print "Extracting files for DBD::mSQL and Msql ...\n";
 	foreach $ref (@_MY::Config::Files::Msql, @_MY::Config::Files::mSQL) {
 	    system sprintf("perl xtract %s %s %s %s %s %s",
 			   $ref->[0], $ref->[1], "Msql", "mSQL", $VERSION,
 			   $DBD_VERSION);
 	}
+    } else {
+	push(@removeList, "Msql/Makefile.PL", "DBD-mSQL/Makefile.PL");
     }
 
-    if (open(OUT, ">./.status")) {
-	print OUT qq{
-\$_MY::Config::Status::choosen = $choosen;
-\$_MY::Config::Status::enableDbd = $_MY::Config::enableDbd;
-\$_MY::Config::Status::enableMysql = $_MY::Config::enableMysql;
-\$_MY::Config::Status::enableMsql = $_MY::Config::enableMsql;
-};
+    my $file;
+    foreach $file (@removeList) {
+	if (-f $file  &&  !unlink $file) {
+	    print STDERR "Cannot remove $file: $!\n";
+	    exit 10;
+	}
     }
 }
 	
@@ -519,4 +449,49 @@ the subdirs lib/ and include/.",$gooddir) || $gooddir # || for 5.002
     $X{NAME} = "Mysql",
     $X{DISTNAME} = "Mysql-modules",
     $_MY::Config::X_Mysql = \%X;
+}
+
+sub MY::postamble {
+    my ($ref, $pa, $from, $to);
+
+    my @mysqlFiles = (["nodbd/bundle.pm.in", "lib/Bundle/Mysql.pm"],
+		      ["nodbd/nodbd.pm.in", "lib/Mysql.pm"],
+		      ["nodbd/statement.pm.in", "lib/Mysql/Statement.pm"],
+		      ["dbd/dbd.pm.in", "lib/DBD/mysql.pm"]);
+    if ($_MY::Config::enableMysql) {
+	push(@mysqlFiles, @_MY::Config::Files::Mysql,
+	     ["dbd/dbimon.in", "dbimon"]);
+	if ($_MY::Config::enableDbd) {
+	    push(@mysqlFiles, @_MY::Config::Files::mysql);
+	}
+    }
+    foreach $ref (@mysqlFiles) {
+	($from, $to) = @$ref;
+	$pa .= sprintf("%s: %s Makefile.PL\n"
+		       . "\tperl xtract %s %s %s %s %s %s\n\n",
+		       $to, $from, $from, $to, "Mysql", "mysql",
+		       $VERSION, $DBD_VERSION);
+    }
+
+    my @msqlFiles = (["nodbd/bundle.pm.in", "lib/Bundle/Msql.pm"],
+		     ["nodbd/nodbd.pm.in", "lib/Msql.pm"],
+		     ["nodbd/statement.pm.in", "lib/Msql/Statement.pm"],
+		     ["dbd/dbd.pm.in", "lib/DBD/mSQL.pm"]);
+    if ($_MY::Config::enableMsql) {
+	push(@msqlFiles, @_MY::Config::Files::Msql);
+	if (!$_MY::Config::enableMysql) {
+	    push(@msqlFiles, ["dbd/dbimon.in", "dbimon"]);
+	}
+	if ($_MY::Config::enableDbd) {
+	    push(@msqlFiles, @_MY::Config::Files::mSQL);
+	}
+    }
+    foreach $ref (@msqlFiles) {
+	($from, $to) = @$ref;
+	$pa .= sprintf("%s: %s Makefile.PL\n"
+		       . "\tperl xtract %s %s %s %s %s %s\n\n",
+		       $to, $from, $from, $to, "Msql", "mSQL",
+		       $VERSION, $DBD_VERSION);
+    }
+    $pa;
 }

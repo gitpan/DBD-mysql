@@ -5,7 +5,7 @@ package Mysql::Statement;
 use strict;
 use vars qw($OPTIMIZE $VERSION $AUTOLOAD);
 
-$VERSION = '1.1819';
+$VERSION = '1.1820';
 
 $OPTIMIZE = 0; # controls, which optimization we default to
 
@@ -26,49 +26,14 @@ sub length     { return wantarray ? @{shift->fetchinternal('LENGTH'   )}: shift-
 sub maxlength  {
     my $sth = shift;
     my $result;
-    if ($sth->isa("Mysql::Statement")) {
-	$result = $sth->fetchinternal('MAXLENGTH');
-    } elsif (!($result = $sth->{MAXLENGTH})) {
-	$result = [];
-	my ($l);
-	for (0..$sth->numfields-1) {
-	    $$result[$_] = 0;
-	}
-	$sth->dataseek(0);
-	my($col, @row, $i);
-	while (@row = $sth->fetchrow) {
-	    $i = 0;
-	    while ($col = shift @row) {
-		my($s) = defined $col ? unctrl($col) : "NULL";
-		# New in 2.0: a string is longer than it should be
-		if (defined &Msql::TEXT_TYPE  &&
-		    $sth->type->[$i] == &Msql::TEXT_TYPE &&
-		    length($s) > $sth->length->[$i] + 5) {
-		    my $l = length($col);
-		    substr($s,$sth->length->[$i]) = "...($l)";
-		}
-		if (length($s) > $$result[$i]) {
-		    $$result[$i] = length($s);
-		}
-		++$i;
-	    }
-	}
-	$sth->{MAXLENGTH} = $result;
-    }
+    $result = $sth->fetchinternal('MAXLENGTH');
     return wantarray ? @$result : $result;
 }
 
 sub listindices {
     my($sth) = shift;
     my(@result,$i);
-    if ($sth->isa('Mysql::Statement')  ||  !&Msql::IDX_TYPE) {
-	return ();
-    }
-    foreach $i (0..$sth->numfields-1) {
-	next unless $sth->type->[$i] == &Msql::IDX_TYPE;
-	push @result, $sth->name->[$i];
-    }
-    @result;
+    return ();
 }
 
 sub AUTOLOAD {
@@ -111,8 +76,7 @@ sub as_string {
     }
     for (0..$sth->numfields-1) {
 	$l=length($sth->name->[$_]);
-	if (($sth->optimize  ||  $sth->isa("Mysql::Statement"))  &&
-	    $l < $sth->maxlength->[$_]) {
+	if ($l < $sth->maxlength->[$_]) {
 	    $l= $sth->maxlength->[$_];
 	}
 	if (!$sth->isnotnull  &&  $l < 4) {
@@ -132,16 +96,6 @@ sub as_string {
 	while ($col = shift @row) {
 	    $i = @prow;
 	    $pcol = defined $col ? unctrl($col) : "NULL";
-	    # New in 2.0: a string is longer than it should be
-	    if (!$sth->isa('Mysql::Statement')  &&
-		defined &Msql::TEXT_TYPE  &&
-		$sth->optimize &&
-		$sth->type->[$i] == &Msql::TEXT_TYPE &&
-		length($pcol) > $sth->length->[$i] + 5
-		) {
-		my $l = length($col);
-		substr($pcol,$sth->length->[$i])="...($l)";
-	    }
 	    push(@prow, $pcol);
 	}
 	$result .= sprintf $sprintf, @prow;
@@ -153,15 +107,3 @@ sub as_string {
 }
 
 1;
-
-sub _leftjustify($$) {
-    my ($self, $type) = @_;
-    if ($self->isa('Mysql::Statement')) {
-	($type == Mysql::FIELD_TYPE_CHAR())
-	|| ($type == Mysql::FIELD_TYPE_STRING())
-        || ($type == Mysql::FIELD_TYPE_VAR_STRING());
-    } else {
-	$type & (&Msql::CHAR_TYPE |
-		 (defined &Msql::TEXT_TYPE ? Msql::TEXT_TYPE() : 0));
-    }
-}

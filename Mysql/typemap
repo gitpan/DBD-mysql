@@ -1,0 +1,18 @@
+# $Header: /home/joe/cvs/Mysql-modules/MysqlPerl/typemap,v 1.18.12.1 1997/09/27 14:32:42 joe Exp $ 
+
+TYPEMAP
+my_dbh_t		T_DBH
+my_sth_t		T_STH
+
+INPUT
+T_DBH
+	if (sv_isa($arg, (char*) Package))
+	    $var = (HV*)SvRV($arg);
+	else
+	    croak(\"$var is not of type %s\", Package)
+
+T_STH
+	if (sv_isa($arg, (char*) StPackage))
+	    $var = (HV*)SvRV($arg);
+	else
+	    croak(\"$var is not of type %s\", StPackage)

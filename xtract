@@ -8,6 +8,7 @@ require File::Path;
 
 sub Extract ($$$$$$) {
     my($from, $to, $driver, $dbd_driver, $version, $dbd_version) = @_;
+    my($on) = 1;
 	
     my $dir = File::Basename::dirname($to);
     if (!(-d $dir)  &&  !File::Path::mkpath([$dir], 0, 0755)) {
@@ -21,7 +22,13 @@ sub Extract ($$$$$$) {
     my ($line, $contents);
     $contents = '';
     while (defined($line = <IN>)) {
-	$contents .= $line;
+	if ($line =~ /^\#xtract\s+(\S+)\s*$/) {
+	    $on = $1 eq $driver;
+	} elsif ($line =~ /^\#endxtract\s*/) {
+	    $on = 1;
+	} elsif ($on) {
+	    $contents .= $line;
+	}
     }
     close IN;
 

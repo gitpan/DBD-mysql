@@ -48,9 +48,9 @@ sub quote	{
     my $trunc = shift;
     substr($str,$trunc) = '' if defined $trunc and $trunc > 0 and length($str) > $trunc;
     $str =~ s/([\\\'])/\\$1/g;
-    if ($self->isa('Mysql')) {
-	$str =~ s/\0/\\0/g;
-    }
+#xtract Mysql
+    $str =~ s/\0/\\0/g;
+#endxtract
     "'$str'";
 }
 

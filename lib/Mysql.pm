@@ -9,7 +9,7 @@ require Mysql::Statement;
 $QUIET  = $QUIET  = '';
 @ISA    = @ISA    = '';
 @EXPORT = @EXPORT = '';
-$VERSION = '1.1819';
+$VERSION = '1.1820';
 
 $QUIET = 0;
 
@@ -48,9 +48,7 @@ sub quote	{
     my $trunc = shift;
     substr($str,$trunc) = '' if defined $trunc and $trunc > 0 and length($str) > $trunc;
     $str =~ s/([\\\'])/\\$1/g;
-    if ($self->isa('Mysql')) {
-	$str =~ s/\0/\\0/g;
-    }
+    $str =~ s/\0/\\0/g;
     "'$str'";
 }
 
