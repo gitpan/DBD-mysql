@@ -49,17 +49,14 @@
  *               a socket number (msql)
  *           host - the host to connect to, a value "host:port" is
  *               valid
+ *           port - port number (as string)
  *           user - user name to connect as; ignored for msql
  *           password - passwort to connect with; ignored for mysql
  *
  *  Returns: TRUE for success, FALSE otherwise; you have to call
  *           do_error in the latter case.
  *
- *  Bugs:    The mysql version uses the undocumented mysql_port
- *           variable, but this was suggested by Monty, so I
- *           assume it is safe.
- *
- *           The msql version needs to set the environment
+ *  Bugs:    The msql version needs to set the environment
  *           variable MSQL_TCP_PORT. There's absolutely no
  *           portable way of setting environment variables
  *           from within C: Neither setenv() nor putenv()
@@ -68,50 +65,80 @@
  *           and my_setenv() instead, let's hope, this is safe.
  *
  *           Another problem was pointed out by Andreas:
- *           Both versions aren't thread safe. We'll have
- *           fun with perl 5.005 ... :-)
+ *           This isn't thread safe. We'll have fun with perl
+ *           5.005 ... :-)
  *
  **************************************************************************/
 
-#ifdef DBD_MSQL
-int MyConnect(dbh_t* sock, char* dsn, char* user, char* password) {
-#else
-int MyConnect(dbh_t sock, char* dsn, char* user, char* password) {
-#endif
-    char* copy;
-    char* host = NULL;
-    char* port = NULL;
-    int portNr;
+typedef struct pArg {
+    char* argName;
+    char** argPtr;
+} pArg_t;
 
-    if (dsn) {
-        if (!(copy = malloc(strlen(dsn)+1))) {
-	    return FALSE;
-	}
-	strcpy(copy, dsn);
 
-	while (copy && *copy) {
-	    char* next = strchr(copy, ':');
-	    if (!next) {
-	        next = strchr(copy, ';');
-	    }
-	    if (next) {
-	        *next++ = '\0';
-	    }
+static int OdbcParse(char* dsn, char** copy, pArg_t* args) {
+    char* ptr;
+    char* arg;
+    pArg_t* argPtr;
 
-	    if (strncmp(copy, "hostname=", 9) == 0) {
-	        host = copy+9;
-	    } else if (strncmp(copy, "port=", 5) == 0) {
-	        port = copy+5;
-	    } else {
-	        if (!host) {
-		    host = copy;
-		} else if (!port) {
-		    port = copy;
-		}
+    *copy = NULL;
+    if (!dsn) {
+        return TRUE;  /*  No parsing required  */
+    }
+
+    /*
+     *  Parse the DSN
+     */
+    for (ptr = dsn;  *ptr;  ++ptr) {
+        if (*ptr == '='  ||  *ptr == ':'  ||  *ptr == ';') {
+	    if (!(*copy = (char*) malloc(strlen(dsn)+1))) {
+	        return FALSE;
 	    }
-	    copy = next;
+	    strcpy(*copy, dsn);
+	    break;
 	}
     }
+
+    if (!*copy) {
+        return TRUE;  /*  No parsing required  */
+    }
+
+    for (argPtr = args;  argPtr->argName;  ++argPtr) {
+        *argPtr->argPtr = NULL;
+    }
+
+    arg = *copy;
+    while (*arg) {
+        char* var = NULL;
+	char* val = arg;
+	while (*arg  &&  *arg != ';'  &&  *arg != ':') {
+	    if (*arg == '=') {
+	        var = val;
+		*arg++ = '\0';
+		val = arg;
+	    } else {
+	        ++arg;
+	    }
+	}
+	if (*arg) {
+	    *arg++ = '\0';
+	}
+	
+	for (argPtr = args;  argPtr->argName;  ++argPtr) {
+	    if ((!var  &&  !(*argPtr->argPtr))  ||
+		(var  &&  strEQ(var, argPtr->argName))) {
+	        *argPtr->argPtr = val;
+	    }
+	    break;
+	}
+    }
+    return TRUE;
+}
+		     
+
+static int MyInternalConnect(dbh_connect_t sock, char* host, char* port,
+			     char* user, char* password) {
+    int portNr;
 
     if (host && !*host) host = NULL;
     if (port && *port) {
@@ -174,4 +201,115 @@ int MyConnect(dbh_t sock, char* dsn, char* user, char* password) {
 	return (*sock == -1) ? FALSE : TRUE;
     }
 #endif
+}
+
+
+static pArg_t myConnectArgs[] = {
+    { "hostname", NULL },
+    { "port", NULL },
+    { NULL, NULL }
+};
+
+
+int MyConnect(dbh_connect_t sock, char* host, char* user, char* password) {
+    char* copy = NULL;
+    char* port = NULL;
+
+    myConnectArgs[0].argPtr = &host;
+    myConnectArgs[1].argPtr = &port;
+    if (!OdbcParse(host, &copy, myConnectArgs)) {
+        return FALSE;
+    }
+
+    /*
+     *  Try to connect
+     */
+    if (!MyInternalConnect(sock, host, port, user, password)) {
+        if (copy) {
+	    free(copy);
+	}
+	return FALSE;
+    }
+
+    return TRUE;
+}
+
+
+/***************************************************************************
+ *
+ *  Name:    MyLogin
+ *
+ *  Purpose: Called from the DBI driver for connecting to a database;
+ *           the main difference to MyConnect is that it includes
+ *           selecting a database
+ *
+ *  Input:   sock - pointer where to store the MYSQL pointer being
+ *               initialized (mysql) or to an integer where to store
+ *               a socket number (msql)
+ *           dsn - DSN string; preferrably ODBC syntax
+ *           user - user name to connect as; ignored for msql
+ *           password - passwort to connect with; ignored for mysql
+ *
+ *  Returns: TRUE for success, FALSE otherwise; you have to call
+ *           do_error in the latter case.
+ *
+ **************************************************************************/
+
+static pArg_t myLoginArgs[] = {
+    { "database", NULL },
+    { "hostname", NULL },
+    { "port", NULL },
+    { NULL, NULL }
+};
+
+
+int MyLogin(dbh_connect_t sock, char* dbname, char* user, char* password) {
+    char* copy = NULL;
+    char* host = NULL;
+    char* port = NULL;
+
+    myLoginArgs[0].argPtr = &dbname;
+    myLoginArgs[1].argPtr = &host;
+    myLoginArgs[2].argPtr = &port;
+    if (!OdbcParse(dbname, &copy, myLoginArgs)) {
+        return FALSE;
+    }
+    if (!dbname) {
+        dbname = "";
+    }
+
+    /*
+     *  Try to connect
+     */
+    if (!MyInternalConnect(sock, host, port, user, password)) {
+        if (copy) {
+	    free(copy);
+	}
+    }
+
+    /*
+     *  Connected, now try to login
+     */
+#xtract Mysql
+    if (MySelectDb(sock, dbname)) {
+        if (copy) {
+	    free(copy);
+	}
+	MyClose(sock);
+	return FALSE;
+    }
+#xtract Msql
+    if (MySelectDb(*sock, dbname)) {
+        if (copy) {
+	    free(copy);
+	}
+	MyClose(*sock);
+	return FALSE;
+    }
+#endxtract
+
+    if (copy) {
+        free(copy);
+    }
+    return TRUE;
 }

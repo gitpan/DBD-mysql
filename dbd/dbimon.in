@@ -2,25 +2,38 @@
 #
 #   dbimon - DBI monitor
 #
+#   Copyright (C) 1997, 1998: Jochen Wiedmann
 #
-#   Author and Copyright (c) 1997:  Jochen Wiedmann
-#                                   Am Eisteich 9
-#                                   72555 Metzingen
-#                                   Germany
 #
-#                                   Email: joe@ispsoft.de
-#                                   Phone: +49 7123 14887
+#   This program implements a simple SQL shell. You can enter queries via
+#   a comfortable ReadLine interface and retrieve result tables in different
+#   output modes:
+#
+#   Author:  Jochen Wiedmann
+#            Am Eisteich 9
+#            72555 Metzingen
+#            Germany
+#
+#            Email: joe@ispsoft.de
+#            Phone: +49 7123 14887
 #
 #   dbimon is based on pmsql, which is
 #
 #   Copyright 1994-1997  Andreas König
 #
-#   You may distribute this under the terms of either the GNU General Public
-#   License or the Artistic License, as specified in the Perl README file,
-#   with the exception that it cannot be placed on a CD-ROM or similar media
-#   for commercial distribution without the prior approval of the author.
+#   This program is free software; you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published by
+#   the Free Software Foundation; either version 2 of the License, or
+#   (at your option) any later version.
 #
-#   $Id: dbimon.PL 1.1 Tue, 30 Sep 1997 01:28:08 +0200 joe $
+#   This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#   GNU General Public License for more details.
+#
+#   You should have received a copy of the GNU General Public License
+#   along with this program; if not, write to the Free Software
+#   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
 ############################################################################
 #
@@ -438,13 +451,15 @@ sub FieldList($$;$) {
 	if ($dsn ne $rdsn) {
 	    my $ndbh = DBI->connect($rdsn, $user, $password);
 	    if ($ndbh) {
-		$sth = $ndbh->func($table, "_ListFields");
+		$sth = $ndbh->prepare("LISTFIELDS $table");
+		$sth->execute;
 		($sth, $ndbh);
 	    } else {
 		(undef);
 	    }
 	} else {
-	    $sth = $dbh->func($table, "_ListFields");
+	    $sth = $dbh->prepare($table, "LISTFIELDS $table");
+	    $sth->execute;
 	    ($sth);
 	}
     };
@@ -564,6 +579,7 @@ sub RelShow (;$$) {
     }
 
     if ($ndbh) {
+	undef $sth;
 	$ndbh->disconnect;
     }
 }
@@ -1383,7 +1399,7 @@ argument.
 
 Lists the tables of the dsn corresponding to I<$dbh>.
 
-=item C<$sth = $dbh-E<gt>func($table, '_ListFields')>
+=item C<$sth = $dbh-E<gt>prepare("LISTFIELDS $table")>
 
 Returns a statement handle describing the fields of a table. This could,
 for example, be implemented by a
@@ -1403,4 +1419,3 @@ not come with the perl distribution but are available from CPAN (see
 http://www.perl.com/CPAN).
 
 See L<pmsql (1)>, L<DBI (3)>, L<Term::ReadKey (3)>, L<Term::ReadLine (3)>,
-

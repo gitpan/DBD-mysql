@@ -113,55 +113,25 @@ void do_warn(SV* h, int rc, char* what) {
  *           been called in the latter case
  *
  **************************************************************************/
+
 int dbd_db_login(SV* dbh, imp_dbh_t* imp_dbh, char* dbname, char* user,
 		 char* password) {
-    char* copy = NULL;
-    char* host = NULL;
-    char* ptr;
-
     if (dbis->debug >= 2)
         fprintf(DBILOGFP, "imp_dbh->connect: dsn = %s, uid = %s, pwd = %s\n",
 	       dbname ? dbname : "NULL",
 	       user ? user : "NULL",
 	       password ? password : "NULL");
 
-    /*
-     *  dbname may be "db:host" or "db;host"
-     */
-    if ((ptr = strchr(dbname, ':'))  ||  (ptr = strchr(dbname, ';'))) {
-        int len = ptr-dbname;
-	copy = (char*) malloc(strlen(dbname)+1);
-	strcpy(copy, dbname);
-	dbname = copy;
-	host = dbname + len;
-	*host++ = '\0';
-    }
-
-    /*
-     *  Try to connect
-     */
+#xtract Msql
+    if (!MyLogin(&imp_dbh->svsock, dbname, user, password)) {
 #xtract Mysql
     imp_dbh->svsock = &imp_dbh->mysql;
-    if (!dbd_db_connect(imp_dbh->svsock, host, user, password)) {
-#xtract Msql
-    if (!dbd_db_connect(&imp_dbh->svsock, host, user, password)) {
+    if (!MyLogin(imp_dbh->svsock, dbname, user, password)) {
 #endxtract
-	DO_ERROR(dbh, JW_ERR_CONNECT, imp_dbh->svsock);
-	if (copy) free(copy);
+	DO_ERROR(dbh, MyErrno(imp_dbh->svsock, JW_ERR_CONNECT),
+		 imp_dbh->svsock);
 	return FALSE;
     }
-
-    /*
-     *  Connected, now try to login
-     */
-    if (MySelectDb(imp_dbh->svsock, dbname)) {
-        if (copy) free(copy);
-	DO_ERROR(dbh, JW_ERR_SELECT_DB, imp_dbh->svsock);
-	MyClose(imp_dbh->svsock);
-	return FALSE;
-    }
-
-    if (copy) free(copy);
 
     /*
      *  Tell DBI, that dbh->disconnect should be called for this handle
@@ -477,59 +447,117 @@ int dbd_st_internal_execute(SV* h, SV* statement, SV* attribs, int numParams,
 	&&  tolower(sbuf[0]) == 'l'
 	&&  tolower(sbuf[1]) == 'i'
 	&&  tolower(sbuf[2]) == 's'
-	&&  tolower(sbuf[3]) == 't'
-	&&  tolower(sbuf[4]) == 'f'
-	&&  tolower(sbuf[5]) == 'i'
-	&&  tolower(sbuf[6]) == 'e'
-	&&  tolower(sbuf[7]) == 'l'
-	&&  tolower(sbuf[8]) == 'd'
-	&&  tolower(sbuf[9]) == 's') {
-	char* table;
+	&&  tolower(sbuf[3]) == 't') {
+        if (slen >= 11
+	    &&  tolower(sbuf[4]) == 'f'
+	    &&  tolower(sbuf[5]) == 'i'
+	    &&  tolower(sbuf[6]) == 'e'
+	    &&  tolower(sbuf[7]) == 'l'
+	    &&  tolower(sbuf[8]) == 'd'
+	    &&  tolower(sbuf[9]) == 's'
+	    &&  isspace(sbuf[10])) {
+	    char* table;
 
-	while (slen && !isspace(*sbuf)) { --slen;  ++sbuf; }
-	while (slen && isspace(*sbuf)) { --slen;  ++sbuf; }
+	    slen -= 10;
+	    sbuf += 10;
+	    while (slen && isspace(*sbuf)) { --slen;  ++sbuf; }
 
-	if (!slen) {
-	    do_error(h, JW_ERR_QUERY, "Missing table name");
-	    return -2;
-	}
+	    if (!slen) {
+	        do_error(h, JW_ERR_QUERY, "Missing table name");
+		return -2;
+	    }
 
-	if (!(table = malloc(slen+1))) {
-	    do_error(h, JW_ERR_MEM, "Out of memory");
-	    return -2;
-	}
-	strncpy(table, sbuf, slen);
-	table[slen] = '\0';
-	*cdaPtr = MyListFields(svsock, sbuf);
-	free(table);
+	    if (!(table = malloc(slen+1))) {
+	        do_error(h, JW_ERR_MEM, "Out of memory");
+		return -2;
+	    }
+	    strncpy(table, sbuf, slen);
+	    sbuf = table;
+	    while (slen && !isspace(*sbuf)) { --slen;  ++sbuf; }
+	    *sbuf++ = '\0';
 
-	if (!(*cdaPtr)) {
-	    DO_ERROR(h, JW_ERR_LIST_FIELDS, svsock);
-	    return -2;
-	}
+	    *cdaPtr = MyListFields(svsock, table);
+	    free(table);
 
-	return 0;
-    } else {
-	if (MyQuery(svsock, sbuf, slen) == -1) {
-	    Safefree(salloc);
-	    DO_ERROR(h, JW_ERR_QUERY, svsock);
-	    return -2;
-	}
-	Safefree(salloc);
+	    if (!(*cdaPtr)) {
+	        DO_ERROR(h, JW_ERR_LIST_FIELDS, svsock);
+		return -2;
+	    }
 
-	/** Store the result from the Query */
-#xtract Mysql
-	if (!(*cdaPtr = (use_mysql_use_result ?
-		 mysql_use_result(svsock) : mysql_store_result(svsock)))) {
-	    return mysql_affected_rows(svsock);
+	    return 0;
 #xtract Msql
-	if (!(*cdaPtr = MyStoreResult(svsock))) {
-	    return -1;
+	} else if (tolower(sbuf[4]) == 'i'
+		   &&  tolower(sbuf[5]) == 'n'
+		   &&  tolower(sbuf[6]) == 'd'
+		   &&  tolower(sbuf[7]) == 'e'
+		   &&  tolower(sbuf[8]) == 'x'
+		   &&  isspace(sbuf[9])) {
+	    char* table;
+	    char* index;
+
+	    slen -= 9;
+	    sbuf += 9;
+
+	    while (slen && isspace(*sbuf)) { --slen;  ++sbuf; }
+	    if (!slen) {
+	        do_error(h, JW_ERR_QUERY, "Missing table name");
+		return -2;
+	    }
+	    if (!(table = malloc(slen+1))) {
+	        do_error(h, JW_ERR_MEM, "Out of memory");
+		return -2;
+	    }
+	    strncpy(table, sbuf, slen);
+	    sbuf = table;
+
+	    while (slen && !isspace(*sbuf)) { --slen;  ++sbuf; }
+	    if (slen) {
+	        *sbuf++ = '\0';
+		--slen;
+	    }
+	    while (slen && isspace(*sbuf)) { --slen;  ++sbuf; }
+	    if (!slen) {
+	        do_error(h, JW_ERR_QUERY, "Missing index name");
+		free(table);
+		return -2;
+	    }
+	    index = sbuf;
+	    while (slen && !isspace(*sbuf)) { --slen;  ++sbuf; }
+	    *sbuf++ = '\0';
+
+	    *cdaPtr = msqlListIndex(svsock, table, index);
+	    free(table);
+	    if (!(*cdaPtr)) {
+	        DO_ERROR(h, JW_ERR_LIST_INDEX, svsock);
+		return -2;
+	    }
+
+	    return 0;
 #endxtract
 	}
-
-	return MyNumRows((*cdaPtr));
     }
+
+    if ((MyQuery(svsock, sbuf, slen) == -1)  &&
+	(!MyReconnect(svsock, h)
+	 ||	 (MyQuery(svsock, sbuf, slen) == -1))) {
+        Safefree(salloc);
+	DO_ERROR(h, JW_ERR_QUERY, svsock);
+	return -2;
+    }
+    Safefree(salloc);
+
+    /** Store the result from the Query */
+#xtract Mysql
+    if (!(*cdaPtr = (use_mysql_use_result ?
+		     mysql_use_result(svsock) : mysql_store_result(svsock)))) {
+        return mysql_affected_rows(svsock);
+#xtract Msql
+    if (!(*cdaPtr = MyStoreResult(svsock))) {
+        return -1;
+#endxtract
+    }
+
+    return MyNumRows((*cdaPtr));
 }
 
 
@@ -665,6 +693,7 @@ AV* dbd_st_fetch(SV* sth, imp_sth_t* imp_sth) {
 	    DO_ERROR(sth, JW_ERR_FETCH_ROW, imp_dbh->svsock);
 	}
 #endxtract
+        dbd_st_finish(sth, imp_sth);
 	return Nullav;
     }
 #xtract Mysql
@@ -858,7 +887,7 @@ int dbd_st_STORE_attrib(SV* sth, imp_sth_t* imp_sth, SV* keysv, SV* valuesv) {
 #endif
 
 SV* dbd_st_FETCH_internal(SV* sth, int what, result_t res, int cacheit) {
-    imp_sth_t* imp_sth;
+    D_imp_sth(sth);
     AV *av = Nullav;
     field_t curField;
 
@@ -871,8 +900,7 @@ SV* dbd_st_FETCH_internal(SV* sth, int what, result_t res, int cacheit) {
     /*
      *  Return cached value, if possible
      */
-    } else if (cacheit  &&
-	       (imp_sth = (imp_sth_t*) DBIh_COM(sth))->av_attr[what]) {
+    } else if (cacheit  &&  imp_sth->av_attr[what]) {
 	av = imp_sth->av_attr[what];
 
     /*
@@ -970,6 +998,8 @@ SV* dbd_st_FETCH_internal(SV* sth, int what, result_t res, int cacheit) {
 #endxtract
 		    };
 		    int i, found = FALSE;
+
+		    sv = &sv_undef;
 		    for (i = 0;  i < sizeof(types) / sizeof(struct db_types);
 			 i++) {
 			if (curField->type == types[i].id) {
@@ -1155,9 +1185,6 @@ SV* dbd_st_FETCH_attrib(SV* sth, imp_sth_t* imp_sth, SV* keysv) {
 	break;
 #endxtract
       case 'r':
-	/*
-	 * Deprecated, use 'result'
-	 */
 	if (strEQ(key, "result")) {
 	    retsv = sv_2mortal(newSViv((IV) imp_sth->cda));
 	}
@@ -1265,3 +1292,64 @@ int dbd_bind_ph (SV *sth, imp_sth_t *imp_sth, SV *param, SV *value,
 
     return BindParam(&imp_sth->params[paramNum - 1], value, sql_type);
 }
+
+
+#xtract Mysql
+
+/***************************************************************************
+ *
+ *  Name:    MysqlReconnect
+ *
+ *  Purpose: If the server has disconnected, try to reconnect.
+ *
+ *  Input:   h - database or statement handle
+ *
+ *  Returns: TRUE for success, FALSE otherwise
+ *
+ **************************************************************************/
+
+int MysqlReconnect(SV* h) {
+    D_imp_xxh(h);
+    imp_dbh_t* imp_dbh;
+    SV* sv;
+    HV* hv;
+    SV** svp;
+    SV* dbname;
+    SV* user;
+    SV* password;
+
+    if (DBIc_TYPE(imp_xxh) == DBIt_ST) {
+        imp_dbh = (imp_dbh_t*) DBIc_PARENT_COM(imp_xxh);
+	h = DBIc_PARENT_H(imp_xxh);
+    } else {
+        imp_dbh = (imp_dbh_t*) imp_xxh;
+    }
+
+    sv = DBIc_IMP_DATA(imp_dbh);
+    if (!sv  ||  !SvROK(sv)  ||  SvTYPE(SvRV(sv)) != SVt_PVHV) {
+        return FALSE;
+    }
+
+    hv = (HV*) SvRV(sv);
+    if (!(svp = hv_fetch(hv, "dsn", 3, FALSE))) {
+        return FALSE;
+    }
+    dbname = *svp;
+    if (!(svp = hv_fetch(hv, "user", 4, FALSE))) {
+        return FALSE;
+    }
+    user = *svp;
+    if (!(svp = hv_fetch(hv, "password", 8, FALSE))) {
+        return FALSE;
+    }
+    password = *svp;
+    if (!MyLogin(imp_dbh->svsock, SvPV(dbname,na), SvPV(user,na),
+		 SvPV(password,na))) {
+	DO_ERROR(h, MyErrno(imp_dbh->svsock, JW_ERR_CONNECT),
+		 imp_dbh->svsock);
+	return FALSE;
+    }
+    return TRUE;
+}
+
+#endxtract

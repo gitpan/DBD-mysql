@@ -1,8 +1,13 @@
 #!/usr/bin/perl -w
 
 BEGIN {
-    do ((-f "lib.pl") ? "lib.pl" : "t/lib.pl");
-    if ($mdriver ne "mSQL" && $mdriver ne "mSQL1") {
+    foreach $file ("lib.pl", "t/lib.pl", "~DRIVER~/t/lib.pl") {
+	if (-f $file) {
+	    do $file;
+	    last;
+	}
+    }
+    if (!$mdriver || ($mdriver ne "mSQL" && $mdriver ne "mSQL1")) {
 	print "1..0\n"; exit 0;
     }
     $| = 1;
