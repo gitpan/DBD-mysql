@@ -1,3 +1,15 @@
+2001-12-27  Jochen Wiedmann  <joe@ispsoft.de> (2.1007)
+
+	* Bumped version number in Mysql.pm to 1.24, so that
+	  it is always higher than that from the Msql-Mysql-
+	  modules.
+
+2001-12-27  Jochen Wiedmann  <joe@ispsoft.de> (2.1006)
+
+	* Within AutoCommit mode, reconnect is now turned
+	  off, because the transaction state is unpredictable
+	  otherwise.
+
 2001-12-13  Jochen Wiedmann  <joe@ispsoft.de> (2.1005)
 
 	* dbdimp.c: Added use of SvMAGICAL to dbd_db_quote.
