@@ -17,7 +17,7 @@
  *           Fax: +49 7123 / 14892
  *
  *
- *  $Id: dbdimp.c,v 1.1.1.1.2.4 1999/01/19 12:23:07 joe Exp $
+ *  $Id: dbdimp.c,v 1.1.1.1.2.5 1999/01/26 18:56:58 joe Exp $
  */
 
 
@@ -418,7 +418,7 @@ void do_warn(SV* h, int rc, char* what) {
 }
 #define doquietwarn(s)                                            \
     {                                                             \
-        SV* sv = perl_get_sv("DBD::~dbd_driver~::QUIET", FALSE);  \
+        SV* sv = perl_get_sv("DBD::~~dbd_driver~~::QUIET", FALSE);  \
         if (!sv  ||  !SvTRUE(sv)) {                               \
 	    warn s;                                               \
 	}                                                         \
@@ -2101,8 +2101,8 @@ AV* dbd_db_type_info_all(SV* dbh, imp_dbh_t* imp_dbh) {
 	"LOCAL_TYPE_NAME",
 	"MINIMUM_SCALE",
 	"MAXIMUM_SCALE",
-	"~lc_dbd_driver~_native_type",
-	"~lc_dbd_driver~_is_num"
+	"~~lc_dbd_driver~~_native_type",
+	"~~lc_dbd_driver~~_is_num"
     };
 
     hv = newHV();

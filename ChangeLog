@@ -1,3 +1,12 @@
+1999-01-25  Jochen Wiedmann  <joe@ispsoft.de> (1.21_15)
+
+	* dbd/myMsql.h: mSQL 2.0.6 requires including common/
+	  portability.h.
+	* dbd/dbdimp.c: Fixed some instances of ~var~ to ~~var~~.
+	* Makefile.PL: Added PREREQ_PM to WriteMakefile options.
+	* Renamed Bundle::M(y)sql to Bundle::DBD::mysql and
+	  Bundle::DBD::mSQL.
+
 1999-01-05  Jochen Wiedmann  <joe@ispsoft.de> (1.21_13)
 
 	* nodbd/nodbd.pm.in (query): Now setting $db_errstr
@@ -399,7 +408,7 @@ Fri Oct 24 01:29:08 1997  Jochen Wiedmann  <joe@ispsoft.de> (1.1816)
 	* lib/Msql/Statement.pm: Fixed use of Msql::TEXT_TYPE without
 	  checking whether we are running Msql 1.
 
-$Id: ChangeLog,v 1.1.1.1.2.6 1999/01/19 12:23:04 joe Exp $
+$Id: ChangeLog,v 1.1.1.1.2.8 1999/01/26 18:56:56 joe Exp $
 
 DBD::mysql for DBI - Written by Jochen Wiedmann <joe@ispsoft.de>
 

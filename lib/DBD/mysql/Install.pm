@@ -42,6 +42,7 @@ sub new {
 	'test_user'     => $old->{'test_user'}    ||  undef,
 	'test_pass'     => $old->{'test_pass'}    ||  undef,
 	'files'         => {
+	    'dbd/bundle.pm.in'      => 'mysql/lib/Bundle/DBD/mysql.pm',
 	    'dbd/dbdimp.c'          => 'mysql/dbdimp.c',
 	    'dbd/dbd.xs.in'         => 'mysql/mysql.xs',
 	    'dbd/dbd.pm.in'         => 'mysql/lib/DBD/mysql.pm',
@@ -66,7 +67,6 @@ sub new {
 	    'tests/akmisc.t'        => 'mysql/t/akmisc.t',
 	    'tests/mysql.t'         => 'mysql/t/mysql.t',
 	    'tests/mysql2.t'        => 'mysql/t/mysql2.t',
-	    'nodbd/bundle.pm.in'    => 'mysql/lib/Bundle/Mysql.pm',
 	    'nodbd/nodbd.pm.in'     => 'mysql/lib/Mysql.pm',
 	    'nodbd/statement.pm.in' => 'mysql/lib/Mysql/Statement.pm',
 	    'nodbd/pmsql.in'        => 'mysql/pmysql'

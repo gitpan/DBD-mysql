@@ -1,8 +1,8 @@
 # -*- perl -*-
 
-package Bundle::Msql;
+package Bundle::DBD::mSQL;
 
-$VERSION = '1.21_13';
+$VERSION = '2.03_15';
 
 1;
 
@@ -10,11 +10,11 @@ __END__
 
 =head1 NAME
 
-Bundle::Msql - A bundle to install Perl drivers for mSQL or MySQL
+Bundle::DBD::mSQL - A bundle to install Perl drivers for mSQL or MySQL
 
 =head1 SYNOPSIS
 
-C<perl -MCPAN -e 'install Bundle::Msql'>
+C<perl -MCPAN -e 'install Bundle::DBD::mSQL'>
 
 =head1 CONTENTS
 

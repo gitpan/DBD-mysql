@@ -44,6 +44,7 @@ sub new {
 	'test_user'     => $old->{'test_user'}    ||  undef,
 	'test_pass'     => $old->{'test_pass'}    ||  undef,
 	'files'         => {
+	    'dbd/bundle.pm.in'      => 'mSQL1/lib/Bundle/DBD/mSQL1.pm',
 	    'dbd/dbdimp.c'          => 'mSQL1/dbdimp.c',
 	    'dbd/dbd.xs.in'         => 'mSQL1/mSQL1.xs',
 	    'dbd/dbd.pm.in'         => 'mSQL1/lib/DBD/mSQL1.pm',
@@ -68,7 +69,6 @@ sub new {
 	    'tests/akmisc.t'        => 'mSQL1/t/akmisc.t',
 	    'tests/msql1.t'         => 'mSQL1/t/msql1.t',
 	    'tests/msql2.t'         => 'mSQL1/t/msql2.t',
-	    'nodbd/bundle.pm.in'    => 'mSQL1/lib/Bundle/Msql1.pm',
 	    'nodbd/nodbd.pm.in'     => 'mSQL1/lib/Msql1.pm',
 	    'nodbd/statement.pm.in' => 'mSQL1/lib/Msql1/Statement.pm',
 	    }

@@ -5,7 +5,7 @@
 #  You may distribute this under the terms of either the GNU General Public
 #  License or the Artistic License, as specified in the Perl README file.
 #
-#  $Id: Makefile.PL,v 1.1.1.1.2.4 1999/01/05 22:43:37 joe Exp $
+#  $Id: Makefile.PL,v 1.1.1.1.2.5 1999/01/26 18:56:56 joe Exp $
 #
 BEGIN {require 5.004;}
 use strict;
@@ -18,8 +18,8 @@ use lib "lib";
 
 use vars qw($VERSION $DBD_VERSION $options);
 
-$VERSION = "1.21_14";
-$DBD_VERSION = "2.03_14";
+$VERSION = "1.21_15";
+$DBD_VERSION = "2.03_15";
 
 $options = {};
 
@@ -411,6 +411,7 @@ CFG_FILE
 	$opts{'AUTHOR'} = 'Jochen Wiedmann (joe@ispsoft.de)';
 	$opts{'ABSTRACT'} =
 	    'mSQL and MySQL drivers for the Perl5 Database Interface (DBI)';
+	$opts{'PREREQ_PM'} = { 'DBI' => 1.02 };
     }
     ExtUtils::MakeMaker::WriteMakefile(%opts);
 }

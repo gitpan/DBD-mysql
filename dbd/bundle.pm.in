@@ -1,8 +1,8 @@
 # -*- perl -*-
 
-package Bundle::~~nodbd_driver~~;
+package Bundle::DBD::~~dbd_driver~~;
 
-$VERSION = '~~nodbd_version~~';
+$VERSION = '~~dbd_version~~';
 
 1;
 
@@ -10,11 +10,11 @@ __END__
 
 =head1 NAME
 
-Bundle::~~nodbd_driver~~ - A bundle to install Perl drivers for mSQL or MySQL
+Bundle::DBD::~~dbd_driver~~ - A bundle to install Perl drivers for mSQL or MySQL
 
 =head1 SYNOPSIS
 
-C<perl -MCPAN -e 'install Bundle::~~nodbd_driver~~'>
+C<perl -MCPAN -e 'install Bundle::DBD::~~dbd_driver~~'>
 
 =head1 CONTENTS
 
