@@ -2,6 +2,7 @@ ChangeLog		History file
 FAQ.msql		FAQ for msql users
 INSTALL
 MANIFEST
+MANIFEST.SKIP
 Makefile.PL
 README
 Mysql/lib/Bundle/Mysql.pm	These are only distributed because PAUSE needs
@@ -15,7 +16,6 @@ Msql/mSQL.pm
 dbd/Acknowledgements
 dbd/Changes
 dbd/Makefile.PL.in	Makefile generator for DBI drivers
-dbd/README
 dbd/bindparam.h
 dbd/constants.h
 dbd/dbd.pm.in

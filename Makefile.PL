@@ -21,8 +21,8 @@ use lib ".";
 
 use vars qw($MyConfig $VERSION $DBD_VERSION);
 
-$VERSION = "1.2009";
-$DBD_VERSION = "2.0209";
+$VERSION = "1.2010";
+$DBD_VERSION = "2.0210";
 
 
 my %options;
@@ -322,9 +322,16 @@ sub InitializeMysql ($) {
     } else {
 	my @searchpath;
 	if ($^O =~ /mswin32/i) {
-	    @searchpath = qw(lib/mysqlclient.lib lib_release/mysqlclient.lib
-			     lib_debug/mysqlclient.lib lib/lib.lib
-			     lib_release/lib.lib lib_debug/lib.lib);
+	    @searchpath = qw(lib/opt/mysqlclient.lib
+			     lib_release/mysqlclient.lib
+			     lib/mysqlclient.lib
+			     lib/debug/mysqlclient.lib
+			     lib_debug/mysqlclient.lib
+			     lib/opt/lib.lib
+			     lib_release/lib.lib 
+			     lib/lib.lib
+			     lib/debug/lib.lib
+			     lib_debug/lib.lib);
 	} else {
 	    @searchpath = qw(lib/mysql/libmysqlclient.a
 			     lib/libmysqlclient.a
@@ -342,11 +349,13 @@ sub InitializeMysql ($) {
 
     # List the libraries we're linking with (ADESC)
     my $sysliblist;
+    my $extra_libs = '';
+    my $final_libs = '';
     if ($options{'static'}) {
 	if ($libfilename !~ /\.a/) {
 	    die "Option -static given, but no static libmysqlclient.a found";
 	}
-	$cfg->{'Mysql'}->{'EXTRA_LIBS'} = $libfilename;
+	$extra_libs .= " $libfilename";
 	$MY::LIBS = $libfilename;
     } else {
 	$sysliblist = "-L$libdir -lmysqlclient";
@@ -355,8 +364,9 @@ sub InitializeMysql ($) {
     my $linkwith = "";
     my $defines = "-DDBD_MYSQL -DMyConnect=mysql_dr_connect"
 	. " -DMyLogin=mysql_dr_login";
-    if ($Config::Config{osname} eq 'sco_sv') {
-	# Some extra libraries need added for SCO
+    if ($Config::Config{osname} eq 'sco_sv'  ||
+	$Config::Config{osname} eq 'svr4') {
+	# Some extra libraries need added for SCO and Unixware
 	$sysliblist .= " -lc";
     } elsif ($Config::Config{osname} eq 'solaris') {
 	# We need to link with -R if we're on Solaris.......Brain-damaged....
@@ -387,18 +397,24 @@ sub InitializeMysql ($) {
 	    # Looks like we're using MyODBC ...
 	    $defines .= " -D__WIN32__";
 	    $sysliblist =~ s/-lmysqlclient/-llib/;
-	    $sysliblist .= " -lmysys -lstrings -lzlib";
+	    $sysliblist .= " -lmysys -lstrings";
 	}
-
+	if (-f "$libdir/zlib.lib") {
+	    $sysliblist .= " -lzlib";
+	}
 	# For some reasons libs.lib is not linked against msvcrt.lib
 	# with VC++ ...
 	if ($Config::Config{libs} =~ /\bmsvcrt\.lib\b/ &&
 	    $Config::Config{libs} !~ /\blibc.lib\b/) {
 	    $sysliblist .= " -lmsvcrt -lc";
+	  } elsif ($Config::Config{libs} =~ /\bPerlCRT\.lib\b/) {
+	    $final_libs .= " libc.lib";
 	}
     }
 
     $sysliblist .= CheckForLibGcc();
+    $cfg->{'Mysql'}->{'EXTRA_LIBS'} = $extra_libs;
+    $cfg->{'Mysql'}->{'FINAL_LIBS'} = $final_libs;
 
     my(@headerfiles) = ("$headerdir/mysql.h");
     $X{dynamic_lib} = { OTHERLDFLAGS => "-L$libdir $linkwith" };
@@ -925,6 +941,7 @@ if ($ExtUtils::MakeMaker::VERSION >= 5.43) {
     $opts{ABSTRACT} =
 	'mSQL and MySQL drivers for the Perl5 Database Interface (DBI)';
     $opts{AUTHOR} = 'Jochen Wiedmann (joe@ispsoft.de)';
+    $opts{CAPI} = 'TRUE' if $Config::Config{archname} =~ /-object\b/i;
 }
 
 ExtUtils::MakeMaker::WriteMakefile(%opts);

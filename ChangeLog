@@ -1,3 +1,10 @@
+1998-11-20  Jochen Wiedmann  <joe@ispsoft.de> (1.2010)
+
+	* Makefile.PL (InitializeMysql): Added -lc on Unixware; thanks to
+	  Orion Poplawski <orion@bvt.com>.
+	* Makefile.PL (InitializeMysql): Added -lzlib on Win32.
+	* Some patches for compatibility to ActiveState Perl.
+
 1998-11-08  Jochen Wiedmann  <joe@ispsoft.de> (1.2009)
 
 	* dbd/dbdimp.c: Portability fix; wasn't compilable with MySQL

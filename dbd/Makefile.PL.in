@@ -20,7 +20,9 @@ $hash{'OBJECT'} = '$(O_FILES)';
 $hash{'VERSION'} = $MyConfig->{'DBD_VERSION'};
 $hash{'clean'} = { 'FILES' => '*.xsi' };
 $hash{'PMLIBDIRS'} = $MyConfig->{"install_${lcDriver}perl"} ? ["lib"] : [];
-
+if ($ExtUtils::MakeMaker::VERSION >= 5.43) {
+    $hash{'CAPI'} = 'TRUE' if $Config::Config{'archname'} =~ /-object\b/i;
+}
 ExtUtils::MakeMaker::WriteMakefile(%hash);
 
 
@@ -89,6 +91,9 @@ sub const_loadlibs {
     my $str = $self->SUPER::const_loadlibs(@_);
     if (my $el = $::MyCfg->{'EXTRA_LIBS'}) {
 	$str =~ s/((?:EXTRALIBS|LDLOADLIBS)\s+=\s+)/$1$el /sg;
+    }
+    if (my $fl = $::MyCfg->{'FINAL_LIBS'}) {
+        $str =~ s/((?:EXTRALIBS|LDLOADLIBS)\s+=\s+.*?)(\r?\n)/$1 $fl$2/sg;
     }
     $str;
 }
