@@ -2,7 +2,7 @@
 
 package Bundle::DBD::mysql;
 
-$VERSION = '2.0403';
+$VERSION = '2.0406';
 
 1;
 

@@ -917,7 +917,7 @@ sub complete_table_or_field {
 	     $line =~ /^insert\s.*into\s+(\w+)/i) {
 	my $table = $1;
 	if ($table) {
-	    my $sth = FieldList($dsn, $table);
+	    my($sth) = FieldList($dsn, $table); # Needs array mode
 	    if ($sth) {
 		my $names = $sth->{'NAME'};
 		if (ref($names) eq 'ARRAY') {

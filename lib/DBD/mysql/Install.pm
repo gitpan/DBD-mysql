@@ -6,12 +6,15 @@
 
 use strict;
 
-require Config;
-require File::Basename;
-require ExtUtils::MakeMaker;
-
+use Config ();
+use File::Basename ();
+use ExtUtils::MakeMaker ();
+use Symbol ();
 
 package DBD::mysql::Install;
+
+eval { require File::Spec };
+my $haveFileSpec = $@ ? 0 : 1;
 
 
 sub new {
@@ -343,6 +346,35 @@ sub Initialize ($$) {
 	($libdir, $gooddir, $libfile)
 	    = $self->SearchLibs($options, \@gooddirs, \@mysqldirs,
 				\@searchpath);
+    }
+
+    # Try to guess the MySQL version by looking into version.h
+    my $version_path = $haveFileSpec ?
+	File::Spec->catfile($headerdir, "mysql_version.h")
+	: "$headerdir/mysql_version.h";
+    my $fh = Symbol::gensym();
+    my($major, $minor, $patchlevel);
+    if (open($fh, "<$version_path")) {
+	while (defined(my $line = <$fh>)) {
+	    if ($line =~ /^\s*\#define\s+MYSQL_VERSION_ID\s+
+                         (\d+)(\d\d)(\d\d)/x) {
+		($major, $minor, $patchlevel) = ($1, $2, $3);
+		last;
+	    }
+	}
+	undef $fh;
+    }
+    if (!$major  or  $major < 3  or  $major == 3 and $minor < 22) {
+	print STDERR ("\n\nYou seem to be running ",
+		      defined($major) ? "an unknown MySQL version" :
+		      "MySQL version $major.$minor.$patchlevel",
+		      ".\n",
+		      "This version of MySQL is suitable for MySQL 3.22 and",
+		      " later only.\n",
+		      "Either upgrade your MySQL version or downgrade the",
+		      " Msql-Mysql-modules\n",
+		      "to 1.20 or lower.\n");
+	exit 1;
     }
 
     my $sysliblist;

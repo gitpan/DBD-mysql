@@ -1,3 +1,10 @@
+1999-08-29  Jochen Wiedmann  <joe@ispsoft.de> (1.2206)
+
+	* dbd/dbimon.in: Fixed a bug in tab completion. (FieldList was
+	  used in scalar context). Thanks to "Scott R. Every" <scott@emji.net>
+	* lib/DBD/mysql/Install.pm (Initialize): Now checking for MySQL
+	  version 3.22 or later.
+
 1999-08-22  Jochen Wiedmann  <joe@ispsoft.de>
 
 	* lib/DBD/mysql/Install.pm (Initialize): Added sco\d+* to the list
@@ -442,7 +449,7 @@ Fri Oct 24 01:29:08 1997  Jochen Wiedmann  <joe@ispsoft.de> (1.1816)
 	* lib/Msql/Statement.pm: Fixed use of Msql::TEXT_TYPE without
 	  checking whether we are running Msql 1.
 
-$Id: ChangeLog,v 1.5 1999/08/22 13:58:22 joe Exp $
+$Id: ChangeLog,v 1.6 1999/08/29 18:39:57 joe Exp $
 
 DBD::mysql for DBI - Written by Jochen Wiedmann <joe@ispsoft.de>
 
