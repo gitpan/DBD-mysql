@@ -562,7 +562,7 @@ if (~DRIVER~::int___type() == INT_TYPE) {
 # Let's create another table where we inspect if we can insert
 # 8 bit characters:
 
-$query = "create table $firsttable (ascii int, chrctr char(1))";
+$query = "create table $firsttable (ascii int, chrctr char(2))";
 $dbh->query($query) or test_error;
 my $nchar;
 for $nchar (1..255) {

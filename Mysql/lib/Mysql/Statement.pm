@@ -7,7 +7,7 @@ package Mysql::Statement;
 use strict;
 use vars qw($VERSION $AUTOLOAD);
 
-$VERSION = '1.2017';
+$VERSION = '1.2018';
 
 sub fetchrow ($) {
     my $self = shift;
@@ -63,7 +63,7 @@ sub length ($) { shift->arrAttr('length') }
 sub maxlength  {
     my $sth = shift;
     my $result;
-    $result = $sth->fetchinternal('msql_maxlength');
+    $result = $sth->arrAttr('max_length');
     return wantarray ? @$result : $result;
 }
 
@@ -104,7 +104,7 @@ sub as_string {
 	return '';
     }
     for (0..$sth->numfields-1) {
-	$l=CORE::length($sth->name->[$_]);
+	$l = CORE::length($sth->name->[$_]);
 	if ($l < $sth->maxlength->[$_]) {
 	    $l= $sth->maxlength->[$_];
 	}

@@ -708,7 +708,7 @@ while (Testing()) {
     # Let's create another table where we inspect if we can insert
     # 8 bit characters:
 
-    $query = "create table $firsttable (ascii int, chr char(1))";
+    $query = "create table $firsttable (ascii int, chr char(2))";
     Test($state or $dbh->query($query))
 	or test_error($dbh,0,$query);
 

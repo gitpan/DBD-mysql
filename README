@@ -1,267 +1,983 @@
-The code in this package is
+NAME
+    DBD::mSQL / DBD::mysql - mSQL and mysql drivers for the Perl5 Database
+    Interface (DBI)
 
-Copyright (c) 1997 Jochen Wiedmann <joe@ispsoft.de>
+SYNOPSIS
+        use DBI;
 
-some older parts, in particular the Msql::Statement and Mysql::Statement
-modules are
+        $driver = "mSQL"; # or "mSQL1";
+        $dsn = "DBI:$driver:database=$database;host=$hostname";
 
-Copyright (c) 1994-1997 Andreas König <a.koenig@mind.de>
+        $dbh = DBI->connect($dsn,   undef, undef);
 
-and may be used, copied and redistributed under the same terms as perl
-(see the files README, Copying and Artistic in the perl distribution).
+            or
 
+        $driver = "mysql";
+        $dsn = "DBI:$driver:database=$database;$options";
 
-Where to get it
----------------
+        $dbh = DBI->connect($dsn, $user, $password);
 
-The easiest way to find this package is within the CPAN. Go to your
-next CPAN host into the directory modules/01modules.index.html and you
-should find it in there. If you don't know what CPAN is, learn about
-it at http://www.perl.com/CPAN/.
+        $drh = DBI->install_driver("mysql");
+        @databases = $drh->func($host, $port, '_ListDBs');
+        @tables = $dbh->func( '_ListTables' );
 
+        $sth = $dbh->prepare("SELECT * FROM foo WHERE bla");
+           or
+        $sth = $dbh->prepare("LISTFIELDS $table");
+           or
+        $sth = $dbh->prepare("LISTINDEX $table $index");
+        $sth->execute;
+        $numRows = $sth->rows;
+        $numFields = $sth->{'NUM_OF_FIELDS'};
+        $sth->finish;
 
-Prerequisites
--------------
+        $rc = $drh->func('createdb', $database, $host, $user, $password, 'admin');
+        $rc = $drh->func('dropdb', $database, $host, $user, $password, 'admin');
+        $rc = $drh->func('shutdown', $host, $user, $password, 'admin');
+        $rc = $drh->func('reload', $host, $user, $password, 'admin');
 
-mSQL is a database server and an API library written by David Hughes
-<bambi@Hughes.com.au>. You get that library and the database engine
-from
+        $rc = $dbh->func('createdb', $database, 'admin');
+        $rc = $dbh->func('dropdb', $database, 'admin');
+        $rc = $dbh->func('shutdown', 'admin');
+        $rc = $dbh->func('reload', 'admin');
 
-    http://Hughes.com.au
+DESCRIPTION
+    DBD::mysql and DBD::mSQL are the Perl5 Database Interface drivers for
+    the mysql, mSQL 1.*x* and mSQL 2.*x* databases. The drivers are part of
+    the *Msql-Mysql-modules* package.
 
-Please follow the links there.
+    In other words: DBD::mSQL and DBD::mysql are an interface between the
+    Perl programming language and the mSQL or mysql programming API that
+    come with the mSQL any mysql relational database management systems.
+    Most functions provided by the respective programming API's are
+    supported. Some rarely used functions are missing, mainly because noone
+    ever requested them. :-)
 
+    In what follows we first discuss the use of DBD::mysql and DBD::mSQL,
+    because this is what you will need the most. For installation, see the
+    sections on the INSTALLATION manpage, the section on "WIN32
+    INSTALLATION", the section on "KNOWN PROBLEMS" and the section on "KNOWN
+    BUGS" below. See the EXAMPLE manpage for a simple example below.
 
-    ###########################################################
-    ###########################################################
-    ##  						     ##
-    ##          Both mSQL-1 and mSQL-2 are supported         ##
-    ##            with both Msql.pm and DBD::mSQL.           ##
-    ##  						     ##
-    ###########################################################
-    ###########################################################
+    From perl you activate the interface with the statement
 
-MySQL is another database server and another API library written by
-Michael 'Monty' Widenius. It was inspired by mSQL, but is not based
-on it. You find it on
+        use DBI;
 
-    http://www.mysql.com
+    After that you can connect to multiple mSQL or MySQL database servers
+    and send multiple queries to any of them via a simple object oriented
+    interface. Two types of objects are available: database handles and
+    statement handles. Perl returns a database handle to the connect method
+    like so:
 
-binary versions as well as source versions.
+      $dbh = DBI->connect("DBI:mSQL:database=$db;host=$host",
+                          undef, undef, {RaiseError => 1});
 
-To use the perl modules you definitely have to install the respective
-database and the library first. From the perl side perl5.004 is required.
+    or
 
+      $dbh = DBI->connect("DBI:mysql:database=$db;host=$host",
+                          $user, $password, {RaiseError => 1});
 
-Installation
-------------
+    Once you have connected to a database, you can can execute SQL
+    statements with:
 
-See the INSTALL document.
+      my $query = sprintf("INSERT INTO foo VALUES (%d, %s)",
+                          $number, $dbh->quote("name"));
+      $dbh->do($query);
 
+    See the DBI(3) manpage for details on the quote and do methods. An
+    alternative approach is
 
-What is in this package
------------------------
+      $dbh->do("INSERT INTO foo VALUES (?, ?)", undef,
+               $number, $name);
 
-M(y)sql.pm and DBD::mSQL(mysql) implement two different approaches to
-communicate with an mSQL or mysql server. DBD::mSQL(mysql) is built
-upon the DBI, the generic Perl Database Interface. It brings you an
-identical interface to a broad variety of databases and is in this
-regard comparable to ODBC. The advantage of the DBI approach is
-portability and interoperability. M(y)sql.pm are the elder species.
-They were written before DBI was available but inspired by an early
-draft of the DBI specification. As they have been circulating longer
-they are more mature and pretty stable. They're also more complete
-than DBD::mSQL and DBD::mysql.
+    in which case the quote method is executed automatically. See also the
+    bind_param method in the DBI(3) manpage. See the section on "DATABASE
+    HANDLES" below for more details on database handles.
 
-As of Msql-Mysql-modules 1.1815, we consider DBD::mSQL and DBD::mysql
-superior over MsqlPerl and MysqlPerl: They are sufficiently stable
-(there´s only one known problem in DBI itself and it's announced to
-be fixed in DBI 0.91) and definitely faster. Anyways, you have to decide
-on your own about the trade-offs.
+    If you want to retrieve results, you need to create a so-called
+    statement handle with:
 
+      $sth = $dbh->prepare("SELECT * FROM $table");
+      $sth->execute();
 
-What you achieve with Msql.pm and Mysql.pm
-------------------------------------------
+    This statement handle can be used for multiple things. First of all you
+    can retreive a row of data:
 
-Msql.pm and Mysql.pm are an interface between the perl programming
-language and the mSQL or mysql programming API that come with the
-mSQL any mysql relational database management systems. All functions
-provided by the respective programming API's are supported.
+      my $row = $sth->fetchow_hashref();
 
-From perl you activate the interface with the statement
+    If your table has columns ID and NAME, then $row will be hash ref with
+    keys ID and NAME. See the section on "STATEMENT HANDLES" below for more
+    details on statement handles.
 
-    use Msql;
+    But now for a more formal approach:
 
-	or
+  Class Methods
 
-    use Mysql;
+    connect
+            use DBI;
 
-After that you can connect to multiple msql or mysql database servers
-and send multiple queries to any of them via a simple object oriented
-interface. Two types of objects are available: database handles and
-statement handles. Perl returns a database handle to the Connect
-method like so:
+            $driver = "mSQL";  #  or "mSQL1"
+            $dsn = "DBI:$driver:$database";
+            $dsn = "DBI:$driver:database=$database;$options";
 
-    $dbh = Msql->connect($hostname,$databasename);
+            $dbh = DBI->connect($dsn, undef, undef);
 
-	or
+                or
 
-    $dbh = Mysql->connect($hostname,$databasename);
+            $dsn = "DBI:mysql:$database";
+            $dsn = "DBI:mysql:database=$database;$options";
 
-Once you have connected to a database, you get a statement handle
-with:
+            $dbh = DBI->connect($dsn, $user, $password);
 
-    $sth = $dbh->query("select foo from bar");
+        A `database' must always be specified.
 
-You can open as many queries as you like simultaneously by selecting a
-different scalar to hold the object:
+        Possible options are, separated by semicolon:
 
-    $another_sth = $dbh->query("select bar from foo");
+    host
+    port        The hostname, if not specified or specified as '', will default
+                to an mysql or mSQL daemon running on the local machine on
+                the default port for the UNIX socket.
 
-The statement handle allows you to step through the virtual table
-returned from the database with the FetchRow method:
+                Should the mysql or mSQL daemon be running on a non-standard
+                port number, you may explicitly state the port number to
+                connect to in the `hostname' argument, by concatenating the
+                *hostname* and *port number* together separated by a colon (
+                `:' ) character or by using the `port' argument. This
+                doesn't work for mSQL 2: You have to create an alternative
+                config file and load it using the msql_configfile attribute,
+                see below.
 
-    @row = $sth->fetchrow;
-or
-    %hash = $sth->fetchhash;
+    msql_configfile
+                By default mSQL 2 loads its port settings and similar things
+                from the file InstDir/msql.conf. This option allows you to
+                specify another attribute, as in
 
-You can access all metadata that mSQL and mysql supply for a given
-table. To find out the number of rows or the number of fields returned
-by a query you simply say:
+                    DBI->connect("DBI:mSQL:test;msql_configfile=msql_test.conf");
 
-    $numrows = $sth->numrows;
-    $numfields = $sth->numfields;
+                If the filename is not absolute, mSQL will search in certain
+                other locations, see the documentation of the
+                msqlLoadConfigFile() function in the mSQL manual for
+                details.
 
-To find out the size in bytes for the field with the offset 0 (the
-first field of a query), you say:
+    mysql_compression
+                As of MySQL 3.22.3, a new feature is supported: If your DSN
+                contains the option "mysql_compression=1", then the
+                communication between client and server will be compressed.
 
-    $length = $sth->length->[0];
+    mysql_read_default_file
+    mysql_read_default_group
+                These options can be used to read a config file like
+                /etc/my.cnf or ~/.my.cnf. By default MySQL's C client
+                library doesn't use any config files unlike the client
+                programs (mysql, mysqladmin, ...) that do, but outside of
+                the C client library. Thus you need to explicitly request
+                reading a config file, as in
 
-The list of the names for each column is returned by
+                    $dsn = "DBI:mysql:test;mysql_read_default_file=/home/joe/my.cnf";
+                    $dbh = DBI->connect($dsn, $user, $password)
 
-    @list => $sth->name;
+                The option mysql_read_default_group can be used to specify
+                the default group in the config file: Usually this is the
+                *client* group, but see the following example:
 
-As for other metadata available, consult the manpages that come with
-MsqlPerl and Mysqlperl and study the examples in the file t/akmisc.t,
-which is the extensive testscript to test your installation, but is
-heavily commented, so you may use it as a tutorial.
+                    [perl]
+                    host=perlhost
 
+                    [client]
+                    host=localhost
 
-Installing The Adaptor
-----------------------
+                If you read this config file, then you'll be typically
+                connected to *localhost*. However, by using
 
-Unpack in any directory anywhere on your filesystem and run
+                    $dsn = "DBI:mysql:test;mysql_read_default_group=perl;"
+                        . "mysql_read_default_file=/home/joe/my.cnf";
+                    $dbh = DBI->connect($dsn, $user, $password);
 
-    perl Makefile.PL
-    make
-    make test
+                you'll be connected to *perlhost*. See the (missing :-)
+                documentation of the C function mysql_options() for details.
 
-The latter will give you some instructions if msqld or mysqld are not
-running or if a database "test" is not available. Rest assured, that
-no existing data in this database will be overwritten.
+    mysql_socket
+                As of MySQL 3.21.15, it is possible to choose the Unix
+                socket that is used for connecting to the server. This is
+                done, for example, with
 
-If the tests finish with `ok', give it a try to
+                    mysql_socket=/dev/mysql
 
-    make install
+                Usually there's no need for this option, unless you are
+                using another location for the socket than that built into
+                the client.
 
-If anything fails, check the documentation of the ExtUtils::MakeMaker
-module. Especially if you're facing problems with dynamic loading, set
-the environment variable PERL_DL_DEBUG to some value greater 0 to get
-some more information from the DynaLoader.
+  Private MetaData Methods
 
+    ListDBs
+            $drh = DBI->install_driver("DBD::mysql");
+            @dbs = $drh->func("$hostname:$port", "_ListDBs");
+            @dbs = $drh->func($hostname, $port, "_ListDBs");
+            @dbs = $dbh->func('_ListDBs');
 
-Documentation
--------------
+        Returns a list of all databases managed by the mysql daemon or mSQL
+        daemon running on `$hostname', port `$port'. This method is rarely
+        needed for databases running on `localhost': You should use the
+        portable method
 
-Documentation is available in pod format within the files Msql.pm and
-Mysql.pm. During installation this should be turned into a manpage. Try
-'man Msql' or 'man Mysql', and if this doesn't work on your system, try
-'perldoc Msql' or 'perldoc Mysql'.
+            @dbs = DBI->data_sources("mysql");
 
-The tutorial that may be helpful for you is in the file t/akmisc.t.
-This file is the test program for this package and illustrates all basic
-operations that are available.
+                or
 
+            @dbs = DBI->data_sources("mSQL");
 
-pmsql, pmysql and dbimon
-------------------------
+        whenever possible. It is a design problem of this method, that
+        there's no way of supplying a host name or port number to
+        `data_sources', that's the only reason why we still support
+        `ListDBs'. :-(
 
-This package comes with some small standalone programs, pmsql, pmysql
-and dbimon, being used with Msql, Mysql and the DBI drivers, respectively.
-They are lightweight shells for your interactive communication needs
-with your mSQL or mysql server(s). Try 'man pmsql', 'man pmysql' or
-'man dbimon' to get at the documentation embedded in the program. If that
-doesn't work, try 'perldoc pmsql' or 'perldoc pmysql'.
+    ListTables
+            @tables = $dbh->func('_ListTables');
 
-The programs are similar to both the msql (mysql) monitor and the relshow
-(mysqlshow) program. The main advantage over those is that if you
-have Term::ReadKey and Term::ReadLine::Perl installed on your system,
-you have access to a readline clone, entirely written in perl with
-command line editor, a basic completion and history, and you get the
-output of any select query piped into your favorite pager program.
+        Once connected to the desired database on the desired mysql or mSQL
+        mSQL daemon with the `DBI-'connect()> method, we may extract a list
+        of the tables that have been created within that database.
 
+        `ListTables' returns an array containing the names of all the tables
+        present within the selected database. If no tables have been
+        created, an empty list is returned.
 
-Mailing lists
--------------
+            @tables = $dbh->func( '_ListTables' );
+            foreach $table ( @tables ) {
+                print "Table: $table\n";
+              }
 
-Several mailing lists are devoted to the support of this package or
-parts of it. 
+    ListFields
+        Deprecated, see the section on "/COMPATIBILITY ALERT" below. Used to
+        be equivalent to
 
-  - The most preferable is
+            $sth = $dbh->prepare("LISTFIELDS $table");
+            $sth->execute;
 
-      msql-mysql-modules@tcx.se
+        See the section on "/SQL EXTENSIONS" below.
 
-    (This is the only one where the current maintainer is listening.)
-    It's an open list, for subscribing just send a mail with the
-    words
+    ListSelectedFields
+        Deprecated, see the section on "/COMPATIBILITY ALERT" below.
 
-	subscribe msql-mysql-modules
+  Server Administration
 
-		or
+    admin
+            $rc = $drh->func("createdb", $dbname, [host, user, password,], 'admin');
+            $rc = $drh->func("dropdb", $dbname, [host, user, password,], 'admin');
+            $rc = $drh->func("shutdown", [host, user, password,], 'admin');
+            $rc = $drh->func("reload", [host, user, password,], 'admin');
 
-	subscribe msql-mysql-modules-digest
+              or
 
-    to mdomo@tcx.se. (The latter will guarantee that you receive only
-    one email per day.) A mailing list archive is in preparation.
+            $rc = $dbh->func("createdb", $dbname, 'admin');
+            $rc = $dbh->func("dropdb", $dbname, 'admin');
+            $rc = $dbh->func("shutdown", 'admin');
+            $rc = $dbh->func("reload", 'admin');
 
-  - MsqlPerl- and MysqlPerl related topics are best sent to
+        For server administration you need a server connection. For
+        obtaining this connection you have two options: Either use a driver
+        handle (drh) and supply the appropriate arguments (host, defaults
+        localhost, user, defaults to '' and password, defaults to ''). A
+        driver handle can be obtained with
 
-      msqlperl@franz.ww.tu-berlin.de.
+            $drh = DBI->install_driver('DBD::mysql');
 
-    Note that this mailing list really is for MsqlPerl and MysqlPerl
-    only and not for DBI specific topics, besides perhaps installation
-    of the Msql-Mysql-modules. An archive of this list is available
-    at
+        or
 
-      http://franz.ww.tu-berlin.de/msqlperl
+            $drh = DBI->install_driver('DBD::mSQL');
 
-    Please search this archive first before posting a new question.
-    The mailing list is open: You can post questions without being
-    subscribed. If you want to subscribe, send a mail with the word
-    "subscribe" in the first line of the body to
+        Otherwise reuse the existing connection of a database handle (dbh).
 
-      msqlperl-request@franz.ww.tu-berlin.de
+        There's only one function available for administrative purposes,
+        comparable to the m(y)sqladmin programs. The command being execute
+        depends on the first argument:
 
-    This list is leaving out, as the machine franz.ww.tu-berlin.de
-    will be switched off in the near future.
+    createdb    Creates the database $dbname. Equivalent to "m(y)sqladmin create
+                $dbname".
 
-  - DBI users will prefer the DBI related mailing lists
+    dropdb      Drops the database $dbname. Equivalent to "m(y)sqladmin drop
+                $dbname".
 
-     dbi-users@fugue.com
-     dbi-announce@fugue.com
+                It should be noted that database deletion is *not prompted
+                for* in any way. Nor is it undo-able from DBI.
 
-   these are closed mailing lists: You must subscribe before posting
-   here. You can subscribe at
+                    Once you issue the dropDB() method, the database will be gone!
 
-     http://www.fugue.com/dbi
+                These method should be used at your own risk.
 
-   where you also find archives of these mailing lists.
+    shutdown    Silently shuts down the database engine. (Without prompting!)
+                Equivalent to "m(y)sqladmin shutdown".
 
-Announcements of new versions of major importance will usually be made
-on comp.lang.perl.announce. Smaller updates will be announced on the
-mailing lists.
+    reload      Reloads the servers configuration files and/or tables. This can
+                be particularly important if you modify access privileges or
+                create new users.
 
+    _CreateDB
+    _DropDB
+        These methods are deprecated, see the section on "/COMPATIBILITY
+        ALERT" below.!
 
+            $rc = $drh->func( $database, '_CreateDB' );
+            $rc = $drh->func( $database, '_DropDB' );
 
-Andreas König <koenig@kulturbox.de>
-Jochen Wiedmann <joe@ispsoft.de>
+              or
+
+            $rc = $drh->func( $host, $database, '_CreateDB' );
+            $rc = $drh->func( $host, $database, '_DropDB' );
+
+        These methods are equivalent to the admin method with "createdb" or
+        "dropdb" commands, respectively. In particular note the warnings
+        concerning the missing prompt for dropping a database!
+
+DATABASE HANDLES
+    The DBD::mysql driver supports the following attributes of database
+    handles (read only):
+
+        $infoString = $dbh->{'info'};
+        $threadId = $dbh->{'thread_id'};
+
+    These correspond to mysql_info() and mysql_tread_id(), respectively.
+
+STATEMENT HANDLES
+    The statement handles of DBD::mysql and DBD::mSQL support a number of
+    attributes. You access these by using, for example,
+
+      my $numFields = $sth->{'NUM_OF_FIELDS'};
+
+    Note, that most attributes are valid only after a successfull *execute*.
+    An `undef' value will returned in that case. The most important
+    exception is the `mysql_use_result' attribute: This forces the driver to
+    use mysql_use_result rather than mysql_store_result. The former is
+    faster and less memory consuming, but tends to block other processes.
+    (That's why mysql_store_result is the default.)
+
+    To set the `mysql_use_result' attribute, use either of the following:
+
+      my $sth = $dbh->prepare("QUERY", { "mysql_use_result" => 1});
+
+    or
+
+      my $sth = $dbh->prepare("QUERY");
+      $sth->{"mysql_use_result"} = 1;
+
+    Column dependent attributes, for example *NAME*, the column names, are
+    returned as a reference to an array. The array indices are corresponding
+    to the indices of the arrays returned by *fetchrow* and similar methods.
+    For example the following code will print a header of table names
+    together with all rows:
+
+      my $sth = $dbh->prepare("SELECT * FROM $table");
+      if (!$sth) {
+          die "Error:" . $dbh->errstr . "\n";
+      }
+      if (!$sth->execute) {
+          die "Error:" . $sth->errstr . "\n";
+      }
+      my $names = $sth->{'NAME'};
+      my $numFields = $sth->{'NUM_OF_FIELDS'};
+      for (my $i = 0;  $i < $numFields;  $i++) {
+          printf("%s%s", $$names[$i], $i ? "," : "");
+      }
+      print "\n";
+      while (my $ref = $sth->fetchrow_arrayref) {
+          for (my $i = 0;  $i < $numFields;  $i++) {
+              printf("%s%s", $$ref[$i], $i ? "," : "");
+          }
+          print "\n";
+      }
+
+    For portable applications you should restrict yourself to attributes
+    with capitalized or mixed case names. Lower case attribute names are
+    private to DBD::mSQL and DBD::mysql. The attribute list includes:
+
+    ChopBlanks
+        this attribute determines whether a *fetchrow* will chop preceding
+        and trailing blanks off the column values. Chopping blanks does not
+        have impact on the *max_length* attribute.
+
+    insertid
+        MySQL has the ability to choose unique key values automatically. If
+        this happened, the new ID will be stored in this attribute. This
+        attribute is not valid for DBD::mSQL.
+
+    is_blob
+        Reference to an array of boolean values; TRUE indicates, that the
+        respective column is a blob. This attribute is valid for MySQL only.
+
+    is_key
+        Reference to an array of boolean values; TRUE indicates, that the
+        respective column is a key. This is valid for MySQL only.
+
+    is_num
+        Reference to an array of boolean values; TRUE indicates, that the
+        respective column contains numeric values.
+
+    is_pri_key
+        Reference to an array of boolean values; TRUE indicates, that the
+        respective column is a primary key. This is only valid for MySQL and
+        mSQL 1.0.x: mSQL 2.x uses indices.
+
+    is_not_null
+        A reference to an array of boolean values; FALSE indicates that this
+        column may contain NULL's. You should better use the *NULLABLE*
+        attribute above which is a DBI standard.
+
+    length
+    max_length
+        A reference to an array of maximum column sizes. The *max_length* is
+        the maximum physically present in the result table, *length* gives
+        the theoretically possible maximum. *max_length* is valid for MySQL
+        only.
+
+    NAME
+        A reference to an array of column names.
+
+    NULLABLE
+        A reference to an array of boolean values; TRUE indicates that this
+        column may contain NULL's.
+
+    NUM_OF_FIELDS
+        Number of fields returned by a *SELECT* or *LISTFIELDS* statement.
+        You may use this for checking whether a statement returned a result:
+        A zero value indicates a non-SELECT statement like *INSERT*,
+        *DELETE* or *UPDATE*.
+
+    table
+        A reference to an array of table names, useful in a *JOIN* result.
+
+    TYPE
+        A reference to an array of column types. The engine's native column
+        types are mapped to portable types like DBI::SQL_INTEGER() or
+        DBI::SQL_VARCHAR(), as good as possible. Not all native types have a
+        meaningfull equivalent, for example DBD::mSQL::IDX_TYPE() or
+        DBD::mysql::FIELD_TYPE_INTERVAL are mapped to DBI::SQL_VARCHAR(). If
+        you need the native column types, use *mysql_type* or *msql_type*,
+        respectively. See below.
+
+    mysql_type
+        A reference to an array of MySQL's native column types, for example
+        DBD::mysql::FIELD_TYPE_SHORT() or DBD::mysql::FIELD_TYPE_STRING().
+        Use the *TYPE* attribute, if you want portable types like
+        DBI::SQL_SMALLINT() or DBI::SQL_VARCHAR().
+
+SQL EXTENSIONS
+    Certain metadata functions of mSQL and mysql that are available on the C
+    API level, haven't been implemented here. Instead they are implemented
+    as "SQL extensions" because they return in fact nothing else but the
+    equivalent of a statement handle. These are:
+
+    LISTFIELDS $table
+        Returns a statement handle that describes the columns of $table. Ses
+        the docs of msqlListFields or mysql_list_fields (C API) for details.
+
+    LISTINDEX $table $index
+        mSQL only; returns a statement handle that describes the index
+        $index of table $table. See the docs of msqlListIndex for details.
+
+COMPATIBILITY ALERT
+    The statement attribute *TYPE* has changed its meaning, as of Msql-
+    Mysql-modules 1.19_19. Formerly it used to be the an array of native
+    engine's column types, but it is now an array of portable SQL column
+    types. The old attribute is still available as *mysql_type* or
+    *msql_type*, respectively.
+
+    Certain attributes methods have been declared obsolete or deprecated,
+    partially because there names are agains DBI's naming conventions,
+    partially because they are just superfluous or obsoleted by other
+    methods.
+
+    Obsoleted attributes and methods will be explicitly listed below. You
+    cannot expect them to work in future versions, but they have not yet
+    been scheduled for removal and currently they should be usable without
+    any code modifications.
+
+    Deprecated attributes and methods will currently issue a warning unless
+    you set the variable $DBD::mysql::QUIET (or $DBD::mSQL::QUIET,
+    respectively) to a true value. This will be the same for Msql-Mysql-
+    modules 1.19xx and 1.20xx. They will be silently removed in 1.21xx.
+
+    Here is a list of obsoleted attributes and/or methods:
+
+    _CreateDB
+    _DropDB
+        deprecated, use
+
+            $drh->func("createdb", $dbname, $host, "admin")
+            $drh->func("dropdb", $dbname, $host, "admin")
+
+    _ListFields
+        deprecated, use
+
+            $sth = $dbh->prepare("LISTFIELDS $table")
+            $sth->execute;
+
+    _ListSelectedFields
+        deprecated, just use the statement handles for accessing the same
+        attributes.
+
+    _NumRows
+        deprecated, use
+
+            $numRows = $sth->rows;
+
+    IS_PRI_KEY
+    IS_NOT_NULL
+    IS_KEY
+    IS_BLOB
+    IS_NUM
+    LENGTH
+    MAXLENGTH
+    NUMROWS
+    NUMFIELDS
+    RESULT
+    TABLE
+        All these statement handle attributes are obsolete. They can be
+        simply replaced by just downcasing the attribute names. You should
+        expect them to be deprecated as of Msql-Mysql-modules 1.1821.
+        (Whenever that will be.)
+
+MULTITHREADING
+    The multithreading capabilities of the Msql-Mysql-modules depend
+    completely on the underlying C libraries: The modules are working with
+    handle data only, no global variables are accessed or (to the best of my
+    knowledge) thread unsafe functions are called. Thus DBD::mSQL and
+    DBD::mysql are completely thread safe, if the C libraries thread safe
+    and you don't share handles among threads.
+
+    The obvious questions is: Are the C libraries thread safe? In the case
+    of mSQL the answer is definitely "no". The C library has a concept of
+    one single active connection at a time and that is not what threads
+    like.
+
+    In the case of MySQL the answer is "mostly" and, in theory, you should
+    be able to get a "yes", if the C library is compiled for being thread
+    safe (By default it isn't.) by passing the option -with-thread-safe-
+    client to configure. See the section on *How to make a threadsafe
+    client* in the manual.
+
+EXAMPLE
+      #!/usr/bin/perl
+
+      use strict;
+      use DBI();
+
+      # Connect to the database.
+      my $dbh = DBI->connect("DBI:mysql:database=test;host=localhost",
+                             "joe", "joe's password",
+                             {'RaiseError' => 1});
+
+      # Drop table 'foo'. This may fail, if 'foo' doesn't exist.
+      eval { $dbh->do("DROP TABLE foo") };
+      print "Dropping foo failed: $@\n" if $@;
+
+      # Create a new table 'foo'. This must not fail, thus we don't
+      # catch errors.
+      $dbh->do("CREATE TABLE foo (id INTEGER, name VARCHAR(20)");
+
+      # INSERT some data into 'foo'. We are using $dbh->quote() for
+      # quoting the name.
+      $dbh->do("INSERT INTO foo VALUES (1, " . $dbh->quote("Tim") . ")");
+
+      # Same thing, but using placeholders
+      $dbh->do("INSERT INTO foo VALUES (?, ?)", undef, 2, "Jochen");
+
+      # Now retrieve data from the table.
+      my $sth = $dbh->prepare("SELECT * FROM foo");
+      $sth->execute();
+      while (my $ref = $sth->fetchrow_hashref()) {
+        print "Found a row: id = $ref->{'id'}, name = $ref->{'name'}\n";
+      }
+      $sth->finish();
+
+      # Disconnect from the database.
+      $dbh->disconnect();
+
+INSTALLATION
+    Windows users may skip this section and pass over to the section on
+    "WIN32 INSTALLATION" below. Others, go on reading.
+
+    First you need to install the DBI module. For using *dbimon*, a simple
+    DBI shell it is recommended to install Data::ShowTable another Perl
+    module.
+
+    I recommend trying automatic installation via the CPAN module. Try
+
+      perl -MCPAN -e shell
+
+    If you are using the CPAN module for the first time, it will prompt you
+    a lot of questions. If you finally receive the CPAN prompt, enter
+
+      install Bundle::DBD::mSQL
+
+    or
+
+      install Bundle::DBD::mysql
+
+    If this fails (which may be the case for a number of reasons, for
+    example because you are behind a firewall or don't have network access),
+    you need to do a manual installation. First of all you need to fetch the
+    archives from any CPAN mirror, for example
+
+      ftp://ftp.funet.fi/pub/languages/perl/CPAN/modules/by-module
+
+    The following archives are required (version numbers may have changed, I
+    choose those which are current as of this writing):
+
+      DBI/DBI-1.06.tar.gz
+      Data/Data-ShowTable-3.3.tar.gz
+      DBD/Msql-Mysql-modules-1.2017.tar.gz
+
+    Then enter the following commands:
+
+      gzip -cd DBI-1.06.tar.gz | tar xf -
+      cd DBI-1.06
+      perl Makefile.PL
+      make
+      make test
+      make install
+
+      cd ..
+      gzip -cd Data-ShowTable-3.3.tar.gz | tar xf -
+      cd Data-ShowTable-3.3
+      perl Makefile.PL
+      make
+      make install  # Don't try make test, the test suite is broken
+
+      cd ..
+      gzip -cd Msql-Mysql-modules-1.2017.tar.gz | tar xf -
+      cd Msql-Mysql-modules-1.2017
+      perl Makefile.PL
+      make
+      make test
+      make install
+
+    During "perl Makefile.PL" you will be prompted some questions. In
+    particular you have to choose the installed drivers (MySQL, mSQL2 and/or
+    mSQL1). The MySQL driver will be called DBD::mysql, a single mSQL driver
+    will be called DBD::mSQL. If you want to support both mSQL1 and mSQL2,
+    they former will be DBD::mSQL1.
+
+    Other questions are the directories with header files and libraries. For
+    example, of your file mysql.h is in /usr/include/mysql/mysql.h, then
+    enter the header directory /usr, likewise for
+    /usr/lib/mysql/libmysqlclient.a or /usr/lib/libmysqlclient.so. For mSQL
+    go looking for msql.h (typically in /usr/include/msql.h and libmsql.a
+    (probably in /usr/lib/libmsql.a).
+
+    See the the section on "KNOWN PROBLEMS" section below if you encounter
+    any problems within "make" or "make test".
+
+WIN32 INSTALLATION
+    I have never attempted to install DBD::mSQL under Win32, so this is only
+    for MySQL. If anyone succeeds, please let me know what you did.
+
+    If you are using the ActiveState port of Perl, there's a binary package
+    of DBD::mysql available at www.tcx.se, see the download page. This can
+    be installed with *ppm*. Otherwise it is recommended to use a binary
+    distribution of Perl that already includes DBD::mysql. For example you
+    find one at www.tcx.se.
+
+    Otherwise you definitely *need* a C compiler. And it *must* be the same
+    compiler that was being used for compiling Perl itself. If you don't
+    have a C compiler, the file README.win32 from the Perl source
+    distribution tells you where to obtain freely distributable C compilers
+    like egcs or gcc. The Perl sources are available on any CPAN mirror in
+    the src directory, for example
+
+        ftp://ftp.funet.fi/pub/languages/perl/CPAN/src/latest.tar.gz
+
+    I recommend using the win32clients package for installing DBD::mysql
+    under Win32, available for download on www.tcx.se. The following steps
+    have been required for me:
+
+    -       Extract sources into C:\. This will create a directory C:\mysql with
+            subdirectories include and lib.
+
+            IMPORTANT: Make sure this subdirectory is not shared by other
+            TCX files! In particular do *not* store the MySQL server in the
+            same directory. If the server is already installed in C:\mysql,
+            choose a location like C:\tmp, extract the win32clients there.
+            Note that you can remove this directory entirely once you have
+            installed the Msql-Mysql-modules.
+
+    -       Extract the Msql-Mysql-modules sources into another directory, for
+            example C:\src\siteperl
+
+    -       Open a DOS shell and change directory to C:\src\siteperl.
+
+    -       The next step is only required if you repeat building the modules:
+            Make sure that you have a clean build tree by running
+
+              nmake realclean
+
+            If you don't have VC++, replace nmake with your flavour of make.
+            If error messages are reported in this step, you may safely
+            ignore them.
+
+    -       Run
+
+              perl Makefile.PL
+
+            which will prompt you for some settings. The really important
+            ones are:
+
+              Which DBMS do you want to use?
+
+            enter a 1 here (MySQL only), and
+
+              Where is your mysql installed? Please tell me the directory that
+              contains the subdir include.
+
+            where you have to enter the win32clients directory, for example
+            C:\mysql or C:\tmp\mysql.
+
+    -       Continued in the usual way:
+
+              nmake
+              nmake install
+
+    See the first section of the section on "KNOWN PROBLEMS" below.
+
+    If you want to create a PPM package for the ActiveState Perl version,
+    then modify the above steps as follows: Run
+
+      perl Makefile.PL NAME=DBD-mysql BINARY_LOCATION=DBD-mysql.tar.gz
+      nmake ppd
+      nmake
+
+    Once that is done, use tar and gzip (for example those from the CygWin32
+    distribution) to create an archive:
+
+      mkdir x86
+      tar cf x86/DBD-mysql.tar blib
+      gzip x86/DBD-mysql.tar
+
+    Put the files x86/DBD-mysql.tar.gz and DBD-mysql.ppd onto some WWW
+    server and install them by typing
+
+      install http://your.server.name/your/directory/DBD-mysql.ppd
+
+    in the PPM program.
+
+KNOWN PROBLEMS
+    1.)     If the MySQL binaries are compiled with gcc or egcs (as the
+            precompiled binaries are), but your Perl is using another
+            compiler, it is likely that you receive an error message like
+            the following when running "make test":
+
+              t/00base............install_driver(mysql) failed: Can't load
+              '../blib/arch/auto/DBD/mysql/mysql.so' for module DBD::mysql:
+              ../blib/arch/auto/DBD/mysql/mysql.so: undefined symbol: _umoddi3
+              at /usr/local/perl-5.005/lib/5.005/i586-linux-thread/DynaLoader.pm
+              line 168.
+
+            This means, that your linker doesn't include libgcc.a. You have
+            the following options:
+
+    a)                  Either recompile Perl or Mysql, it doesn't matter which.
+                        The important thing is that you use the same
+                        compiler for both. This is definitely the
+                        recommended solution in the long term.
+
+    b)                  A simple workaround is to include libgcc.a manually. Do
+                        a "make clean" and "make" and in the output wait for
+                        a line like
+
+                          LD_RUN_PATH="/usr/lib/mysql:/lib" egcs -o
+                          ../blib/arch/auto/DBD/mysql/mysql.so  -shared -L/usr/local/lib
+                          dbdimp.o mysql.o -L/usr/lib/mysql -L/usr/lib/mysql -lmysqlclient
+                          -lm
+
+                        Repeat the same line in the shell by adding
+
+                          -L/usr/lib/gcc-lib/i386-redhat-linux/gcc-2.7.2.3 -lgcc
+
+                        where the directory is the location of libgcc.a. The
+                        best choice for locating this file is executing
+
+                          gcc --print-libgcc-file
+
+                        or
+
+                          gcc -v
+
+    2.)     There are known problems with shared versions of libmysqlclient, at
+            least on some Linux boxes. If you receive an error message
+            similar to
+
+              install_driver(mysql) failed: Can't load
+              '/usr/lib/perl5/site_perl/i586-linux/auto/DBD/mysql/mysql.so'
+              for module DBD::mysql: File not found at
+              /usr/lib/perl5/i586-linux/5.00404/DynaLoader.pm line 166
+
+            then this error message can be misleading: It's not mysql.so
+            that fails being loaded, but libmysqlclient.so!
+
+            As a workaround, recompile the Msql-Mysql-modules with
+
+              perl Makefile.PL --static --config
+              make
+              make test
+              make install
+
+            This option forces linkage against the static libmysqlclient.a.
+
+    3.)     By default mSQL2 is installed to allow local access only. This can
+            break the test scripts akmisc.t, msql1.t and msql2.t. You might
+            notice a message like
+
+              t/akmisc............Can't connect to MSQL server on localhost at
+              t/akmisc.t line 131
+              Cannot connect: Can't connect to MSQL server on localhost
+              It looks as if your server (on localhost) is not up and running.
+              This test requires a running server.
+              Please make sure your server is running and retry.
+              dubious
+              Test returned status 10 (wstat 2560, 0xa00)
+
+            If this is the case, try to change the value of "Remote_Access"
+            in your msql.conf file to "True". If the value was set
+            intentionally, you might restore the old value after the tests
+            ran ok.
+
+    4.)     If linking fails under Win32 because of a missing symbol
+            pthread_cond_init, apply the following patch to dbd/dbdimp.c:
+
+              *** dbd/dbdimp.c.orig Wed Sep 23 14:39:33 1998
+              --- dbd/dbdimp.c      Fri Oct 02 10:37:16 1998
+              ***************
+              *** 1708,1712 ****
+              --- 1709,1720 ----
+                  }
+                  return TRUE;
+                }
+              + 
+              + #if !defined(_UNIX_)  &&  defined(WIN32)
+              + int pthread_cond_init()
+              + {
+              +   return 0;
+              + }
+              + #endif
+
+                #endif
+
+            (I could make this part of the source distribution, but I think
+            this is an ugly hack and hopefully Monty will fix the missing
+            symbol in the next release of MyODBC.)
+
+    5.)     Recent versions of mSQL have a bug that appears in the test script
+            t/40bindparam.t:
+
+              > Date: Tue, 14 Jul 1998 00:59:07 +0200 (CEST)
+              > From: Barry Lagerweij <barry@euromedia.nl>
+              > To: weder@arch.ethz.ch
+              > Cc: msql-jdbc@list.imaginary.com, support@hughes.com.au
+              > Subject: [MSQL-JDBC]: mSQL 2.0.4.1 ORDER BY bug
+              > 
+              > Hello Andreas,
+              > 
+              > I read your message concerning the mSQL ORDER BY bug, since I suffered
+              > from the same problems.
+              > 
+              > I dived into the source, and came up with a solution: in avl_tree.c, the
+              > copy/compare functions do not take the first (aka NULL) byte into account.
+              > mSQL 2.0.4.1 supports NULL values, but these are not handled correctly in
+              > the index functions. The following patch corrects this :
+              > 
+              > ----------------cut here----------------
+              > 
+              > *** avl_tree.c.orig     Mon Jul 13 14:22:31 1998
+              > --- avl_tree.c  Mon Jul 13 15:37:59 1998
+              > ***************
+              > *** 218,223 ****
+              > --- 218,224 ----
+              >                 *dst;
+              >         avltree *tree;
+              >   {
+              > +       *dst++ = *src++;
+              >         switch(tree->sblk->keyType)
+              >         {
+              >                 case AVL_INT:
+              > ***************
+              > *** 529,534 ****
+              > --- 530,538 ----
+              >                 *v2;
+              >         avltree *tree;
+              >   {
+              > +       int     i;
+              > +
+              > +       if ((i = (*v1++ - *v2++)) != 0) return(i);
+              >         switch(tree->sblk->keyType)
+              >         {
+              >                 case AVL_INT:
+              > 
+              > -------------cut here------------------
+
+KNOWN BUGS
+    The *port* part of the first argument to the connect call is implemented
+    in an unsafe way when using mSQL. In fact it is just setting the
+    environment variable MSQL_TCP_PORT during the connect call. If another
+    connect call uses another port and the handles are used simultaneously,
+    they will interfere. I doubt that this will ever change.
+
+AUTHORS
+    The current versions of DBD::mSQL and DBD::mysql is almost completely
+    written by Jochen Wiedmann (*joe@ispsoft.de*). The first version's
+    author was Alligator Descartes(*descarte@symbolstone.org*), who has been
+    aided and abetted by Gary Shea, Andreas König and Tim Bunce amongst
+    others.
+
+    The Msql and Mysql modules have originally been written by Andreas König
+    <koenig@kulturbox.de>. The current version, mainly an emulation layer,
+    is from Jochen Wiedmann.
+
+COPYRIGHT
+    This module is Copyright (c) 1997-1999 Jochen Wiedmann, with code
+    portions Copyright (c)1994-1997 their original authors. This module is
+    released under the same license as Perl itself. See the Perl README for
+    details.
+
+MAILING LIST SUPPORT
+    This module is maintained and supported on a mailing list,
+
+        msql-mysql-modules@lists.mysql.com
+
+    To subscribe to this list, send a mail to
+
+        msql-mysql-modules-subscribe@lists.mysql.com
+
+    or
+
+        msql-mysql-modules-digest-subscribe@lists.mysql.com
+
+    Mailing list archives are available at
+
+        http://www.progressive-comp.com/Lists/?l=msql-mysql-modules
+
+    Additionally you might try the dbi-user mailing list for questions about
+    DBI and its modules in general. Subscribe via
+
+        http://www.fugue.com/dbi
+
+    Mailing list archives are at
+
+         http://www.rosat.mpe-garching.mpg.de/mailing-lists/PerlDB-Interest/
+         http://outside.organic.com/mail-archives/dbi-users/
+         http://www.coe.missouri.edu/~faq/lists/dbi.html
+
+ADDITIONAL DBI INFORMATION
+    Additional information on the DBI project can be found on the World Wide
+    Web at the following URL:
+
+        http://www.symbolstone.org/technology/perl/DBI
+
+    where documentation, pointers to the mailing lists and mailing list
+    archives and pointers to the most current versions of the modules can be
+    used.
+
+    Information on the DBI interface itself can be gained by typing:
+
+        perldoc DBI
+
+    right now!
+

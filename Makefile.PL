@@ -7,26 +7,86 @@
 #  with the exception that it cannot be placed on a CD-ROM or similar media
 #  for commercial distribution without the prior approval of the author.
 #
-#  $Id: Makefile.PL,v 1.8 1999/01/26 20:22:04 joe Exp $
+#  $Id: Makefile.PL,v 1.13 1999/05/23 19:20:30 joe Exp $
 #
 BEGIN {require 5.004;}
 use strict;
-require Config;
-require Getopt::Long;
+use Config ();
+use Getopt::Long ();
 use ExtUtils::MakeMaker qw(prompt WriteMakefile);
-require File::Path;
-require Config;
-require Cwd;
+use File::Path ();
+use Config ();
+use Cwd ();
 use lib ".";
 
 use vars qw($MyConfig $VERSION $DBD_VERSION);
 
-$VERSION = "1.2017";
-$DBD_VERSION = "2.0217";
+$VERSION = "1.2018";
+$DBD_VERSION = "2.0218";
 
 
-my %options;
-Getopt::Long::GetOptions(\%options, "static", "config");
+my %options = ( 'prompt' => 1,
+		'mysql-test-db' => 'test',
+		'msql-test-db' => 'test',
+		'msqql1-test-db' => 'test',
+	      );
+Getopt::Long::GetOptions(\%options, 'static', 'config', 'verbose', 'debug',
+			 'mysql-install!', 'msql-install!', 'msql1-install!',
+			 'mysql-install-nodbd', 'msql-install-nodbd',
+			 'msql1-install-nodbd',
+			 'mysql-test-db=s', 'msql-test-db=s',
+			 'msql1-test-db=s',
+			 'mysql-test-host=s', 'msql-test-host=s',
+			 'msql1-test-host=s',
+			 'mysql-test-user=s', 'mysql-test-pass=s',
+			 'mysql-libdir=s', 'msql-libdir=s', 'msql1-libdir=s',
+			 'mysql-incdir=s', 'msql-incdir=s', 'msql1-incdir=s',
+			 'help', 'prompt!');
+if ($options{'help'}) {
+    print <<"EOF";
+Usage: perl Makefile.PL <options>
+
+Possible Options are:
+
+  --config	Recreate files
+  --debug	Enable debugging mode
+  --static	Link against static version of libmysqlclient.
+  --verbose	Enable verbose mode
+  --noprompt	Disable interactive dialog
+
+  --mysql-install	Install DBD::mysql and related files
+  --msql-install	Install DBD::mSQL and related files
+  --msql1-install	Install DBD::mSQL1 and related files
+
+  --mysql-install-nodbd	Install Mysql and related files
+  --msql-install-nodbd  Install Msql and related files
+  --msql1-install-nodbd Install Msql1 and related files
+
+  --mysql-test-db=db		Sets database and user name, password and
+  --mysql-test-user=user	host name to be used for running the
+  --mysql-test-pass=password	DBD::mysql tests. Defaults to "test",
+  --mysql-test-host=host	"", "" and "" (aka "localhost").
+
+  --msql-test-db=db		Sets database and host name for running
+  --msql-test-host=host		the DBD::mSQL tests. Defaults to "test"
+				and "" (aka "localhost").
+
+  --msql1-test-db=db		Sets database and host name for running
+  --msql1-test-host=host	the DBD::mSQL1 tests. Defaults to "test"
+				and "" (aka "localhost").
+
+  --mysql-incdir=dir		Sets directories with MySQL's header and
+  --mysql-libdir=dir		library files.
+
+  --msql-incdir=dir		Sets directories with mSQL's header and
+  --msql-libdir=dir		library files.
+
+  --msql1-incdir=dir		Sets directories with mSQL1's header and
+  --msql1-libdir=dir		library files.
+EOF
+    exit 1;
+}
+$options{'verbose'} = 1 if $options{'debug'};
 
 
 ############################################################################
@@ -77,7 +137,9 @@ sub Search ($$$$) {
     }
     $gooddir ||= $$gooddirs[0] || $$dirs[0];
 
-    $gooddir = prompt($prompt, $gooddir)  ||  $gooddir;  # for 5.002;
+    if ($options{'prompt'}) {
+	$gooddir = prompt($prompt, $gooddir)  ||  $gooddir;  # for 5.002;
+    }
 
     foreach $file (@$files) {
 	if (-f ($realfile = "$gooddir/$file")) {
@@ -111,16 +173,33 @@ sub QueryDb ($$$) {
     my($cfg, $db, $driver) = @_;
     my $db_lc = lc $driver;
 
-    my $dbname = prompt("Which database should I use for testing the $db"
-			. " drivers?", "test");
-    my $host = prompt("On which host is database $dbname running (hostname, "
-		      . " ip address or host:port)\n", "localhost");
+    my $dbname = $options{"$db_lc-test-db"};
+    if ($options{'prompt'}) {
+	$dbname = prompt("Which database should I use for testing the $db"
+			 . " drivers?", $dbname);
+    }
+    my $host = $options{"$db_lc-test-host"};
+    if ($options{'prompt'}) {
+	$host = "localhost" unless defined($host);
+	$host = prompt("On which host is database $dbname running (hostname, "
+		       . " ip address or host:port)\n", $host);
+    }
+
     my($user, $pass);
     if ($driver eq 'mysql') {
-	$user = prompt("User name for connecting to database $dbname?",
-		       "undef");
-	$pass = prompt("Password for connecting to database $dbname?",
-		       "undef");
+	$user = $options{"$db_lc-test-user"};
+	if ($options{'prompt'}) {
+	    $user = "undef" unless defined($user);
+	    $user = prompt("User name for connecting to database $dbname?",
+			   $user);
+	}
+
+	$pass = $options{"$db_lc-test-password"};
+	if ($options{'prompt'}) {
+	    $pass = "undef" unless defined($pass);
+	    $pass = prompt("Password for connecting to database $dbname?",
+			   $pass);
+	}
     }
 
     $cfg->{$driver}->{"test_db"} = $dbname;
@@ -237,10 +316,8 @@ sub CheckForLibGcc() {
     # but since the library is static only, they're not PIC and thus render
     # mysql.so unsharable.
     #
-    if ($Config::Config{gccversion} eq ''  ||
-	$Config::Config{osname} eq 'netbsd') {
-	return '';
-    }
+    return '' if ($Config::Config{gccversion} eq ''  ||
+		  $Config::Config{osname} =~ /^(net|open|free)bsd$/);
 
     my($libgccfile) = `$Config::Config{cc} -print-libgcc-file-name 2>&1`;
     my($libgccdir);
@@ -303,8 +380,8 @@ sub InitializeMysql ($) {
     }
 
     my($headerdir, $gooddir);
-    if (exists($ENV{'MYSQL_HEADERDIR'})) {
-	$headerdir = $ENV{'MYSQL_HEADERDIR'};
+    if ($options{'mysql-incdir'}) {
+	$headerdir = $options{'mysql-incdir'};
     } else {
 	($headerdir, $gooddir) = Search(\@gooddirs, \@mysqldirs,
 					["include/mysql/mysql.h",
@@ -317,8 +394,8 @@ sub InitializeMysql ($) {
     }
 
     my($libdir, $libfilename);
-    if (exists($ENV{'MYSQL_LIBDIR'})) {
-	$libdir = $ENV{'MYSQL_LIBDIR'};
+    if ($options{'mysql-libdir'}) {
+	$libdir = $options{'mysql-libdir'};
     } else {
 	my @searchpath;
 	if ($^O =~ /mswin32/i) {
@@ -465,6 +542,7 @@ sub InitializeMsql ($) {
 	$dbiDriver = "mSQL";
 	$ver = 2;
     }
+    my $lcDbiDriver = lc $dbiDriver;
 
     my %X;
     my @msqldirs = qw{/usr/local/Hughes /usr/local/Minerva /usr/local
@@ -472,17 +550,28 @@ sub InitializeMsql ($) {
     my @gooddirs;
     if (exists($ENV{$homeVar})) { push(@gooddirs, $ENV{$homeVar}); }
 
-    my($headerdir, $gooddir) = Search(\@gooddirs, \@msqldirs,
-				      ["include/msql.h"],
-				      "Where is your $queryVar installed? Please"
-				      . " tell me the directory that"
-				      . " contains\n"
-				      . " the subdir include/.");
-    unshift(@gooddirs, $gooddir);
-    my($libdir) = Search(\@gooddirs, \@msqldirs, ["lib/libmsql.a"],
-			 "Where is your $queryVar installed? Please tell me the"
-			 . " directory that contains\n"
-			 . " the subdir lib/.");
+    my($headerdir, $libdir, $gooddir);
+    if ($options{"$lcDbiDriver-incdir"}) {
+	$headerdir = $options{"$lcDbiDriver-incdir"};
+    } else {
+	($headerdir, $gooddir)
+	    = Search(\@gooddirs, \@msqldirs,
+		     ["include/msql.h"],
+		     "Where is your $queryVar installed? Please"
+		     . " tell me the directory that"
+		     . " contains\n"
+		     . " the subdir include/.");
+    }
+    unshift(@gooddirs, $gooddir) if $gooddir;
+    if ($options{"$lcDbiDriver-libdir"}) {
+	$libdir = $options{"$lcDbiDriver-libdir"};
+    } else {
+	$libdir
+	    = Search(\@gooddirs, \@msqldirs, ["lib/libmsql.a"],
+		     "Where is your $queryVar installed? Please tell me the"
+		     . " directory that contains\n"
+		     . " the subdir lib/.");
+    }
 
     # the necessity to determine how many arguments are needed for
     # msqlget*conf is due to random changes in the API
@@ -595,100 +684,103 @@ sub Init () {
     $MyConfig = { 'VERSION' => $VERSION,
 		  'DBD_VERSION' => $DBD_VERSION };
 
-    if ($ENV{'IN_MYSQL_DISTRIBUTION'}) {
-	require Data::Dumper;
-	$MyConfig->{'install_dbd_mysql'} = 1;
-	$MyConfig->{'install_dbd_msql'} = 0;
-	$MyConfig->{'install_dbd_msql1'} = 0;
-	$MyConfig->{'install_msqlperl'} = 0;
-	$MyConfig->{'install_msql1perl'} = 0;
-    } else {
-	my($ok) = 2;
+    my $ok = 2;
 
-	print "Checking for DBI, 0.93 or later ... ";
-	$@ = '';
-	eval "use DBI 0.93 (); require DBI::DBD;";
-	if ($@) {
-	    $ok = 0;
-	    print qq{
+    print "Checking for DBI, 0.93 or later ... ";
+    $@ = '';
+    eval "use DBI 0.93 (); require DBI::DBD;";
+    if ($@) {
+	$ok = 0;
+	print qq{
 You don't have installed the DBI module, version 0.93 or later. I cannot
 continue installing the Msql-Mysql modules.
 };
-        } else {
-            print "ok\n";
-        }
+    } else {
+	print "ok\n";
+    }
 
-        print "Checking for Data::Dumper ... ";
-        $@ = '';
-        eval "require Data::Dumper";
-        if ($@) {
-	    $ok = 0;
-	    print qq{
+    print "Checking for Data::Dumper ... ";
+    $@ = '';
+    eval "require Data::Dumper";
+    if ($@) {
+	$ok = 0;
+	print qq{
 You don't have installed the Data::Dumper module. I cannot continue
 installing the Msql-Mysql modules.
 };
-        } else {
-	    print "ok\n";
-        }
+    } else {
+	print "ok\n";
+    }
 
-        print "Checking for Data::ShowTable ... ";
-        $@ = '';
-        eval "require Data::ShowTable";
-        if ($@) {
-	    print qq{
+    print "Checking for Data::ShowTable ... ";
+    $@ = '';
+    eval "require Data::ShowTable";
+    if ($@) {
+	print qq{
 You don't have installed the Data::ShowTable module. You won't be able
 to use 'dbimon' the DBI shell.};
-            if ($ok == 2) {
-	        $ok = 1;
-	        print qq{I'll continue installing the Msql-Mysql modules
+	if ($ok == 2) {
+	    $ok = 1;
+	    print qq{I'll continue installing the Msql-Mysql modules
 anyways so that you can install Data::ShowTable at a later time.
 };
-            }
-        } else {
-	    print "ok\n";
-        }
+	}
+    } else {
+	print "ok\n";
+    }
 
-        if ($ok < 2) {
-            print qq{
+    if ($ok < 2) {
+	print qq{
 Missing modules are available from any CPAN mirror, for example
 
    ftp://ftp.funet.fi/pub/languages/perl/CPAN/modules/by-module
 };
-	}
-        if (!$ok) {
-            exit 1;
-        }
-
-        my($choice) = 0;
-        if (exists $ENV{'IN_MYSQL_DISTRIBUTION'}) {
-            $choice = 1;
-        }
-        while (!$choice) {
-	     $reply = prompt(
-	         "\n\nWhich DBMS do you want to use?\n\n" .
-	         "  1) MySQL\n" .
-	         "  2) mSQL (1 or 2)\n" .
-	         "  3) Both MySQL and mSQL\n\n" .
-                 "  4) mSQL1 and mSQL2\n" .
-                 "  5) Everything (MySQL, mSQL1 and mSQL2)\n\n" .
-	         "Enter your choice: ", "3");
-            if ($reply =~ /(\d+)/) {
-                $choice = $1;
-                if ($choice < 1  ||  $choice > 5) {
-                    $choice = 0;
-                }
-            }
-        }
-
-        $MyConfig->{'install_dbd_mysql'} =
-            ($choice == 1 || $choice == 3 || $choice == 5);
-        $MyConfig->{'install_dbd_msql'} =
-            ($choice == 2 || $choice == 3 || $choice == 4 || $choice == 5);
-        $MyConfig->{'install_dbd_msql1'} = ($choice == 4 || $choice == 5);
+    }
+    if (!$ok) {
+	exit 1;
     }
 
+    my $choice = 0;
+    while (!$choice) {
+	if (exists($options{'mysql-install'})  or
+	    exists($options{'msql-install'})   or
+	    exists($options{'msql1-install'})) {
+	    $options{'msql-install'} = 1 if $options{'msql1-install'};
+	    if ($options{'mysql-install'}) {
+		if ($options{'msql-install'}) {
+		    $choice = $options{'msql1-install'} ? 5 : 3;
+		} else {
+		    $choice = 1;
+		}
+	    } else {
+		$choice = $options{'msql1-install'} ? 4 : 2;
+	    }
+	}
+	if ($options{'prompt'}) {
+	    $reply = prompt("\n\nWhich DBMS do you want to use?\n\n" .
+			    "  1) MySQL\n" .
+			    "  2) mSQL (1 or 2)\n" .
+			    "  3) Both MySQL and mSQL\n\n" .
+			    "  4) mSQL1 and mSQL2\n" .
+			    "  5) Everything (MySQL, mSQL1 and mSQL2)\n\n" .
+			    "Enter your choice: ", "3");
+	    if ($reply =~ /(\d+)/) {
+		$choice = $1;
+		if ($choice < 1  ||  $choice > 5) {
+		    $choice = 0;
+		}
+	    }
+	}
+    }
+
+    $MyConfig->{'install_dbd_mysql'} =
+	($choice == 1 || $choice == 3 || $choice == 5);
+    $MyConfig->{'install_dbd_msql'} =
+	($choice == 2 || $choice == 3 || $choice == 4 || $choice == 5);
+    $MyConfig->{'install_dbd_msql1'} = ($choice == 4 || $choice == 5);
+
     if ($MyConfig->{'install_dbd_mysql'}) {
-        if ($ENV{'IN_MYSQL_DISTRIBUTION'}) {
+	if ($options{'mysql-install-nodbd'}) {
 	    $MyConfig->{'install_mysqlperl'} = 1;
         } else {
 	    eval { require Mysql };
@@ -696,14 +788,14 @@ Missing modules are available from any CPAN mirror, for example
 		(defined($Mysql::VERSION) and $Mysql::VERSION >= 1.19) ?
 		    "y" : "n";
 
-	    $reply = prompt(qq{
+	    $reply = $options{'prompt'} ? prompt(qq{
 
 Do you want to install the MysqlPerl emulation? You might keep your old
 Mysql module (to be distinguished from DBD::mysql!) if you are concerned
-about compatibility to existing applications!}, $default);
+about compatibility to existing applications!}, $default) : $default;
             $MyConfig->{'install_mysqlperl'} = ($reply =~ /y/i) ? 1 : 0;
-            QueryDb($MyConfig, 'Mysql', 'mysql');
         }
+	QueryDb($MyConfig, 'Mysql', 'mysql');
         if (!exists $MyConfig->{'X_mysql'}) {
             $MyConfig->{'X_mysql'} = InitializeMysql($MyConfig);
         }
@@ -740,20 +832,24 @@ about compatibility to existing applications!}, $default);
 
 
     if ($MyConfig->{'install_dbd_msql'}) {
-	eval { require Msql };
-	my $default =
-	    (defined($Msql::VERSION) and $Msql::VERSION >= 1.19) ?
-		"y" : "n";
+	if ($options{'msql-install-nodbd'}) {
+	    $MyConfig->{'install_msqlperl'} = 1;
+        } else {
+	    eval { require Msql };
+	    my $default =
+		(defined($Msql::VERSION) and $Msql::VERSION >= 1.19) ?
+		    "y" : "n";
 
-	$reply = prompt(qq{
+	    $reply = $options{'prompt'} ? prompt(qq{
 
 Do you want to install the MsqlPerl emulation? You might keep your old
 Msql module (to be distinguished from DBD::mSQL!) if you are concerned
-about compatibility to existing applications!}, $default);
-        $MyConfig->{'install_msqlperl'} = ($reply =~ /y/i) ? 1 : 0;
-        QueryDb($MyConfig,
-                $MyConfig->{'install_dbd_msql1'} ? 'mSQL 2' : 'mSQL',
-                'mSQL');
+about compatibility to existing applications!}, $default) : $default;
+	    $MyConfig->{'install_msqlperl'} = ($reply =~ /y/i) ? 1 : 0;
+	}
+	QueryDb($MyConfig,
+		$MyConfig->{'install_dbd_msql1'} ? 'mSQL 2' : 'mSQL',
+		'mSQL');
         if (!exists($MyConfig->{X_msql})) {
             $MyConfig->{'X_msql'} =
                InitializeMsql($MyConfig->{'install_dbd_msql1'} ? 2 : 0);
@@ -791,18 +887,22 @@ about compatibility to existing applications!}, $default);
 
 
     if ($MyConfig->{'install_dbd_msql1'}) {
-	eval { require Msql1 };
-	my $default =
-	    (defined($Msql1::VERSION) and $Msql1::VERSION >= 1.19) ?
-		"y" : "n";
+	if ($options{'msql1-install-nodbd'}) {
+	    $MyConfig->{'install_msql1perl'} = 1;
+        } else {
+	    eval { require Msql1 };
+	    my $default =
+		(defined($Msql1::VERSION) and $Msql1::VERSION >= 1.19) ?
+		    "y" : "n";
 
-	$reply = prompt(qq{
+	    $reply = $options{'prompt'} ? prompt(qq{
 
 Do you want to install the Msql1Perl emulation? You might keep your old
 Mysql module (to be distinguished from DBD::mSQL1!) if you are concerned
-about compatibility to existing applications!}, $default);
-        $MyConfig->{'install_msql1perl'} = ($reply =~ /y/i) ? 1 : 0;
-        QueryDb($MyConfig, 'mSQL 1', 'mSQL1');
+about compatibility to existing applications!}, $default) : $default;
+	    $MyConfig->{'install_msql1perl'} = ($reply =~ /y/i) ? 1 : 0;
+	}
+	QueryDb($MyConfig, 'mSQL 1', 'mSQL1');
         if (!exists $MyConfig->{'X_msql1'}) {
             $MyConfig->{'X_msql1'} = InitializeMsql(1);
         }
@@ -867,10 +967,19 @@ about compatibility to existing applications!}, $default);
 #
 ############################################################################
 
+my $README_created;
+
 sub CreatePostamble($$$$) {
     my($driver, $dbdDriver, $xtractFiles, $unlinkFiles) = @_;
-    my($ref);
-    my($pa) = '';
+    my $ref;
+    my $pa = '';
+
+    unless ($README_created) {
+	$README_created = "\npm_to_blib: README\n\n"
+	    . "README: $driver/$dbdDriver.pm\n"
+	    . "\tpod2text $driver/$dbdDriver.pm >README\n\n";
+    }
+
     $| = 1;
     if (@$xtractFiles) {
 	print "Creating $driver files ";
@@ -929,12 +1038,12 @@ sub MakeDirs () {
     if ($MyConfig->{'install_dbd_msql1'}) {
 	push(@createList, @{$MyConfig->{'files_dbd_msql1'}});
     } else {
-	push(@deleteList, @{$MyConfig->{'files_dbd_msql1'}});	
+	push(@deleteList, @{$MyConfig->{'files_dbd_msql1'}});
     }
     if ($MyConfig->{'install_msql1perl'}) {
 	push(@createList, @{$MyConfig->{'files_msql1perl'}});
     } else {
-	push(@deleteList, @{$MyConfig->{'files_msql1perl'}});	
+	push(@deleteList, @{$MyConfig->{'files_msql1perl'}});
     }
 
     $MyConfig->{'postamble_msql1'} = CreatePostamble('Msql1', 'mSQL1',
@@ -983,3 +1092,7 @@ if ($ExtUtils::MakeMaker::VERSION >= 5.43) {
 }
 
 ExtUtils::MakeMaker::WriteMakefile(%opts);
+
+package MY;
+
+sub postamble { $README_created }

@@ -1,6 +1,6 @@
 ~startperl~
 
-# $Id: pmsql.in,v 1.2 1999/01/05 22:30:59 joe Exp $
+# $Id: pmsql.in,v 1.3 1999/02/20 14:25:27 joe Exp $
 my $version = '~NODBD_VERSION~';
 
 BEGIN {require 5.002;}
@@ -309,7 +309,9 @@ q[uit]                               leave $prompt
 	    print "Query ok\n";
 	}
 	if (ref $::Q) {
+#xtract Msql
 	    $::Q->optimize(1);
+#endxtract
 	    if ($Less && ((lc $Less) ne 'stdout')) {
 		open OUT, "| $Less";
 	    } else {

@@ -7,7 +7,7 @@ package Msql::Statement;
 use strict;
 use vars qw($VERSION $AUTOLOAD);
 
-$VERSION = '1.2017';
+$VERSION = '1.2018';
 
 sub fetchrow ($) {
     my $self = shift;
@@ -63,29 +63,29 @@ sub length ($) { shift->arrAttr('length') }
 sub maxlength  {
     my $sth = shift;
     my $result;
-	$result = [];
-	my ($l);
-	for (0..$sth->numfields-1) {
-	    $$result[$_] = 0;
-	}
-	$sth->dataseek(0);
-	my($col, @row, $i);
-	while (@row = $sth->fetchrow) {
-	    for ($i = 0;  $i < @row;  $i++) {
-		$col = $row[$i];
-		my($s) = defined $col ? unctrl($col) : "NULL";
-		# New in 2.0: a string is longer than it should be
-		if (defined &Msql::TEXT_TYPE  &&
-		    $sth->type->[$i] == &Msql::TEXT_TYPE &&
-		    CORE::length($s) > $sth->length->[$i] + 5) {
-		    my $l = CORE::length($col);
-		    substr($s,$sth->length->[$i]) = "...($l)";
-		}
-		if (CORE::length($s) > $$result[$i]) {
-		    $$result[$i] = CORE::length($s);
-		}
+    $result = [];
+    for (0..$sth->numfields-1) {
+	$result->[$_] = 0;
+    }
+    $sth->dataseek(0);
+    my $numRows = $sth->numrows();
+    for (my $j = 0;  $j < $numRows;  $j++) {
+	my @row = $sth->fetchrow();
+	for (my $i = 0;  $i < @row;  $i++) {
+	    my $col = $row[$i];
+	    my $s = defined $col ? unctrl($col) : "NULL";
+	    my $l = CORE::length($s);
+	    # New in 2.0: a string is longer than it should be ...
+	    if (defined &Msql::TEXT_TYPE  &&
+		$sth->type->[$i] == &Msql::TEXT_TYPE &&
+		$l > $sth->length->[$i] + 5) {
+		substr($s,$sth->length->[$i]) = "...($l)";
+		$l = CORE::length($s);
 	    }
+	    $result->[$i] = $l if $l > $result->[$i];
 	}
+    }
+    $sth->dataseek(0);
     return wantarray ? @$result : $result;
 }
 
@@ -143,7 +143,7 @@ sub as_string {
 	return '';
     }
     for (0..$sth->numfields-1) {
-	$l=CORE::length($sth->name->[$_]);
+	$l = CORE::length($sth->name->[$_]);
 	if ($sth->optimize  &&  $l < $sth->maxlength->[$_]) {
 	    $l= $sth->maxlength->[$_];
 	}

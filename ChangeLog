@@ -1,3 +1,13 @@
+1999-02-20  Jochen Wiedmann  <joe@ispsoft.de>
+
+	* nodbd/statement.pm.in (maxlength): Fixed bug in the MySQL version
+	  of $sth->maxlength(); Bill Lawrence <P26766@email.mot.com>.
+	* nodbd/nodbd.pm.in: Fixed warning messages in selectdb. Thanks to
+	  Herb Rubin <herbr@pfinders.com>, who found both problem and
+	  reason.
+	* Makefile.PL (CheckForLibGcc()): No longer linking against
+	  libgcc.a with OpenBSD.
+
 1999-01-26  Jochen Wiedmann  <joe@ispsoft.de> (1.2017)
 
 	* dbd/myMsql.h: Now including common/portability.h for mSQL; 2.0.6
@@ -414,7 +424,7 @@ Fri Oct 24 01:29:08 1997  Jochen Wiedmann  <joe@ispsoft.de> (1.1816)
 	* lib/Msql/Statement.pm: Fixed use of Msql::TEXT_TYPE without
 	  checking whether we are running Msql 1.
 
-$Id: ChangeLog,v 1.8 1999/01/26 19:49:16 joe Exp $
+$Id: ChangeLog,v 1.11 1999/03/09 19:13:22 joe Exp $
 
 DBD::mysql for DBI - Written by Jochen Wiedmann <joe@ispsoft.de>
 

@@ -19,7 +19,7 @@
  *           Fax: +49 7123 / 14892
  *
  *
- *  $Id: dbdimp.c,v 1.4 1999/01/05 22:30:54 joe Exp $
+ *  $Id: dbdimp.c,v 1.5 1999/02/15 10:16:42 joe Exp $
  */
 
 
@@ -1767,12 +1767,5 @@ int MysqlReconnect(SV* h) {
     }
     return TRUE;
 }
-
-#if !defined(_UNIX_)  &&  defined(WIN32)
-int pthread_cond_init()
-{
-  return 0;
-}
-#endif
 
 #endif

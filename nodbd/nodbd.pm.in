@@ -75,41 +75,35 @@ sub DESTROY {
 
 sub connect ($;$$$$) {
     my($class, $host, $db, $user, $password) = @_;
-    my($self) = { 'host' => ($host || ''),
-		  'user' => $user,
-		  'password' => $password,
-		  'db' => $db,
-	          'driver' => '~DBD_DRIVER~',
-	          'COMPATIBILITY' => 1 };
+    my $self = { 'class' => $class,
+		 'host' => ($host || ''),
+		 'user' => $user,
+		 'password' => $password,
+		 'db' => $db,
+		 'driver' => '~DBD_DRIVER~',
+		 'COMPATIBILITY' => 1 };
     bless($self, $class);
     $self->{'drh'} = DBI->install_driver($self->{'driver'});
-    if ($db) {
-	my $dsn = "DBI:~DBD_DRIVER~:database=$db;host=$host";
-	my $dbh = $class->SUPER::connect($dsn, $user, $password);
-	if (!$dbh) {
-	    $db_errstr = $DBI::errstr;
-	    return undef;
-	}
-	$self->{'dbh'} = $dbh;
-	$dbh->{'CompatMode'} = 1;
-	$dbh->{'PrintError'} = !$~DRIVER~::QUIET;
-    }
-    $self;
+    $db ? $self->selectdb($db) : $self;
 }
 
 sub selectdb ($$) {
     my($self, $db) = @_;
-    my($dsn) = "DBI:~DBD_DRIVER~:database=$db:host=" . $self->{'host'};
-    my($dbh) = DBI->connect($dsn, $self->{'user'}, $self->{'password'});
+    my $dsn = "DBI:~DBD_DRIVER~:database=$db:host=" . $self->{'host'};
+    my $dbh = $self->{'class'}->SUPER::connect
+	($dsn, $self->{'user'}, $self->{'password'},
+	 {'CompatMode' => 1, 'PrintError' => !$~DRIVER~::QUIET});
     if (!$dbh) {
 	$db_errstr = $self->{'errstr'} = $DBI::errstr;
 	$self->{'errno'} = $DBI::err;
-	undef;
-    } else {
-	$self->{'dbh'} = $dbh;
-	$self->{'db'} = $db;
-	$self;
+	return undef;
     }
+    if ($self->{'dbh'}) {
+	local $SIG{'__WARN__'} = 'IGNORE';
+	$self->{'dbh'}->disconnect();
+    }
+    $self->{'dbh'} = $dbh;
+    $self;
 }
 
 sub listdbs ($) {
@@ -854,6 +848,6 @@ medium term, that the DBI efforts result in a richer module family
 with better support and more functionality. Alligator maintains an
 interesting page on the DBI development:
 
-    http://www.arcana.co.uk/technologia/perl/DBI
+    http://www.symbolstone.org/technology/perl/DBI
 
 =cut
