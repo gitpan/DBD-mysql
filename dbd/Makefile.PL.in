@@ -9,6 +9,30 @@ require "Makefile.lib";
 
 _MY::Config::Init(0);
 
+my (@xtractFiles) = (["../dbd/dbd.xs.in", "~DBD_DRIVER~.xs"],
+		     ["../dbd/dbdimp.c", "dbdimp.c"],
+		     ["../dbd/myMsql.c", "myMsql.c"],
+		     ["../tests/lib.pl", "t/lib.pl"],
+		     ["../tests/00base.t", "t/00base.t"],
+		     ["../tests/10dsnlist.t", "t/10dsnlist.t"],
+		     ["../tests/20createdrop.t", "t/20createdrop.t"],
+		     ["../tests/30insertfetch.t", "t/30insertfetch.t"],
+		     ["../tests/40bindparam.t", "t/40bindparam.t"],
+		     ["../tests/40listfields.t", "t/40listfields.t"],
+		     ["../tests/40nulls.t", "t/40nulls.t"],
+		     ["../tests/40numrows.t", "t/40numrows.t"],
+		     ["../tests/50chopblanks.t", "t/50chopblanks.t"],
+		     ["../tests/50commit.t", "t/50commit.t"],
+		     ["../tests/dbdadmin.t", "t/dbdadmin.t"],
+		     ["../tests/ak-dbd.t", "t/ak-dbd.t"]);
+
+my $ref;
+foreach $ref (@xtractFiles) {
+    &_MY::Config::Xtract($ref, "~DRIVER~", "~DBD_DRIVER~", "../xtract");
+}
+
+
+
 sub config () {
     my $dbd_driver = "~DBD_DRIVER~";
     my $from_driver = "~DRIVER~";
@@ -38,27 +62,11 @@ sub Create~DBD_DRIVER~Postamble ($) {
 
     my $pa = "\n";
     my $ref;
-    foreach $ref
-	(@_MY::Config::Files::~DBD_DRIVER~,
-	 ["../dbd/dbd.xs.in", "~DBD_DRIVER~.xs"],
-	 ["../dbd/dbdimp.c", "dbdimp.c"],
-	 ["../dbd/myMsql.c", "myMsql.c"],
-	 ["../tests/lib.pl", "t/lib.pl"],
-	 ["../tests/00base.t", "t/00base.t"],
-	 ["../tests/10dsnlist.t", "t/10dsnlist.t"],
-	 ["../tests/20createdrop.t", "t/20createdrop.t"],
-	 ["../tests/30insertfetch.t", "t/30insertfetch.t"],
-	 ["../tests/40bindparam.t", "t/40bindparam.t"],
-	 ["../tests/40listfields.t", "t/40listfields.t"],
-	 ["../tests/40nulls.t", "t/40nulls.t"],
-	 ["../tests/40numrows.t", "t/40numrows.t"],
-	 ["../tests/50chopblanks.t", "t/50chopblanks.t"],
-	 ["../tests/50commit.t", "t/50commit.t"],
-	 ["../tests/ak-dbd.t", "t/ak-dbd.t"]) {
+    foreach $ref (@xtractFiles) {
 	$pa .= _MY::Config::XtractF($ref, "~DRIVER~", "~DBD_DRIVER~",
 				    "../xtract");
     }
-    $pa = $pa . "\ndbd.xs: ~DBD_DRIVER~.xsi\n\n";
+    $pa = $pa . "\n~DBD_DRIVER~.xs: ~DBD_DRIVER~.xsi\n\n";
 
     # we must be careful of quotes for Win32 here.
     my ($dir, $dbiDir);

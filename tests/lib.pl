@@ -38,7 +38,8 @@ $::COL_KEY = 2;
 my $file;
 if (-f ($file = "t/$dbdriver.dbtest")  ||
     -f ($file = "$dbdriver.dbtest")    ||
-    -f ($file = "../tests/$dbdriver.dbtest")) {
+    -f ($file = "../tests/$dbdriver.dbtest")  ||
+    -f ($file = "tests/$dbdriver.dbtest")) {
     eval { require $file; };
     if ($@) {
 	print STDERR "Cannot execute $file: $@.\n";
@@ -48,7 +49,8 @@ if (-f ($file = "t/$dbdriver.dbtest")  ||
 }
 if (-f ($file = "t/$mdriver.mtest")  ||
     -f ($file = "$mdriver.mtest")    ||
-    -f ($file = "../tests/$mdriver.mtest")) {
+    -f ($file = "../tests/$mdriver.mtest")  ||
+    -f ($file = "tests/$mdriver.mtest")) {
     eval { require $file; };
     if ($@) {
 	print STDERR "Cannot execute $file: $@.\n";

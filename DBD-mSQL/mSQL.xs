@@ -20,6 +20,7 @@
 
 DBISTATE_DECLARE;
 
+
 MODULE = DBD::mSQL	PACKAGE = DBD::mSQL
 
 INCLUDE: mSQL.xsi
@@ -48,7 +49,7 @@ _ListDBs(drh, host)
         row_t cur;
         res = MyListDbs(sock);
         if (!res) {
-            do_error(drh, JW_ERR_LIST_DB, MyError(sock));
+            do_error(drh, MyErrno(sock, JW_ERR_LIST_DB), MyError(sock));
         } else {
             EXTEND(sp, MyNumRows(res));
 	    while ((cur = MyFetchRow(res))) {
@@ -61,57 +62,55 @@ _ListDBs(drh, host)
 
 
 SV*
-_CreateDB(drh, host, dbname=host)
-    SV *        drh
-    char *      host
-    char *      dbname
-  PROTOTYPE: $$;$
+_admin_internal(drh,dbh,command,dbname=NULL,host=NULL,user=NULL,password=NULL)
+    SV* drh
+    SV* dbh
+    char* command
+    char* dbname
+    char* host
+    char* user
+    char* password
   PPCODE:
     {
         dbh_t sock;
-	int result = FALSE;
+	int result;
 
-	if (items < 3) {
-	    host = NULL;
-	}
-	if (dbd_db_connect(&sock,host,NULL,NULL)) {
-	    if (MyCreateDb(sock,dbname)) {
-	        result = TRUE;
-	    } else {
-	        do_error(drh, JW_ERR_CREATE_DB, MyError(sock));
-	    }
-	    MyClose(sock);
+	/*
+	 *  Connect to the database, if required.
+	 */
+	if (SvOK(dbh)) {
+	    D_imp_dbh(dbh);
+	    sock = imp_dbh->svsock;
 	} else {
-	    do_error(drh, JW_ERR_CONNECT, MyError(sock));
-	}
-	XPUSHs(boolSV(result));
-    }
-
-
-
-SV*
-_DropDB(drh, host, dbname=host)
-    SV *        drh
-    char *      host
-    char *      dbname
-  PROTOTYPE: $$;$
-  PPCODE:
-    {
-        dbh_t sock;
-	int result = FALSE;
-
-	if (dbd_db_connect(&sock,host,NULL,NULL)) {
-	    if (MyDropDb(sock,dbname) != -1) {
-	        result = TRUE;
-	    } else {
-	        do_error(drh, JW_ERR_DROP_DB, MyError(sock));
+	    if (!dbd_db_connect(&sock,host,user,password)) {
+	        do_error(drh, MyErrno(sock, JW_ERR_CONNECT), MyError(sock));
+		XPUSHs(&sv_no);
 	    }
-	    MyClose(sock);
-	} else {
-	    do_error(drh, JW_ERR_CONNECT, MyError(sock));
-	}
-	XPUSHs(boolSV(result));
-    }
+       }
+ 
+       if (strEQ(command, "shutdown")) {
+	   result = MyShutdown(sock);
+       } else if (strEQ(command, "reload")) {
+	   result = MyReload(sock);
+       } else if (strEQ(command, "createdb")) {
+	   result = MyCreateDb(sock, dbname);
+       } else if (strEQ(command, "dropdb")) {
+          result = MyDropDb(sock, dbname);
+       } else {
+	  croak("Unknown command: %s", command);
+       }
+       if (result < 0) {
+	   do_error(SvOK(dbh) ? dbh : drh, MyErrno(sock, JW_ERR_LIST_DB),
+		    MyError(sock));
+	   result = 0;
+       } else {
+	   result = 1;
+       }
+       if (SvOK(dbh)) {
+	   MyClose(sock);
+       }
+       XPUSHs(boolSV(result));
+   }
 
 
 MODULE = DBD::mSQL    PACKAGE = DBD::mSQL::db
@@ -127,8 +126,10 @@ _ListDBs(dbh)
     result_t res;
     row_t cur;
     res = MyListDbs(imp_dbh->svsock);
-    if (!res) {
-        do_error(dbh, JW_ERR_LIST_DB, MyError(imp_dbh->svsock));
+    if (!res  &&  (!MyReconnect(imp_dbh->svsock, dbh)
+		   ||  !(res = MyListDbs(imp_dbh->svsock)))) {
+        do_error(dbh, MyErrno(imp_dbh->svsock, JW_ERR_LIST_DB),
+		 MyError(imp_dbh->svsock));
     } else {
         EXTEND(sp, MyNumRows(res));
 	while ((cur = MyFetchRow(res))) {
@@ -137,19 +138,6 @@ _ListDBs(dbh)
 	MyFreeResult(res);
     }
     MyClose(imp_dbh->svsock);
-
-void
-_SelectDB(dbh, dbname)
-    SV *	dbh
-    char *	dbname
-    PPCODE:
-    D_imp_dbh(dbh);
-    if (imp_dbh->svsock != -1) {
-        if (MySelectDb(imp_dbh->svsock, dbname) == -1) {
-            do_error(dbh, JW_ERR_SELECT_DB, 
-			   MyError(imp_dbh->svsock));
-        }
-    }
 
 
 void
@@ -160,8 +148,10 @@ _ListTables(dbh)
     result_t res;
     row_t cur;
     res = MyListTables(imp_dbh->svsock);
-    if (!res) {
-        do_error(dbh, JW_ERR_LIST_TABLES, MyError(imp_dbh->svsock));
+    if (!res  &&  (!MyReconnect(imp_dbh->svsock, dbh)
+		   ||  !(res = MyListTables(imp_dbh->svsock)))) {
+        do_error(dbh, MyErrno(imp_dbh->svsock, JW_ERR_LIST_TABLES),
+		 MyError(imp_dbh->svsock));
     } else {
         while ((cur = MyFetchRow(res))) {
             XPUSHs(sv_2mortal((SV*)newSVpv( cur[0], strlen(cur[0]))));
@@ -211,14 +201,71 @@ do(dbh, statement, attr=Nullsv, ...)
 }
 
 
-MODULE = DBD::mSQL    PACKAGE = DBD::mSQL::st
+SV*
+ping(dbh)
+    SV* dbh;
+  PROTOTYPE: $
+  CODE:
+    {
+        int result;
+	D_imp_dbh(dbh);
+	result = TRUE;
+	RETVAL = boolSV(result);
+    }
+  OUTPUT:
+    RETVAL
+
+
 
 void
-_NumRows(sth)
-    SV *	sth
-    PPCODE:
-    D_imp_sth(sth);
-    EXTEND( sp, 1 );
-    PUSHs( sv_2mortal((SV*)newSViv(imp_sth->row_num)));
+_SelectDB(dbh, dbname)
+    SV *	dbh
+    char *	dbname
+  PPCODE:
+    croak("_SelectDB is removed from this module; use DBI->connect instead.");
 
-# end of mysql.xs
+
+SV*
+quote(dbh, str)
+    SV* dbh
+    SV* str
+  PROTOTYPE: $$
+  PPCODE:
+    {
+        SV* result;
+        char* ptr;
+	char* sptr;
+	int len;
+
+        if (!SvOK(str)) {
+	    XSRETURN_UNDEF;
+	}
+
+	ptr = SvPV(str, len);
+	result = sv_2mortal(newSV(len*2+3));
+	sptr = SvPVX(result);
+
+	*sptr++ = '\'';
+	while (len--) {
+	    switch (*ptr) {
+	      case '\'':
+		*sptr++ = '\\';
+		*sptr++ = '\'';
+		break;
+	      case '\\':
+		*sptr++ = '\\';
+		*sptr++ = '\\';
+		break;
+	      default:
+		*sptr++ = *ptr;
+		break;
+	    }
+	    ++ptr;
+	}
+	*sptr++ = '\'';
+	SvPOK_on(result);
+	SvCUR_set(result, sptr - SvPVX(result));
+	*sptr++ = '\0';  /*  Never hurts NUL terminating a Perl string ... */
+	EXTEND(sp, 1);
+	PUSHs(result);
+    }

@@ -10,6 +10,20 @@ and may be used, copied and redistributed under the same terms as perl
 (see the files README, Copying and Artistic in the perl distribution).
 
 
+*EXPERIMENTAL SOFTWARE*
+-----------------------
+
+This package contains experimental software and should *not* be used
+in a production environment. We are following the Linux convention and
+treat the "even" releases (1.18xx as of this writing, perhaps 1.20xx,
+1.22xx, ... in the future) as stable. Only bug or portability fixes
+will go into these releases.
+
+The "odd" releases (1.19xx as of this writing, perhaps 1.21xx, 1.23xx
+in the future) will be used for testing new features or other serious
+code changes.
+
+
 Where to get it
 ---------------
 
@@ -49,12 +63,14 @@ on it. You find it on
 binary versions as well as source versions.
 
 To use the perl modules you definitely have to install the respective
-database and the library first. From the perl side perl5.003 is required.
+database and the library first. From the perl side perl5.004 is required.
+
 
 Installation
 ------------
 
 See the INSTALL document.
+
 
 What is in this package
 -----------------------
@@ -75,6 +91,7 @@ superior over MsqlPerl and MysqlPerl: They are sufficiently stable
 (there´s only one known problem in DBI itself and it's announced to
 be fixed in DBI 0.91) and definitely faster. Anyways, you have to decide
 on your own about the trade-offs.
+
 
 What you achieve with Msql.pm and Mysql.pm
 ------------------------------------------
@@ -142,6 +159,7 @@ MsqlPerl and Mysqlperl and study the examples in the file t/akmisc.t,
 which is the extensive testscript to test your installation, but is
 heavily commented, so you may use it as a tutorial.
 
+
 Installing The Adaptor
 ----------------------
 
@@ -164,6 +182,7 @@ module. Especially if you're facing problems with dynamic loading, set
 the environment variable PERL_DL_DEBUG to some value greater 0 to get
 some more information from the DynaLoader.
 
+
 Documentation
 -------------
 
@@ -175,6 +194,7 @@ Mysql.pm. During installation this should be turned into a manpage. Try
 The tutorial that may be helpful for you is in the file t/akmisc.t.
 This file is the test program for this package and illustrates all basic
 operations that are available.
+
 
 pmsql, pmysql and dbimon
 ------------------------
@@ -192,6 +212,7 @@ have Term::ReadKey and Term::ReadLine::Perl installed on your system,
 you have access to a readline clone, entirely written in perl with
 command line editor, a basic completion and history, and you get the
 output of any select query piped into your favorite pager program.
+
 
 Mailing list
 ------------

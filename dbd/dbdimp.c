@@ -113,17 +113,12 @@ void do_warn(SV* h, int rc, char* what) {
  *           been called in the latter case
  *
  **************************************************************************/
-int dbd_db_login(SV* dbh, imp_dbh_t* imp_dbh, char* dbname, char* user,
+
+static int Login(SV* dbh, imp_dbh_t* imp_dbh, char* dbname, char* user,
 		 char* password) {
     char* copy = NULL;
     char* host = NULL;
     char* ptr;
-
-    if (dbis->debug >= 2)
-        fprintf(DBILOGFP, "imp_dbh->connect: dsn = %s, uid = %s, pwd = %s\n",
-	       dbname ? dbname : "NULL",
-	       user ? user : "NULL",
-	       password ? password : "NULL");
 
     /*
      *  dbname may be "db:host" or "db;host"
@@ -146,7 +141,6 @@ int dbd_db_login(SV* dbh, imp_dbh_t* imp_dbh, char* dbname, char* user,
 #xtract Msql
     if (!dbd_db_connect(&imp_dbh->svsock, host, user, password)) {
 #endxtract
-	DO_ERROR(dbh, JW_ERR_CONNECT, imp_dbh->svsock);
 	if (copy) free(copy);
 	return FALSE;
     }
@@ -156,12 +150,27 @@ int dbd_db_login(SV* dbh, imp_dbh_t* imp_dbh, char* dbname, char* user,
      */
     if (MySelectDb(imp_dbh->svsock, dbname)) {
         if (copy) free(copy);
-	DO_ERROR(dbh, JW_ERR_SELECT_DB, imp_dbh->svsock);
 	MyClose(imp_dbh->svsock);
 	return FALSE;
     }
 
     if (copy) free(copy);
+    return TRUE;
+}
+
+int dbd_db_login(SV* dbh, imp_dbh_t* imp_dbh, char* dbname, char* user,
+		 char* password) {
+    if (dbis->debug >= 2)
+        fprintf(DBILOGFP, "imp_dbh->connect: dsn = %s, uid = %s, pwd = %s\n",
+	       dbname ? dbname : "NULL",
+	       user ? user : "NULL",
+	       password ? password : "NULL");
+
+    if (!Login(dbh, imp_dbh, dbname, user, password)) {
+	DO_ERROR(dbh, MyErrno(imp_dbh->svsock, JW_ERR_CONNECT),
+		 imp_dbh->svsock);
+	return FALSE;
+    }
 
     /*
      *  Tell DBI, that dbh->disconnect should be called for this handle
@@ -510,7 +519,9 @@ int dbd_st_internal_execute(SV* h, SV* statement, SV* attribs, int numParams,
 
 	return 0;
     } else {
-	if (MyQuery(svsock, sbuf, slen) == -1) {
+	if ((MyQuery(svsock, sbuf, slen) == -1)  &&
+	    (!MyReconnect(svsock, h)
+	     ||	 (MyQuery(svsock, sbuf, slen) == -1))) {
 	    Safefree(salloc);
 	    DO_ERROR(h, JW_ERR_QUERY, svsock);
 	    return -2;
@@ -1155,9 +1166,6 @@ SV* dbd_st_FETCH_attrib(SV* sth, imp_sth_t* imp_sth, SV* keysv) {
 	break;
 #endxtract
       case 'r':
-	/*
-	 * Deprecated, use 'result'
-	 */
 	if (strEQ(key, "result")) {
 	    retsv = sv_2mortal(newSViv((IV) imp_sth->cda));
 	}
@@ -1265,3 +1273,59 @@ int dbd_bind_ph (SV *sth, imp_sth_t *imp_sth, SV *param, SV *value,
 
     return BindParam(&imp_sth->params[paramNum - 1], value, sql_type);
 }
+
+
+#xtract Mysql
+
+/***************************************************************************
+ *
+ *  Name:    MysqlReconnect
+ *
+ *  Purpose: If the server has disconnected, try to reconnect.
+ *
+ *  Input:   h - database or statement handle
+ *
+ *  Returns: TRUE for success, FALSE otherwise
+ *
+ **************************************************************************/
+
+int MysqlReconnect(SV* h) {
+    D_imp_xxh(h);
+    imp_dbh_t* imp_dbh;
+    SV* sv;
+    HV* hv;
+    SV** svp;
+    SV* dbname;
+    SV* user;
+    SV* password;
+
+    if (DBIc_TYPE(imp_xxh) == DBIt_ST) {
+        imp_dbh = (imp_dbh_t*) DBIc_PARENT_COM(imp_xxh);
+	h = DBIc_PARENT_H(imp_xxh);
+    } else {
+        imp_dbh = (imp_dbh_t*) imp_xxh;
+    }
+
+    sv = DBIc_IMP_DATA(imp_dbh);
+    if (!sv  ||  !SvROK(sv)  ||  SvTYPE(SvRV(sv)) != SVt_PVHV) {
+        return FALSE;
+    }
+
+    hv = (HV*) SvRV(sv);
+    if (!(svp = hv_fetch(hv, "dsn", 3, FALSE))) {
+        return FALSE;
+    }
+    dbname = *svp;
+    if (!(svp = hv_fetch(hv, "user", 4, FALSE))) {
+        return FALSE;
+    }
+    user = *svp;
+    if (!(svp = hv_fetch(hv, "password", 8, FALSE))) {
+        return FALSE;
+    }
+    password = *svp;
+    return Login(h, imp_dbh, SvPV(dbname, na), SvPV(user, na),
+		 SvPV(password, na));
+}
+
+#endxtract

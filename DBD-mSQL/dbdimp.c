@@ -113,17 +113,12 @@ void do_warn(SV* h, int rc, char* what) {
  *           been called in the latter case
  *
  **************************************************************************/
-int dbd_db_login(SV* dbh, imp_dbh_t* imp_dbh, char* dbname, char* user,
+
+static int Login(SV* dbh, imp_dbh_t* imp_dbh, char* dbname, char* user,
 		 char* password) {
     char* copy = NULL;
     char* host = NULL;
     char* ptr;
-
-    if (dbis->debug >= 2)
-        fprintf(DBILOGFP, "imp_dbh->connect: dsn = %s, uid = %s, pwd = %s\n",
-	       dbname ? dbname : "NULL",
-	       user ? user : "NULL",
-	       password ? password : "NULL");
 
     /*
      *  dbname may be "db:host" or "db;host"
@@ -141,7 +136,6 @@ int dbd_db_login(SV* dbh, imp_dbh_t* imp_dbh, char* dbname, char* user,
      *  Try to connect
      */
     if (!dbd_db_connect(&imp_dbh->svsock, host, user, password)) {
-	DO_ERROR(dbh, JW_ERR_CONNECT, imp_dbh->svsock);
 	if (copy) free(copy);
 	return FALSE;
     }
@@ -151,12 +145,27 @@ int dbd_db_login(SV* dbh, imp_dbh_t* imp_dbh, char* dbname, char* user,
      */
     if (MySelectDb(imp_dbh->svsock, dbname)) {
         if (copy) free(copy);
-	DO_ERROR(dbh, JW_ERR_SELECT_DB, imp_dbh->svsock);
 	MyClose(imp_dbh->svsock);
 	return FALSE;
     }
 
     if (copy) free(copy);
+    return TRUE;
+}
+
+int dbd_db_login(SV* dbh, imp_dbh_t* imp_dbh, char* dbname, char* user,
+		 char* password) {
+    if (dbis->debug >= 2)
+        fprintf(DBILOGFP, "imp_dbh->connect: dsn = %s, uid = %s, pwd = %s\n",
+	       dbname ? dbname : "NULL",
+	       user ? user : "NULL",
+	       password ? password : "NULL");
+
+    if (!Login(dbh, imp_dbh, dbname, user, password)) {
+	DO_ERROR(dbh, MyErrno(imp_dbh->svsock, JW_ERR_CONNECT),
+		 imp_dbh->svsock);
+	return FALSE;
+    }
 
     /*
      *  Tell DBI, that dbh->disconnect should be called for this handle
@@ -488,7 +497,9 @@ int dbd_st_internal_execute(SV* h, SV* statement, SV* attribs, int numParams,
 
 	return 0;
     } else {
-	if (MyQuery(svsock, sbuf, slen) == -1) {
+	if ((MyQuery(svsock, sbuf, slen) == -1)  &&
+	    (!MyReconnect(svsock, h)
+	     ||	 (MyQuery(svsock, sbuf, slen) == -1))) {
 	    Safefree(salloc);
 	    DO_ERROR(h, JW_ERR_QUERY, svsock);
 	    return -2;
@@ -1032,9 +1043,6 @@ SV* dbd_st_FETCH_attrib(SV* sth, imp_sth_t* imp_sth, SV* keysv) {
 	}
 	break;
       case 'r':
-	/*
-	 * Deprecated, use 'result'
-	 */
 	if (strEQ(key, "result")) {
 	    retsv = sv_2mortal(newSViv((IV) imp_sth->cda));
 	}
@@ -1142,3 +1150,5 @@ int dbd_bind_ph (SV *sth, imp_sth_t *imp_sth, SV *param, SV *value,
 
     return BindParam(&imp_sth->params[paramNum - 1], value, sql_type);
 }
+
+
