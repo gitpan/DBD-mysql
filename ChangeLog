@@ -1,3 +1,23 @@
+1998-01-12  Jochen Wiedmann  <joe@laptop.ispsoft.de>
+
+	* Makefile.lib (InitializeMysql): Modified order of -I statements
+	  (Inside MySQL distribution it can happen that headers of recently
+	  installed DBI versions are used instead of the correct headers.)
+	* nodbd/nodbd.xs.in, nodbd/typemap: Supressed warning for
+	  undef'd argument in connect method. (Chris Holt,
+	  <xris@migraine.stanford.edu>)
+	* nodbd/nodbd.xs.in: Fixed definition of 'HOST' attribute
+	  in dbh's.
+	* Makefile.lib (InitializeMsql): Fixed typo that made MSQL_HOME
+	  useless. (Ray Zimmermann, <rz10@cornell.edu>)
+	* dbd/dbd.xs.in: Fixed CreateDB and DropDB to use 'localhost'
+	  as default host.
+	* dbd/dbd.pm.in: Fixed CreateDB and DropDB docs.
+	  (Ray Zimmermann, <rz10@cornell.edu>)
+	* Makefile.lib (InitializeMysql): Fixed typo "lib/mysqlclient.a"
+	  to "lib/libmysqlclient.a". (Michael 'Monty' Widenius,
+	  <monty@tcx.se>)
+
 1997-12-31  Jochen Wiedmann  <joe@ispsoft.de> (1.1823)
 
 	* Added support for mysql_use_result, requested by Jesse

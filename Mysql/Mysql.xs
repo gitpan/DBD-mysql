@@ -27,6 +27,7 @@ typedef int SysRet;
 typedef result_t My__Result;
 typedef HV *my_sth_t;
 typedef HV *my_dbh_t;
+typedef char* s_charp;
 
 #ifdef DBD_MSQL
 static const char* Package   = "Msql";
@@ -788,11 +789,11 @@ getsequenceinfo(handle,table)
 
 SV *
 connect(package,host=NULL,db=NULL,user=NULL,password=NULL)
-     char *		package
-     char *		host
-     char *		db
-     char *             user
-     char *             password
+     s_charp		package
+     s_charp		host
+     s_charp		db
+     s_charp            user
+     s_charp            password
    PROTOTYPE: $;$$$$
    CODE:
    /* As we may have multiple simultaneous sessions with more than one
@@ -839,7 +840,7 @@ connect(package,host=NULL,db=NULL,user=NULL,password=NULL)
   } else {
     iniHV;
     hv_store(hv, "SOCK", 4, newSViv((IV) sock), 0);
-    hv_store(hv, "HOST", 4, (db ? newSVpv(host, 0) : &sv_undef), 0);
+    hv_store(hv, "HOST", 4, (host ? newSVpv(host, 0) : &sv_undef), 0);
     hv_store(hv, "DATABASE", 8, (db ? newSVpv(db, 0) : &sv_undef),0);
     hv_store(hv, "SOCKFD", 6, newSViv(sock->net.fd), 0);
     hv_store(hv, "USER", 4, (user ? newSVpv(user,0) : &sv_undef), 0);

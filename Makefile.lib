@@ -19,7 +19,7 @@ sub postamble {
 
 package _MY::Config;
 
-$_MY::Config::VERSION = "1.1823";
+$_MY::Config::VERSION = "1.1824";
 $_MY::Config::DBD_VERSION = "2.009";
 
 $_MY::Config::X_Msql = undef;
@@ -311,7 +311,7 @@ sub InitializeMsql {
     my @msqldirs = qw{/usr/local/Hughes /usr/local/Minerva /usr/local
 		      /usr/mSQL /opt/mSQL};
     my @gooddirs;
-    if (exists($ENV{MSQL_HOME})) { push(@gooddirs, $ENV{MYSQL_HOME}); }
+    if (exists($ENV{MSQL_HOME})) { push(@gooddirs, $ENV{MSQL_HOME}); }
 
     my($headerdir, $gooddir) = Search(\@gooddirs, \@msqldirs,
 				      ["include/msql.h"],
@@ -444,7 +444,7 @@ sub InitializeMysql {
 				      . "the subdir include/.");
     unshift(@gooddirs, $gooddir);
     my($libdir) = Search(\@gooddirs, \@mysqldirs,
-			 ["lib/mysql/libmysqlclient.a", "lib/mysqlclient.a",
+			 ["lib/mysql/libmysqlclient.a", "lib/libmysqlclient.a",
 			  "client/libmysqlclient.a"],
 			 "Where is your mysql installed? Please tell me the"
 			 . " directory that contains\n"

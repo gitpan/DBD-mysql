@@ -60,41 +60,57 @@ _ListDBs(drh, host)
     }
 
 
-void
-_CreateDB(drh, host, dbname)
+SV*
+_CreateDB(drh, host, dbname=host)
     SV *        drh
     char *      host
     char *      dbname
-    PPCODE:
-    dbh_t sock;
-    if (dbd_db_connect(&sock,host,NULL,NULL)) {
-        if (!MyCreateDb(sock,dbname)) {
-            XPUSHs(sv_2mortal((SV*)newSVpv("OK", 2)));
-        } else {
-            do_error(drh, JW_ERR_CREATE_DB, MyError(sock));
-        }
-        MyClose(sock);
-    } else {
-        do_error(drh, JW_ERR_CONNECT, MyError(sock));
+  PROTOTYPE: $$;$
+  PPCODE:
+    {
+        dbh_t sock;
+	int result = FALSE;
+
+	if (items < 3) {
+	    host = NULL;
+	}
+	if (dbd_db_connect(&sock,host,NULL,NULL)) {
+	    if (MyCreateDb(sock,dbname)) {
+	        result = TRUE;
+	    } else {
+	        do_error(drh, JW_ERR_CREATE_DB, MyError(sock));
+	    }
+	    MyClose(sock);
+	} else {
+	    do_error(drh, JW_ERR_CONNECT, MyError(sock));
+	}
+	XPUSHs(boolSV(result));
     }
 
 
-void
-_DropDB(drh, host, dbname)
+
+SV*
+_DropDB(drh, host, dbname=host)
     SV *        drh
     char *      host
     char *      dbname
-    PPCODE:
-    dbh_t sock;
-    if (dbd_db_connect(&sock,host,NULL,NULL)) {
-        if (MyDropDb(sock,dbname) != -1) {
-            XPUSHs(sv_2mortal((SV*)newSVpv("OK", 2)));
-        } else {
-            do_error(drh, JW_ERR_DROP_DB, MyError(sock));
-        }
-        MyClose(sock);
-    } else {
-        do_error(drh, JW_ERR_CONNECT, MyError(sock));
+  PROTOTYPE: $$;$
+  PPCODE:
+    {
+        dbh_t sock;
+	int result = FALSE;
+
+	if (dbd_db_connect(&sock,host,NULL,NULL)) {
+	    if (MyDropDb(sock,dbname) != -1) {
+	        result = TRUE;
+	    } else {
+	        do_error(drh, JW_ERR_DROP_DB, MyError(sock));
+	    }
+	    MyClose(sock);
+	} else {
+	    do_error(drh, JW_ERR_CONNECT, MyError(sock));
+	}
+	XPUSHs(boolSV(result));
     }
 
 

@@ -3,6 +3,7 @@
 TYPEMAP
 my_dbh_t		T_DBH
 my_sth_t		T_STH
+s_charp			T_SCP
 
 INPUT
 T_DBH
@@ -16,3 +17,9 @@ T_STH
 	    $var = (HV*)SvRV($arg);
 	else
 	    croak(\"$var is not of type %s\", StPackage)
+
+T_SCP
+	if (SvOK($arg))
+	    $var = (s_charp) SvPV($arg, na);
+	else
+	    $var = NULL

@@ -218,7 +218,9 @@ Interface (DBI)
     $sth->finish;
 
     $rc = $drh->func( $database, '_CreateDB' );
+    $rc = $drh->func( $host, $database, '_CreateDB' );
     $rc = $drh->func( $database, '_DropDB' );
+    $rc = $drh->func( $host, $database, '_DropDB' );
 
 
 =head1 DESCRIPTION
@@ -327,6 +329,11 @@ Deprecated, see L</COMPATIBILITY ALERT> below.
 
     $rc = $drh->func( $database, '_CreateDB' );
     $rc = $drh->func( $database, '_DropDB' );
+
+      or
+
+    $rc = $drh->func( $host, $database, '_CreateDB' );
+    $rc = $drh->func( $host, $database, '_DropDB' );
 
 These two methods allow programmers to create and drop databases from
 DBI scripts. Since mSQL disallows the creation and deletion of
