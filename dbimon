@@ -1,4 +1,4 @@
-~startperl~
+#!/usr/bin/perl
 #
 #   dbimon - DBI monitor
 #
@@ -39,7 +39,7 @@ use Data::ShowTable ();
 #
 #   Constants
 #
-my $VERSION = "~NODBD_VERSION~";
+my $VERSION = "1.1835";
 
 my @VALID_VARS = ("escapeChar", "less", "listWrapMargin", "maxTableWidth",
 		  "noEscape", "quoteChar", "sepChar", "showMode");

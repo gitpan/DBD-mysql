@@ -10,6 +10,7 @@
 #
 #   Make -w happy
 #
+$::verbose = defined($::verbose) ? $::verbose : 0;
 $test_dsn = '';
 $test_user = '';
 $test_password = '';
@@ -74,19 +75,15 @@ while (Testing()) {
     Test($state or $table = FindNewTable($dbh))
 	   or DbiError($dbh->error, $dbh->errstr);
 
-    my($def);
     foreach $size (128) {
 	#
 	#   Create a new table
 	#
-	if (!$state) {
-	    $def = TableDefinition($table,
-				   ["id",   "INTEGER",      4, 0],
-				   ["name", "BLOB",     $size, 0]);
-	    print "Creating table:\n$def\n";
-	}
-	Test($state or $dbh->do($def))
-	    or DbiError($dbh->err, $dbh->errstr);
+	Test($state or ($def = TableDefinition($table,
+					  ["id",   "INTEGER",      4, 0],
+					  ["name", "BLOB",     $size, 0]),
+			$dbh->do($def)))
+	       or DbiError($dbh->err, $dbh->errstr);
 
 
 	#
@@ -112,16 +109,9 @@ while (Testing()) {
 	#
 	#   Insert a row into the test table.......
 	#
-	my($query);
-	if (!$state) {
-	    $query = "INSERT INTO $table VALUES(1, $qblob)";
-	    if ($ENV{'SHOW_BLOBS'}  &&  open(OUT, ">" . $ENV{'SHOW_BLOBS'})) {
-		print OUT $query;
-		close(OUT);
-	    }
-	}
-        Test($state or $dbh->do($query))
-	    or DbiError($dbh->err, $dbh->errstr);
+        Test($state or $dbh->do("INSERT INTO $table VALUES(1, "
+				. $qblob . ")"))
+	       or DbiError($dbh->err, $dbh->errstr);
 
 	#
 	#   Now, try SELECT'ing the row out.
@@ -137,19 +127,19 @@ while (Testing()) {
 	    or DbiError($cursor->err, $cursor->errstr);
 
 	Test($state or (@$row == 2  &&  $$row[0] == 1  &&  $$row[1] eq $blob))
-	    or (ShowBlob($blob),
-		ShowBlob(defined($$row[1]) ? $$row[1] : ""));
+	    or !$verbose or (ShowBlob($blob),
+			     ShowBlob(defined($$row[1]) ? $$row[1] : ""));
 
 	Test($state or $cursor->finish)
-	    or DbiError($cursor->err, $cursor->errstr);
+	       or DbiError($cursor->err, $cursor->errstr);
 
 	Test($state or undef $cursor || 1)
-	    or DbiError($cursor->err, $cursor->errstr);
+	       or DbiError($cursor->err, $cursor->errstr);
 
 	#
 	#   Finally drop the test table.
 	#
 	Test($state or $dbh->do("DROP TABLE $table"))
-	    or DbiError($dbh->err, $dbh->errstr);
+	       or DbiError($dbh->err, $dbh->errstr);
     }
 }

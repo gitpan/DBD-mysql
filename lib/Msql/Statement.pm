@@ -2,70 +2,31 @@
 
 package Msql::Statement;
 
-@Msql::Statement::ISA = qw(DBI::st);
-
 use strict;
 use vars qw($OPTIMIZE $VERSION $AUTOLOAD);
 
-$VERSION = '1.2001';
+$VERSION = '1.1835';
 
 $OPTIMIZE = 0; # controls, which optimization we default to
 
-sub fetchrow ($) {
-    my($self) = shift;
-    my($ref) = $self->fetchrow_arrayref;
-    if ($ref) {
-	@$ref;
-    } else {
-	();
-    }
-}
-sub fetchhash ($) {
-    my($self) = shift;
-    my($ref) = $self->fetchrow_hashref;
-    if ($ref) {
-	%$ref;
-    } else {
-	();
-    }
-}
-sub fetchcol ($$) {
-    my($self, $colNum) = @_;
-    my(@col);
-    $self->dataseek(0);
-    my($ref);
-    while ($ref = $self->fetchrow_arrayref) {
-	push(@col, $ref->[$colNum]);
-    }
-    @col;
-}
-sub dataseek ($$) {
-    my($self, $pos) = @_;
-    $self->func($pos, 'dataseek');
-}
-
-sub numrows { my($self) = shift; $self->rows() }
-sub numfields { my($self) = shift; $self->{'NUM_OF_FIELDS'} }
-sub affectedrows { my($self) = shift; $self->{'affected_rows'} }
-sub insertid { my($self) = shift; $self->{'insertid'} }
-sub arrAttr ($$) {
-    my($self, $attr) = @_;
-    my($arr) = $self->{$attr};
-    wantarray ? @$arr : $arr
-}
-sub table ($) { shift->arrAttr('table') }
-sub name ($) { shift->arrAttr('NAME') }
-sub type ($) { shift->arrAttr('msql_type') }
-sub isnotnull ($) { shift->arrAttr('is_not_null') }
-sub isprikey ($) { shift->arrAttr('is_pri_key') }
-sub isnum ($) { shift->arrAttr('is_num') }
-sub isblob ($) { shift->arrAttr('is_blob') }
-sub length ($) { shift->arrAttr('length') }
+sub numrows    { my $x = shift; $x->{'NUMROWS'} or $x->fetchinternal( 'NUMROWS'
+  ) }
+sub numfields  { shift->fetchinternal( 'NUMFIELDS' ) }
+sub affectedrows { my $x = shift; $x->fetchinternal( 'AFFECTEDROWS') }
+sub insertid  { my $x = shift; $x->fetchinternal( 'INSERTID') }
+sub table      { return wantarray ? @{shift->fetchinternal('TABLE'    )}: shift->fetchinternal('TABLE'    )}
+sub name       { return wantarray ? @{shift->fetchinternal('NAME'     )}: shift->fetchinternal('NAME'     )}
+sub type       { return wantarray ? @{shift->fetchinternal('TYPE'     )}: shift->fetchinternal('TYPE'     )}
+sub isnotnull  { return wantarray ? @{shift->fetchinternal('ISNOTNULL')}: shift->fetchinternal('ISNOTNULL')}
+sub isprikey   { return wantarray ? @{shift->fetchinternal('ISPRIKEY' )}: shift->fetchinternal('ISPRIKEY' )}
+sub isnum     { return wantarray ? @{shift->fetchinternal('ISNUM' )}: shift->fetchinternal('ISNUM' )}
+sub isblob     { return wantarray ? @{shift->fetchinternal('ISBLOB' )}: shift->fetchinternal('ISBLOB' )}
+sub length     { return wantarray ? @{shift->fetchinternal('LENGTH'   )}: shift->fetchinternal('LENGTH'   )}
 
 sub maxlength  {
     my $sth = shift;
     my $result;
-    if (!($result = $sth->{'maxlength'})) {
+    if (!($result = $sth->{MAXLENGTH})) {
 	$result = [];
 	my ($l);
 	for (0..$sth->numfields-1) {
@@ -97,7 +58,7 @@ sub maxlength  {
 sub listindices {
     my($sth) = shift;
     my(@result,$i);
-    if (!&Msql::IDX_TYPE()) {
+    if (!&Msql::IDX_TYPE) {
 	return ();
     }
     foreach $i (0..$sth->numfields-1) {
