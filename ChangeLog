@@ -1,3 +1,9 @@
+1999-11-30  Jochen Wiedmann  <joe@ispsoft.de> (1.2210)
+
+	* Makefile.PL (SelectDrivers): Hopefully ensured that a README is
+	  always created successfully.
+	* Makefile.PL: Fixed docs of --mysql-install etc. (loic@ceic.com)
+
 1999-10-13  Jochen Wiedmann  <joe@ispsoft.de> (1.2209)
 
 	* Fixed bug in $dbh->tables(): Didnt't work with
@@ -470,7 +476,7 @@ Fri Oct 24 01:29:08 1997  Jochen Wiedmann  <joe@ispsoft.de> (1.1816)
 	* lib/Msql/Statement.pm: Fixed use of Msql::TEXT_TYPE without
 	  checking whether we are running Msql 1.
 
-$Id: ChangeLog,v 1.11 1999/10/08 12:06:19 joe Exp $
+$Id: ChangeLog,v 1.12 1999/10/21 20:05:41 joe Exp $
 
 DBD::mysql for DBI - Written by Jochen Wiedmann <joe@ispsoft.de>
 

@@ -5,7 +5,7 @@
 #  You may distribute this under the terms of either the GNU General Public
 #  License or the Artistic License, as specified in the Perl README file.
 #
-#  $Id: Makefile.PL,v 1.9 1999/10/08 12:06:39 joe Exp $
+#  $Id: Makefile.PL,v 1.10 1999/10/21 20:05:41 joe Exp $
 #
 BEGIN {require 5.004;}
 use strict;
@@ -19,8 +19,8 @@ use ExtUtils::PerlPP ();
 
 use vars qw($VERSION $DBD_VERSION $options);
 
-$VERSION = "1.2209";
-$DBD_VERSION = "2.0409";
+$VERSION = "1.2210";
+$DBD_VERSION = "2.0410";
 
 $options = { 'prompt' => 1 };
 
@@ -270,9 +270,9 @@ Possible Options are:
   --verbose	Enable verbose mode
   --noprompt	Disable interactive dialog
 
-  --mysql-install	Install DBD::mysql and related files
-  --msql-install	Install DBD::mSQL and related files
-  --msql1-install	Install DBD::mSQL1 and related files
+  --[no]mysql-install	[Do not] Install DBD::mysql and related files
+  --[no]msql-install	[Do not] Install DBD::mSQL and related files
+  --[no]msql1-install	[Do not] Install DBD::mSQL1 and related files
 
   --mysql-install-nodbd	Install Mysql and related files
   --msql-install-nodbd  Install Msql and related files
@@ -325,9 +325,32 @@ EOF
 	$config->{$package}->{'dbd_version'} = $DBD_VERSION;
 	if ($config->{$package}->{'install'}  &&  !$README_created) {
 	    my $driver = $config->{$package}->{'dbd_driver'};
-	    $README_created = "\npm_to_blib: README\n\n"
-		. "README: $driver/lib/DBD/$driver.pm\n"
-		. "\tpod2text $driver/lib/DBD/$driver.pm >README\n\n";
+
+	    # Try to find pod2text
+	    my $pod2text;
+	    foreach my $p ($Config::Config{'installscript'},
+			   split(/:/, $ENV{'PATH'}) ) {
+		if (-f "$p/pod2text") {
+		    $pod2text = "$p/pod2text";
+		    last;
+		}
+	    }
+	    if (!$pod2text) {
+		foreach my $p ($Config::Config{'installscript'},
+			       split(/:/, $ENV{'PATH'}) ) {
+		    if (-f "$p/perldoc") {
+			$pod2text = "PAGER=cat $p/perldoc";
+			last;
+		    }
+		}
+	    }
+	    if ($pod2text) {
+		$README_created = "\npm_to_blib: README\n\n"
+		    . "README: $driver/lib/DBD/$driver.pm\n"
+			. "\t$pod2text $driver/lib/DBD/$driver.pm >README\n\n";
+	    } else {
+		$README_created = "\n";
+	    }
 	}
     }
 
