@@ -1,0 +1,73 @@
+# -*- perl -*-
+
+use strict;
+require ExtUtils::MakeMaker;
+require Config;
+use lib "..";
+require "Makefile.lib";
+
+_MY::Config::Init(0);
+
+my $DRIVER = "~DRIVER~";
+
+
+my @files =
+    (["../dbd/myMsql.c", "myMsql.c"],
+     ["../nodbd/nodbd.xs.in", "~DRIVER~.xs"],
+     ["../nodbd/pmsql.in",
+      ($DRIVER eq 'Msql') ? 'pmsql' : 'pmysql', 1],
+     ["../nodbd/typemap", "typemap"],
+     ["../tests/lib.pl", "t/lib.pl"],
+     ["../tests/akmisc.t", "t/akmisc.t"]);
+if ($DRIVER eq 'Mysql') {
+    push(@files,
+	 ["../tests/mysql.t", "t/mysql.t"],
+	 ["../tests/mysql2.t", "t/mysql2.t"]);
+} else {
+    push(@files,
+	 ["../tests/msql1.t", "t/msql1.t"],
+	 ["../tests/msql2.t", "t/msql2.t"]);
+}
+my $ref;
+foreach $ref (@files) {
+    _MY::Config::Xtract($ref, "~DRIVER~", "~DBD_DRIVER~", "../xtract");
+}
+
+
+sub ~DRIVER~_config () {
+    my $ref = _MY::Config::Initialize~DRIVER~();
+    my %hash = %$ref;
+    $hash{NAME} = $DRIVER;
+    $hash{VERSION} = "~NODBD_VERSION~";
+    $hash{OBJECT} = '$(O_FILES)';
+    $hash{EXE_FILES} = [ ($DRIVER eq 'Msql') ? 'pmsql' : 'pmysql' ];
+    \%hash;
+}
+
+my $pa = $_MY::Config::Postamble;
+$_MY::Config::Postamble = \&Create~DRIVER~Postamble;
+ExtUtils::MakeMaker::WriteMakefile(CONFIGURE => \&~DRIVER~_config);
+$_MY::Config::Postamble = $pa;
+
+sub Create~DRIVER~Postamble {
+    my $pa = "\n";
+    my $ref;
+    my @files;
+
+    foreach $ref (@files) {
+	$pa .= _MY::Config::XtractF($ref, "~DRIVER~", "~DBD_DRIVER~",
+				    "../xtract");
+    }
+    $pa;
+}
+
+
+package MY;
+
+sub postamble {
+    if ($_MY::Config::Postamble) {
+	&$_MY::Config::Postamble(@_);
+    } else {
+	'';
+    }
+}

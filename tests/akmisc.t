@@ -21,14 +21,8 @@ my(
    %hash,
   );
 
-my($file);
-foreach $file ("lib.pl", "t/lib.pl", "~DRIVER~/t/lib.pl") {
-    if (-f $file) {
-	do $file;
-	if ($@) { die "Cannot load 'lib.pl': $@.\n"; }
-	last;
-    }
-}
+do ((-f "lib.pl") ? "lib.pl" : "t/lib.pl");
+if ($@) { die "Cannot load 'lib.pl': $@.\n"; }
 
 use vars qw($mdriver);
 if ($mdriver ne 'mysql'  &&  $mdriver ne 'mSQL'  &&  $mdriver ne 'mSQL1') {
@@ -47,10 +41,10 @@ $::listTablesHook = $::listTablesHook = sub ($) {
 # are configured wrong in this respect. But you're welcome to test it
 # out.
 
-my $host = shift @ARGV || $ENV{'DBI_HOST'} || "~test_host~";
-my $user = shift @ARGV || $ENV{'DBI_USER'} || "~test_user~";
-my $password = shift @ARGV || $ENV{'DBI_PASS'} || "~test_pass~";
-my $dbname = shift @ARGV || $ENV{'DBI_DB'} || "~test_db~";
+my $host = shift @ARGV || $ENV{'DBI_HOST'} || "";
+my $user = shift @ARGV || $ENV{'DBI_USER'} || "";
+my $password = shift @ARGV || $ENV{'DBI_PASS'} || "";
+my $dbname = shift @ARGV || $ENV{'DBI_DB'} || "test";
 
 use vars qw($mdriver $verbose $state $COL_NULLABLE $COL_KEY $testNum);
 if ($mdriver eq 'mysql') {
@@ -58,11 +52,6 @@ if ($mdriver eq 'mysql') {
     eval "use $class";
     $Mysql::db_errstr = '';
     $errstrRef = \$Mysql::db_errstr;
-} elsif ($mdriver eq 'mSQL1') {
-    $class = 'Msql1';
-    eval "use $class";
-    $Msql1::db_errstr = '';
-    $errstrRef = \$Msql1::db_errstr;
 } else {
     $class = 'Msql';
     eval "use $class";
@@ -83,7 +72,7 @@ sub ServerError() {
 
 sub DatabaseError() {
     print STDERR ("Cannot select database 'test': $$errstrRef.\n",
-	"Please make sure that a database \"$dbname\" exists\n",
+	"Please make sure that a database \"test\" exists\n",
 	"and that you have permission to read and write on it.\n");
     exit 10;
 }
@@ -143,10 +132,11 @@ while (Testing()) {
     Test($state or
 	 ($dbh = $class->connect($host,$dbname, $user, $password)), undef,
 	 "Trying two argument connect")
-	or print("Error while connecting: $$errstrRef.\n");
+	or !$verbose or print("Error while connecting: $$errstrRef.\n");
 
-    Test($state or $dbh->listtables or !$$errstrRef)
-	or print("Error while listing tables: $$errstrRef.\n");
+    $$errstrRef = '';
+    Test($state or defined($dbh->listtables or !$$errstrRef))
+	 or !$verbose or print("Error while listing tables: $$errstrRef.\n");
 
     # Now we create two tables that are certainly not in the test database
     # If you don't understand the trickery here, just skip this section,
@@ -183,9 +173,6 @@ while (Testing()) {
 
     Test($state or $dbh->query($query))
 	or (print "Cannot create second table: $$errstrRef.\n", exit);
-
-    Test($state or $dbh->listtables)
-	or print("Error while listing tables: $$errstrRef.\n");
 
     # Now we write some test records into the two tables. Note, we *know*,
     # these tables are empty
@@ -238,16 +225,8 @@ while (Testing()) {
     # Msql. That is why you have to say 'use Msql'. The functions are
     # really constants, but that's the way headerfile constants are
     # handled in perl5 up to 5.001m (will probably change soon)
-    my ($expected);
-    if (!$state) {
-	if ($mdriver eq 'mysql') {
-	    $expected = Mysql::FIELD_TYPE_STRING();
-	} elsif ($mdriver eq 'mSQL1') {
-	    $expected = Msql1::CHAR_TYPE();
-	} else {
-	    $expected = Msql::CHAR_TYPE();
-	}
-    }
+    my $expected = ($mdriver eq 'mysql') ?
+	Mysql::FIELD_TYPE_STRING() : Msql::CHAR_TYPE();
     Test($state or ($sth->type->[0] eq $expected), undef,
 	 'Checking $sth->type')
 	or !$verbose or printf("Wrong result type, expected %d, got %d.\n",
@@ -352,7 +331,6 @@ while (Testing()) {
 	if (!$state) {
 	    local($Mysql::QUIET) = 1;  # Doesn't hurt to set both ... :-)
 	    local($Msql::QUIET) = 1;
-	    local($Msql1::QUIET) = 1;
 	    
 	    $sth = $dbh->query("select * from $firsttable where"
 			       . " him = 'Thomas')");
@@ -608,26 +586,30 @@ while (Testing()) {
 	or test_error($dbh);
     use vars qw($ref);
     if (!$state) {
-	local($Mysql::QUIET, $Msql::QUIET, $Msql1::QUIET) = (1, 1, 1);
-	eval '$ref = $sth->fetchrow;';
+	local($Mysql::QUIET) = 1;
+	local($Msql::QUIET) = 1;
+	eval 'use vars qw($ref); $ref = $sth->fetchrow;';
     }
     if ($mdriver eq 'mysql') {
 	Test($state or ($@ eq ''), undef,
 	     "Fetchrow from non-select handle $sth")
-	    or printf("Died while fetching a row from a"
-		      . " non-result handle, error was $@.\n");
+	    or !$verbose or printf("Died while fetching a row from a"
+				   . " non-result handle, error was $@.\n");
     } else {
 	Test($state or ($@ ne ''), undef, "Fetchrow from non-select handle")
-	    or print("Fetching a row from a non-result handle",
-		     " without dying.\n");
+	    or !$verbose or print("Fetching a row from a non-result handle",
+				  " without dying.\n");
 	Test($state or ($@ =~ /without a package or object/))
-	    or printf("Fetching row from a non-result handle"
-		      . " produced wrong error message $@.\n");
+	    or !$verbose or printf("Fetching row from a non-result handle"
+				   . " produced wrong error message $@.\n");
     }
 
     Test($state or !defined($ref))
-	or printf("Fetching a row from a non-result handle"
-		  . " returned TRUE ($ref).\n");
+	or !$verbose or printf("Fetching a row from a non-result handle"
+			       . " returned TRUE ($ref).\n");
+    Test($state or $$errstrRef)
+	or !$verbose or printf("Fetching a row from a non-result handle"
+			       . " didn't produce an error message.\n");
 
     {
 	my($sth_query, $sth_listf, $method, $ok);
@@ -762,7 +744,8 @@ while (Testing()) {
 
     {
 	my @created = ();
-	local($Mysql::QUIET, $Msql::QUIET, $Msql1::QUIET) = (1, 1, 1);
+	local($Mysql::QUIET) = 1;
+	local($Msql::QUIET) = 1;
 
 	if (!$state) {
 	    # create 8 tables

@@ -140,12 +140,7 @@ int dbd_db_login(SV* dbh, imp_dbh_t* imp_dbh, char* dbname, char* user,
     /*
      *  Try to connect
      */
-#xtract Mysql
-    imp_dbh->svsock = &imp_dbh->mysql;
-    if (!dbd_db_connect(imp_dbh->svsock, host, user, password, dbname)) {
-#xtract Msql
     if (!dbd_db_connect(&imp_dbh->svsock, host, user, password, NULL)) {
-#endxtract
 	DO_ERROR(dbh, JW_ERR_CONNECT, imp_dbh->svsock);
 	if (copy) free(copy);
 	return FALSE;
@@ -380,13 +375,6 @@ SV* dbd_db_FETCH_attrib(SV* dbh, imp_dbh_t* imp_dbh, SV* keysv) {
     } else if (kl == 6  &&  strEQ(key, "errmsg")) {
 	char* msg = MyError(imp_dbh->svsock);
 	return sv_2mortal(newSVpv(msg, strlen(msg)));
-#xtract Mysql
-    } else if (kl == 4  &&  strEQ(key, "info")) {
-        char* info = mysql_info(imp_dbh->svsock);
-        return info ? sv_2mortal(newSVpv(info, strlen(info))) : &sv_undef;
-    } else if (kl == 9  &&  strEQ(key, "thread_id")) {
-        return sv_2mortal(newSViv(mysql_thread_id(imp_dbh->svsock)));
-#endxtract
     }
     return Nullsv;
 }
@@ -424,27 +412,10 @@ int dbd_st_prepare(SV* sth, imp_sth_t* imp_sth, char* statement, SV* attribs) {
     imp_sth->done_desc = 0;
     imp_sth->cda = NULL;
     imp_sth->currow = 0;
-#xtract Mysql
-    imp_sth->use_mysql_use_result = 0;
-#endxtract
     for (i = 0;  i < AV_ATTRIB_LAST;  i++) {
 	imp_sth->av_attr[i] = Nullav;
     }
 
-#xtract Mysql
-    /*
-     *  Check attributes
-     */
-    if (attribs  &&  SvTYPE(attribs) == SVt_RV) {
-        SV* sv = SvRV(attribs);
-	if (SvTYPE(sv) == SVt_PVHV) {
-	    SV** svp = hv_fetch((HV*) sv, "mysql_use_result", 16, FALSE);
-	    if (svp) {
-	        imp_sth->use_mysql_use_result = SvTRUE(*svp);
-	    }
-	}
-    }
-#endxtract
 
     /*
      *  Allocate memory for parameters
@@ -532,14 +503,8 @@ int dbd_st_internal_execute(SV* h, SV* statement, SV* attribs, int numParams,
 	Safefree(salloc);
 
 	/** Store the result from the Query */
-#xtract Mysql
-	if (!(*cdaPtr = (use_mysql_use_result ?
-		 mysql_use_result(svsock) : mysql_store_result(svsock)))) {
-	    return mysql_affected_rows(svsock);
-#xtract Msql
 	if (!(*cdaPtr = MyStoreResult(svsock))) {
 	    return -1;
-#endxtract
 	}
 
 	return MyNumRows((*cdaPtr));
@@ -598,9 +563,6 @@ int dbd_st_execute(SV* sth, imp_sth_t* imp_sth) {
 				     imp_sth->use_mysql_use_result))
 	!= -2) {
 	if (!imp_sth->cda) {
-#xtract Mysql
-	    imp_sth->insertid = mysql_insert_id(imp_dbh->svsock);
-#endxtract
 	} else {
 	    /** Store the result in the current statement handle */
 	    DBIc_ACTIVE_on(imp_sth);
@@ -660,9 +622,6 @@ AV* dbd_st_fetch(SV* sth, imp_sth_t* imp_sth) {
     int i;
     AV *av;
     row_t cols;
-#xtract Mysql
-    unsigned int* lengths;
-#endxtract
 
     ChopBlanks = DBIc_is(imp_sth, DBIcf_ChopBlanks);
     if (dbis->debug >= 2) {
@@ -676,17 +635,8 @@ AV* dbd_st_fetch(SV* sth, imp_sth_t* imp_sth) {
 
     imp_sth->currow++;
     if (!(cols = MyFetchRow(imp_sth->cda))) {
-#xtract Mysql
-        if (!mysql_eof(imp_sth->cda)) {
-	    D_imp_dbh_from_sth;
-	    DO_ERROR(sth, JW_ERR_FETCH_ROW, imp_dbh->svsock);
-	}
-#endxtract
 	return Nullav;
     }
-#xtract Mysql
-    lengths = mysql_fetch_lengths(imp_sth->cda);
-#endxtract
     av = DBIS->get_fbav(imp_sth);
     num_fields = AvFILL(av)+1;
 
@@ -695,11 +645,7 @@ AV* dbd_st_fetch(SV* sth, imp_sth_t* imp_sth) {
 	SV *sv = AvARRAY(av)[i]; /* Note: we (re)use the SV in the AV	*/
 
 	if (col) {
-#xtract Mysql
-	    STRLEN len = lengths[i];
-#xtract Msql
 	    STRLEN len = strlen(col);
-#endxtract
 	    if (ChopBlanks) {
 		while(len && isspace(col[len-1])) {
 		    --len;
@@ -820,11 +766,6 @@ int dbd_st_STORE_attrib(SV* sth, imp_sth_t* imp_sth, SV* keysv, SV* valuesv) {
 		(u_long) sth, key);
     }
 
-#xtract Mysql
-    if (strEQ(key, "mysql_use_result")) {
-        imp_sth->use_mysql_use_result = SvTRUE(valuesv);
-    }
-#endxtract
 
     if (dbis->debug >= 2) {
         fprintf(DBILOGFP,
@@ -863,15 +804,11 @@ int dbd_st_STORE_attrib(SV* sth, imp_sth_t* imp_sth, SV* keysv, SV* valuesv) {
 #define IS_KEY(A) (((A) & (PRI_KEY_FLAG | UNIQUE_KEY_FLAG | MULTIPLE_KEY_FLAG)) != 0)
 #endif
 #ifndef IS_NUM
-#xtract Mysql
-#define IS_NUM(A) ((A) >= (int) FIELD_TYPE_DECIMAL && (A) <= FIELD_TYPE_DATETIME)
-#xtract Msql
 #ifdef UINT_TYPE
 #define IS_NUM(A) ((A) == INT_TYPE || (A) == REAL_TYPE || (A) == UINT_TYPE)
 #else
 #define IS_NUM(A) ((A) == INT_TYPE || (A) == REAL_TYPE)
 #endif
-#endxtract
 #endif
 
 SV* dbd_st_FETCH_internal(SV* sth, int what, result_t res, int cacheit) {
@@ -939,26 +876,6 @@ SV* dbd_st_FETCH_internal(SV* sth, int what, result_t res, int cacheit) {
 			int id;
 			const char* name;
 		    } types [] = {
-#xtract Mysql
-			{ FIELD_TYPE_BLOB, "blob" },
-			{ FIELD_TYPE_CHAR, "char" },
-			{ FIELD_TYPE_DECIMAL, "decimal" },
-			{ FIELD_TYPE_DATE, "date" },
-			{ FIELD_TYPE_DATETIME, "datetime" },
-			{ FIELD_TYPE_DOUBLE, "double" },
-			{ FIELD_TYPE_FLOAT, "float" },
-			{ FIELD_TYPE_INT24, "int24" },
-			{ FIELD_TYPE_LONGLONG, "longlong" },
-			{ FIELD_TYPE_LONG_BLOB, "longblob" },
-			{ FIELD_TYPE_LONG, "long" },
-			{ FIELD_TYPE_NULL, "null" },
-			{ FIELD_TYPE_SHORT, "short" },
-			{ FIELD_TYPE_STRING, "string" },
-			{ FIELD_TYPE_TINY_BLOB, "tinyblob" },
-			{ FIELD_TYPE_TIMESTAMP, "timestamp" },
-			{ FIELD_TYPE_TIME, "time" },
-			{ FIELD_TYPE_VAR_STRING, "varstring" }
-#xtract Msql
 			{ INT_TYPE, "int" },
 			{ CHAR_TYPE, "char" },
 			{ REAL_TYPE, "real" },
@@ -984,7 +901,6 @@ SV* dbd_st_FETCH_internal(SV* sth, int what, result_t res, int cacheit) {
 #ifdef SYSVAR_TYPE
 			{ SYSVAR_TYPE, "sys" }
 #endif
-#endxtract
 		    };
 		    int i, found = FALSE;
 		    for (i = 0;  i < sizeof(types) / sizeof(struct db_types);
@@ -1001,17 +917,6 @@ SV* dbd_st_FETCH_internal(SV* sth, int what, result_t res, int cacheit) {
 		    }
 		}
 	        break;
-#xtract Mysql
-	      case AV_ATTRIB_MAX_LENGTH:
-		sv = newSViv((int) curField->max_length);
-		break;
-	      case AV_ATTRIB_IS_KEY:
-		sv = boolSV(IS_KEY(curField->flags));
-		break;
-	      case AV_ATTRIB_IS_BLOB:
-		sv = boolSV(IS_BLOB(curField->flags));
-		break;
-#endxtract
 	    }
 
 	    av_push(av, sv);
@@ -1073,12 +978,6 @@ SV* dbd_st_FETCH_attrib(SV* sth, imp_sth_t* imp_sth, SV* keysv) {
 	    retsv = ST_FETCH_AV(AV_ATTRIB_IS_PRI_KEY);
 	} else if (strEQ(key, "IS_NOT_NULL")) {
 	    retsv = ST_FETCH_AV(AV_ATTRIB_IS_NOT_NULL);
-#xtract Mysql
-	} else if (strEQ(key, "IS_KEY")) {
-	    retsv = ST_FETCH_AV(AV_ATTRIB_IS_KEY);
-	} else if (strEQ(key, "IS_BLOB")) {
-	    retsv = ST_FETCH_AV(AV_ATTRIB_IS_BLOB);
-#endxtract
 	} else if (strEQ(key, "IS_NUM")) {
 	    retsv = ST_FETCH_AV(AV_ATTRIB_IS_NUM);
 	}
@@ -1091,16 +990,6 @@ SV* dbd_st_FETCH_attrib(SV* sth, imp_sth_t* imp_sth, SV* keysv) {
 	    retsv = ST_FETCH_AV(AV_ATTRIB_LENGTH);
 	}
 	break;
-#xtract Mysql
-      case 'M':
-	/*
-	 *  Deprecated, use max_length
-	 */
-	if (strEQ(key, "MAXLENGTH")) {
-	    retsv = ST_FETCH_AV(AV_ATTRIB_MAX_LENGTH);
-	}
-	break;
-#endxtract
       case 'N':
 	if (strEQ(key, "NAME")) {
 	    retsv = ST_FETCH_AV(AV_ATTRIB_NAME);
@@ -1132,10 +1021,6 @@ SV* dbd_st_FETCH_attrib(SV* sth, imp_sth_t* imp_sth, SV* keysv) {
       case 'f':
 	if (strEQ(key, "format_max_size")) {
 	    retsv = ST_FETCH_AV(AV_ATTRIB_LENGTH);
-#xtract Mysql
-	} else if (strEQ(key, "format_default_size")) {
-	    retsv = ST_FETCH_AV(AV_ATTRIB_MAX_LENGTH);
-#endxtract
 	} else if (strEQ(key, "format_right_justify")) {
 	    retsv = ST_FETCH_AV(AV_ATTRIB_IS_NUM);
 	} else if (strEQ(key, "format_type_name")) {
@@ -1149,12 +1034,6 @@ SV* dbd_st_FETCH_attrib(SV* sth, imp_sth_t* imp_sth, SV* keysv) {
 	    retsv = ST_FETCH_AV(AV_ATTRIB_IS_PRI_KEY);
 	} else if (strEQ(key, "is_not_null")) {
 	    retsv = ST_FETCH_AV(AV_ATTRIB_IS_NOT_NULL);
-#xtract Mysql
-	} else if (strEQ(key, "is_key")) {
-	    retsv = ST_FETCH_AV(AV_ATTRIB_IS_KEY);
-	} else if (strEQ(key, "is_blob")) {
-	    retsv = ST_FETCH_AV(AV_ATTRIB_IS_BLOB);
-#endxtract
 	} else if (strEQ(key, "is_num")) {
 	    retsv = ST_FETCH_AV(AV_ATTRIB_IS_NUM);
 	}
@@ -1164,15 +1043,6 @@ SV* dbd_st_FETCH_attrib(SV* sth, imp_sth_t* imp_sth, SV* keysv) {
 	    retsv = ST_FETCH_AV(AV_ATTRIB_LENGTH);
 	}
 	break;
-#xtract Mysql
-      case 'm':
-	if (strEQ(key, "max_length")) {
-	    retsv = ST_FETCH_AV(AV_ATTRIB_MAX_LENGTH);
-	} else if (strEQ(key, "mysql_use_result")) {
-	    retsv = boolSV(imp_sth->use_mysql_use_result);
-	}
-	break;
-#endxtract
       case 'r':
 	/*
 	 * Deprecated, use 'result'

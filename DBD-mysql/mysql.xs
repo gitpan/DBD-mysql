@@ -20,11 +20,11 @@
 
 DBISTATE_DECLARE;
 
-MODULE = DBD::~DBD_DRIVER~	PACKAGE = DBD::~DBD_DRIVER~
+MODULE = DBD::mysql	PACKAGE = DBD::mysql
 
-INCLUDE: ~DBD_DRIVER~.xsi
+INCLUDE: mysql.xsi
 
-MODULE = DBD::~DBD_DRIVER~	PACKAGE = DBD::~DBD_DRIVER~
+MODULE = DBD::mysql	PACKAGE = DBD::mysql
 
 double
 constant(name, arg)
@@ -35,21 +35,16 @@ constant(name, arg)
   OUTPUT:
     RETVAL
 
-MODULE = DBD::~DBD_DRIVER~	PACKAGE = DBD::~DBD_DRIVER~::dr
+MODULE = DBD::mysql	PACKAGE = DBD::mysql::dr
 
 void
 _ListDBs(drh, host)
     SV *        drh
     char *	host
   PPCODE:
-#xtract Mysql
     MYSQL mysql;
     dbh_t sock = &mysql;
     if (dbd_db_connect(sock,host,NULL,NULL,NULL)) {
-#xtract Msql
-    dbh_t sock;
-    if (dbd_db_connect(&sock,host,NULL,NULL,NULL)) {
-#endxtract
         result_t res;
         row_t cur;
         res = MyListDbs(sock);
@@ -76,19 +71,13 @@ _CreateDB(drh, host, dbname=host)
     {
         dbh_t sock;
 	int result = FALSE;
-#xtract Mysql
 	MYSQL mysql;
 	sock = &mysql;
-#endxtract
 
 	if (items < 3) {
 	    host = NULL;
 	}
-#xtract Mysql
 	if (dbd_db_connect(sock,host,NULL,NULL,NULL)) {
-#xtract Msql
-	if (dbd_db_connect(&sock,host,NULL,NULL,NULL)) {
-#endxtract
 	    if (MyCreateDb(sock,dbname)) {
 	        result = TRUE;
 	    } else {
@@ -113,19 +102,13 @@ _DropDB(drh, host, dbname=host)
     {
         dbh_t sock;
 	int result = FALSE;
-#xtract Mysql
 	MYSQL mysql;
 	sock = &mysql;
-#endxtract
 
-#xtract Mysql
 	if (items < 3) {
 	    host = NULL;
 	}
 	if (dbd_db_connect(sock,host,NULL,NULL,NULL)) {
-#xtract Msql
-	if (dbd_db_connect(&sock,host,NULL,NULL,NULL)) {
-#endxtract
 	    if (MyDropDb(sock,dbname) != -1) {
 	        result = TRUE;
 	    } else {
@@ -139,11 +122,10 @@ _DropDB(drh, host, dbname=host)
     }
 
 
-MODULE = DBD::~DBD_DRIVER~    PACKAGE = DBD::~DBD_DRIVER~::db
+MODULE = DBD::mysql    PACKAGE = DBD::mysql::db
 
 
 
-#xtract Mysql
 
 int
 _InsertID(dbh)
@@ -157,7 +139,6 @@ _InsertID(dbh)
   OUTPUT:
     RETVAL
 
-#endxtract
 
 void
 _ListDBs(dbh)
@@ -184,11 +165,7 @@ _SelectDB(dbh, dbname)
     char *	dbname
     PPCODE:
     D_imp_dbh(dbh);
-#xtract Mysql
     if (imp_dbh->svsock->net.fd != -1) {
-#xtract Msql
-    if (imp_dbh->svsock != -1) {
-#endxtract
         if (MySelectDb(imp_dbh->svsock, dbname) == -1) {
             do_error(dbh, JW_ERR_SELECT_DB, 
 			   MyError(imp_dbh->svsock));
@@ -255,7 +232,7 @@ do(dbh, statement, attr=Nullsv, ...)
 }
 
 
-MODULE = DBD::~DBD_DRIVER~    PACKAGE = DBD::~DBD_DRIVER~::st
+MODULE = DBD::mysql    PACKAGE = DBD::mysql::st
 
 void
 _NumRows(sth)
