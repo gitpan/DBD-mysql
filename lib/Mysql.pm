@@ -9,7 +9,7 @@ require Mysql::Statement;
 $QUIET  = $QUIET  = '';
 @ISA    = @ISA    = '';
 @EXPORT = @EXPORT = '';
-$VERSION = '1.1818';
+$VERSION = '1.1819';
 
 $QUIET = 0;
 

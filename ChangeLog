@@ -1,4 +1,11 @@
-Mon Oct 27 00:50:08 1997  Jochen Wiedmann  <joe@nt.ispsoft.de> (1.1818)
+Wed Oct 29 00:41:41 1997  Jochen Wiedmann  <joe@ispsoft.de> (1.1819)
+
+	* nodbd/bundle.pm.in: Fixed syntax error.
+
+	* Fixed distribution problems. Not all .pm files have been
+	  included. (Only PAUSE should have noticed.)
+
+Mon Oct 27 00:50:08 1997  Jochen Wiedmann  <joe@ispsoft.de> (1.1818)
 
 	* nodbd/Makefile.PL.in: Fixed dependencies for "xtract" files.
 
@@ -10,7 +17,7 @@ Mon Oct 27 00:50:08 1997  Jochen Wiedmann  <joe@nt.ispsoft.de> (1.1818)
 	* nodbd/statement.pm.in: Msql::Statement::maxlength caches
 	  its return value now
 
-Sat Oct 25 16:30:01 1997  Jochen Wiedmann  <joe@nt.ispsoft.de> (1.1817)
+Sat Oct 25 16:30:01 1997  Jochen Wiedmann  <joe@ispsoft.de> (1.1817)
 
 	* Makefile.PL,dbd/Makefile.PL.in,nodbd/Makefile.PL.in: Added
 	  dependencies for files being created from dbd and nodbd
