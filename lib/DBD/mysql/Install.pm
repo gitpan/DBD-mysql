@@ -360,7 +360,8 @@ sub Initialize ($$) {
     my $defines = "-DDBD_MYSQL";
     my $linkwith = "";
     if ($Config::Config{'osname'} eq 'sco_sv'  ||
-	$Config::Config{'osname'} eq 'svr4') {
+	$Config::Config{'osname'} eq 'svr4'  ||
+	$Config::Config{'osname'} =~ /^sco\d+/) {
 	# Some extra libraries need added for SCO and Unixware
 	$sysliblist .= " -lc";
     } elsif ($Config::Config{'osname'} eq 'solaris') {

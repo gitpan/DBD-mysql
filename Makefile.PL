@@ -5,7 +5,7 @@
 #  You may distribute this under the terms of either the GNU General Public
 #  License or the Artistic License, as specified in the Perl README file.
 #
-#  $Id: Makefile.PL,v 1.2 1999/07/22 12:04:05 joe Exp $
+#  $Id: Makefile.PL,v 1.3 1999/08/22 13:58:23 joe Exp $
 #
 BEGIN {require 5.004;}
 use strict;
@@ -13,14 +13,14 @@ use Config ();
 use Getopt::Long ();
 use ExtUtils::MakeMaker qw(prompt WriteMakefile);
 use File::Path ();
-use ExtUtils::PerlPP ();
 use Cwd ();
 use lib "lib";
+use ExtUtils::PerlPP ();
 
 use vars qw($VERSION $DBD_VERSION $options);
 
-$VERSION = "1.2203";
-$DBD_VERSION = "2.0403";
+$VERSION = "1.2204";
+$DBD_VERSION = "2.0404";
 
 $options = { 'prompt' => 1 };
 

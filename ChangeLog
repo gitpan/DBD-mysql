@@ -1,3 +1,9 @@
+1999-08-22  Jochen Wiedmann  <joe@ispsoft.de>
+
+	* lib/DBD/mysql/Install.pm (Initialize): Added sco\d+* to the list
+	  of SCO-like operating systems. Thanks to Jukka Inkeri
+	  <Jukka.Inkeri@netstar.fi>
+
 1999-08-22  Jochen Wiedmann  <joe@ispsoft.de> (1.2203)
 
 	* dbd/dbd.xs.in: Fixed a memory leak in $dbh->quote().
@@ -436,7 +442,7 @@ Fri Oct 24 01:29:08 1997  Jochen Wiedmann  <joe@ispsoft.de> (1.1816)
 	* lib/Msql/Statement.pm: Fixed use of Msql::TEXT_TYPE without
 	  checking whether we are running Msql 1.
 
-$Id: ChangeLog,v 1.4 1999/07/22 12:04:05 joe Exp $
+$Id: ChangeLog,v 1.5 1999/08/22 13:58:22 joe Exp $
 
 DBD::mysql for DBI - Written by Jochen Wiedmann <joe@ispsoft.de>
 
